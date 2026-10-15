@@ -126,16 +126,48 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
     <button className="hint-link" onClick={()=>requestHint('Hint: gebruik de twee cijfers uit de alarmreconstructie gevolgd door het tweecijferige cameranummer.')}>Hint aanvragen</button>
   </PuzzleCard>;
 
-  if (phase === 'DOSSIER') return <section className="panel dossier-ready">
-    <div className="success-seal">KIST ONTGRENDELD</div>
-    <div className="section-label">FASE 2 · HET DOSSIER</div>
-    <h2>Open de kist.</h2>
-    <p>Vanaf nu verplaatst het onderzoek zich naar het fysieke dossier in de kist. Leg alle gevonden stukken zichtbaar op tafel.</p>
-    <div className="mission-card"><span>VOLGENDE OPDRACHT</span><strong>Ontdek welke vier criminelen samen de oorspronkelijke roof uitvoerden.</strong></div>
-    <p className="muted">De inhoud van deze dossierfase bouwen we hierna in.</p>
-  </section>;
+  if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
+}
+
+
+const suspects = [
+  { id:'johnny', name:'Johnny Jatwerk', alias:'De Wegbrenger' },
+  { id:'don', name:'Don Diamantini', alias:'De Koning van de Karaat' },
+  { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning' },
+  { id:'carla', name:'Carla Kraak', alias:'De Slotfluisteraar' },
+  { id:'rita', name:'Rita Ratel', alias:'De Fluwelen Hand' },
+  { id:'boris', name:'Boris Breekijzer', alias:'De Man met de Koevoet' },
+  { id:'vera', name:'Valse Vera', alias:'De Vrouw met Zeven Namen' },
+  { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder' }
+];
+
+function DossierPuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [selected,setSelected]=useState([]);
+  const toggle=(id)=>setSelected(prev=>prev.includes(id)?prev.filter(x=>x!==id):(prev.length<4?[...prev,id]:prev));
+  const submit=async()=>{
+    if(selected.length!==4) return;
+    await submitAnswer('DOSSIER', selected);
+  };
+  return <section className="panel dossier-ready">
+    <div className="success-seal">KIST ONTGRENDELD</div>
+    <div className="section-label">FASE 2 · HET DOSSIER</div>
+    <h2>Wie vormden samen het heist-team?</h2>
+    <p>Leg de acht fysieke dossierkaarten voor jullie neer. Gebruik de bewijsstukken uit de kist en bepaal welke <strong>vier personen noodzakelijk waren voor de oorspronkelijke roof</strong>.</p>
+    <div className="mission-card"><span>OPDRACHT</span><strong>Selecteer precies vier verdachten.</strong></div>
+    <div className="suspect-grid">{suspects.map(s=>{
+      const active=selected.includes(s.id);
+      return <button type="button" key={s.id} className={`suspect-card ${active?'selected':''}`} onClick={()=>toggle(s.id)} aria-pressed={active}>
+        <span className="suspect-check">{active?'✓':'○'}</span>
+        <strong>{s.name}</strong>
+        <small>{s.alias}</small>
+      </button>
+    })}</div>
+    <div className="selection-footer"><span><strong>{selected.length}/4</strong> geselecteerd</span><button className="primary" type="button" disabled={loading||selected.length!==4} onClick={submit}>{loading?'Controleren...':'Controleer verdachten'}</button></div>
+    <button className="hint-link" onClick={()=>requestHint('Hint: denk niet alleen aan wie verdacht is. Welke vier functies waren noodzakelijk om de vitrine te openen, papieren te regelen, een koper te hebben en de diamant te vervoeren?')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
 }
 
 function PuzzleCard({label,title,feedback,children}) {
