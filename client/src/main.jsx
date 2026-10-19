@@ -9,7 +9,7 @@ const phases = ['START','ALARM','CAMERA','KIST_OPEN','DOSSIER','ORIGINELE_CONTAI
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Alarmreconstructie', CAMERA: 'Camerafeeds', KIST_OPEN: 'Kistcode', DOSSIER: 'Dossier',
-  ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Johnny-route', KLUIS: 'Kluis', LOTUS_GEVONDEN: 'Lotus gevonden', EINDE: 'Einde'
+  ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDE: 'Eindplan'
 };
 
 function App() {
@@ -75,12 +75,21 @@ function App() {
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
   };
 
+  const chooseFinal = async (choice) => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/final-choice`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ choice }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Eindkeuze opslaan mislukt');
+      setTeam(j.team);
+    } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
+  };
+
   if (mode === 'game' && team) {
     const idx = Math.max(0, phases.indexOf(team.currentPhase));
     return <main className="app-shell game-shell">
       <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
       <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-      <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute}/>
+      <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
       <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
     </main>;
   }
@@ -104,7 +113,7 @@ function App() {
   </main>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHint, chooseRoute }) {
+function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -144,8 +153,11 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
   if (phase === 'JOHNNY_ONTMASKERD') return <JohnnyIdentifyPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'KEUZE') return <JohnnyChoice loading={loading} feedback={feedback} chooseRoute={chooseRoute} />;
-  if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro />;
+  if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
+  if (phase === 'KLUIS') return <SafePuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} chooseFinal={chooseFinal} />;
   if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
+  if (phase === 'EINDE' && team.chosenRoute === 'Johnny') return <JohnnyEndPlan team={team} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
 }
@@ -322,13 +334,108 @@ function JohnnyChoice({loading,feedback,chooseRoute}) {
   </section>;
 }
 
-function JohnnyRouteIntro() {
-  return <section className="panel cinematic">
+function JohnnyRouteIntro({loading,feedback,submitAnswer}) {
+  return <section className="panel cinematic johnny-route-panel">
     <div className="success-seal">SAMENWERKING ACTIEF</div>
-    <div className="section-label">JOHNNY-ROUTE · VOLGENDE FASE</div>
-    <h2>Johnny geeft jullie toegang tot de kluis.</h2>
-    <p>Jullie hebben gekozen om de overdracht voorlopig te laten doorgaan. Op de opgegeven locatie wacht een fysieke kluis. In de volgende bouwstap maken we de drie raadsels die samen de zescijferige kluiscode vormen.</p>
-    <div className="mission-card"><span>VOLGENDE OPDRACHT</span><strong>Vind drie antwoorden · vorm zes cijfers · open de kluis · vind De Zwarte Lotus.</strong></div>
+    <div className="section-label">JOHNNY-ROUTE · LOCATIE</div>
+    <h2>Ga naar de kluis.</h2>
+    <div className="johnny-message">
+      <p>“Jullie hebben gekozen. Dan krijgen jullie ook wat ik beloofd heb.”</p>
+      <p>De Zwarte Lotus ligt niet meer in een container. Hij ligt in een <strong>fysieke kluis</strong>.</p>
+      <p>Ga naar de locatie hieronder. Zoek daar naar de markering van de chauffeur.</p>
+    </div>
+    <div className="coordinate-card"><span>LOCATIE</span><strong>{JOHNNY_COORDS}</strong><small>Markering: zwarte routepijl · Poort 9</small></div>
+    <div className="mission-card"><span>OPDRACHT</span><strong>Vind de fysieke kluis. Open hem nog niet voordat jullie de zescijferige code hebben opgelost.</strong></div>
+    <button className="primary" disabled={loading} onClick={()=>submitAnswer('JOHNNY_ROUTE','locatie bereikt')}>{loading?'Bevestigen...':'Wij staan bij de kluis'}</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [step,setStep]=useState(1);
+  const [a,setA]=useState(''); const [b,setB]=useState(''); const [c,setC]=useState('');
+  const [local,setLocal]=useState('');
+  const digits=[step>1?'20':'••',step>2?'34':'••',step>3?'09':'••'];
+  const check=(which,e)=>{
+    e.preventDefault();
+    const v=(which===1?a:which===2?b:c).trim().replace(/\D/g,'').padStart(2,'0');
+    const correct=which===1?'20':which===2?'34':'09';
+    if(v!==correct){setLocal('Dat deel van de code klopt nog niet. Gebruik alleen informatie die jullie al in het dossier hebben bewezen.');return;}
+    setLocal(which===3?'Alle drie de codeparen zijn gevonden. Combineer ze nu van links naar rechts.':`Codepaar ${which} bevestigd.`);
+    setStep(which+1);
+  };
+  return <section className="panel safe-panel">
+    <div className="section-label">FASE 8 · DE KLUIS</div>
+    <h2>Drie raadsels. Zes cijfers.</h2>
+    <p>De kluis gebruikt drie codeparen. Los ieder raadsel afzonderlijk op. Zet de drie antwoorden daarna direct achter elkaar.</p>
+    <div className="safe-display"><span>{digits[0]}</span><i>·</i><span>{digits[1]}</span><i>·</i><span>{digits[2]}</span></div>
+
+    <div className="riddle-stack">
+      <article className={`riddle-card ${step>1?'solved':''}`}>
+        <span>RAADSEL 1 · TWEE CIJFERS</span>
+        <h3>Wat delen de twee beslissende tijdstippen?</h3>
+        <p>Het hoofdalarm en Johnny’s routewijziging liggen zeventien minuten uit elkaar. Toch beginnen beide tijdstippen met exact dezelfde twee cijfers. Welke?</p>
+        {step===1&&<form onSubmit={e=>check(1,e)} className="riddle-form"><input value={a} onChange={e=>setA(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
+        {step>1&&<strong className="riddle-answer">20</strong>}
+      </article>
+
+      <article className={`riddle-card ${step>2?'solved':''} ${step<2?'locked':''}`}>
+        <span>RAADSEL 2 · TWEE CIJFERS</span>
+        <h3>Wanneer stierf het oude plan?</h3>
+        <p>Het hoofdalarm klonk om 20:17. Het nummer van het oorspronkelijke dock was 17. Tel dat aantal minuten bij het alarm op. Neem alleen de minuten van de nieuwe tijd.</p>
+        {step===2&&<form onSubmit={e=>check(2,e)} className="riddle-form"><input value={b} onChange={e=>setB(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
+        {step>2&&<strong className="riddle-answer">34</strong>}
+      </article>
+
+      <article className={`riddle-card ${step>3?'solved':''} ${step<3?'locked':''}`}>
+        <span>RAADSEL 3 · TWEE CIJFERS</span>
+        <h3>Waar eindigt de stille route?</h3>
+        <p>Niet bij de pier. Niet bij de terminal. Zoek het nummer van de poort bij de kluis en schrijf het als twee cijfers.</p>
+        {step===3&&<form onSubmit={e=>check(3,e)} className="riddle-form"><input value={c} onChange={e=>setC(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
+        {step>3&&<strong className="riddle-answer">09</strong>}
+      </article>
+    </div>
+
+    {step===4&&<div className="safe-final"><span>KLUISCODE GERECONSTRUEERD</span><h3>Voer de zes cijfers in op de fysieke kluis én bevestig ze hieronder.</h3><AnswerForm loading={loading} placeholder="••••••" inputMode="numeric" maxLength={6} button="Open de kluis" onSubmit={v=>submitAnswer('KLUIS',v)} /></div>}
+    {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
+    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: vergelijk 20:17 met 20:34.':step===2?'Hint: 20:17 plus 17 minuten is 20:34.':step===3?'Hint: de markering bij de kluis noemt Poort 9. Schrijf 9 als twee cijfers.':'Hint: zet 20, 34 en 09 direct achter elkaar.')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function LotusFound({loading,feedback,chooseFinal}) {
+  const [choice,setChoice]=useState('');
+  return <section className="panel cinematic lotus-found">
+    <div className="success-seal">KLUIS OPEN</div>
+    <div className="section-label">DE ZWARTE LOTUS IS GEVONDEN</div>
+    <h2>Jullie hebben de steen.</h2>
+    <p>In de kluis ligt de fysieke Zwarte Lotus. Daarnaast vinden jullie het koperdossier en Johnny’s routebon. Vanaf dit moment hebben jullie meer informatie dan Johnny denkt.</p>
+
+    <div className="vault-contents">
+      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Zwarte diamant · fysiek in jullie bezit</small></article>
+      <article><span>KOPER</span><strong>Victor Valmont</strong><small>Alias: De Verzamelaar · kanaal V.V.-37</small></article>
+      <article><span>CODEWOORD</span><strong>KARAAT</strong><small>Verificatie: “Is de kluis nog gesloten?” → “Niet meer.”</small></article>
+      <article><span>AFSPRAAK</span><strong>Perron 3 · Oude goederenloods</strong><small>23:10 · herkenningsteken: zwarte handschoen · tweede codewoord: Nachtglas</small></article>
+      <article><span>JOHNNY</span><strong>Chauffeurskeet · Laadzone West</strong><small>Gele deur · zwarte routepijl · dienstpad achter Poort 9</small></article>
+    </div>
+
+    <div className="mission-card"><span>LAATSTE KEUZE</span><strong>Johnny denkt dat jullie nog steeds voor hem werken. De koper weet niet dat jullie de steen hebben. Wat doen jullie?</strong></div>
+    <div className="choice-grid final-choice-grid">
+      <button className={`choice-card police ${choice==='VAL'?'selected':''}`} onClick={()=>setChoice('VAL')}><span>OPTIE 1</span><strong>Lok ze samen in de val</strong><small>Bevestig de afspraak met de koper en geef de overdrachtsplek door aan de politie. Laat Johnny en de koper daar samen binnenlopen.</small></button>
+      <button className={`choice-card criminal ${choice==='DUBBELSPEL'?'selected':''}`} onClick={()=>setChoice('DUBBELSPEL')}><span>OPTIE 2</span><strong>Speel de deal uit</strong><small>Maak de afspraak met de koper, laat Johnny naar een andere plek gaan en bereid twee gelijktijdige arrestaties voor.</small></button>
+    </div>
+    <button className="primary" disabled={loading||!choice} onClick={()=>chooseFinal(choice)}>{loading?'Keuze vastleggen...':'Bevestig eindplan'}</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function JohnnyEndPlan({team}) {
+  const double=team.finalChoice==='DUBBELSPEL';
+  return <section className="panel cinematic end-plan">
+    <div className="section-label">EINDPLAN GEREGISTREERD</div>
+    <h2>{double?'Dubbel spel':'De val staat klaar'}</h2>
+    <p>{double?'Jullie houden Johnny in de waan dat de deal doorgaat, sturen hem naar een tweede locatie en gebruiken de koperafspraak om beide doelwitten apart te laten oppakken.':'Jullie bevestigen de afspraak met de koper en gebruiken de overdracht als val. Johnny en de koper moeten op hetzelfde moment worden geïsoleerd en aangehouden.'}</p>
+    <div className="mission-card"><span>VOLGENDE BOUWSTAP</span><strong>De precieze berichten, timing en inval van dit eindplan bouwen we in de volgende versie.</strong></div>
   </section>;
 }
 

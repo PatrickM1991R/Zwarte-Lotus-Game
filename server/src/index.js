@@ -12,10 +12,10 @@ const db = {
   location: { id: 1, name: 'Paviljoen Schoonhoven' },
   event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
   teams: [
-    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, status: 'bezig', startedAt: now },
-    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, status: 'bezig', startedAt: now - 36 * 60000 },
-    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', status: 'bezig', startedAt: now - 43 * 60000 },
-    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', status: 'bezig', startedAt: now - 48 * 60000 }
+    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now },
+    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000 },
+    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000 },
+    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000 }
   ]
 };
 
@@ -25,7 +25,9 @@ const phaseAnswers = {
   KIST_OPEN: ['1403'],
   ORIGINELE_CONTAINER: ['mbx-4717', 'mbx4717'],
   ROTJE_KNOR: ['beluisterd'],
-  JOHNNY_ONTMASKERD: ['johnny', 'j.j.', 'jj', 'johnny jatwerk']
+  JOHNNY_ONTMASKERD: ['johnny', 'j.j.', 'jj', 'johnny jatwerk'],
+  JOHNNY_ROUTE: ['locatie bereikt'],
+  KLUIS: ['203409']
 };
 
 const phaseNext = {
@@ -37,7 +39,9 @@ const phaseNext = {
   ORIGINELE_CONTAINER: 'ROTJE_KNOR',
   ROTJE_KNOR: 'JOHNNY_ONTMASKERD',
   JOHNNY_ONTMASKERD: 'NIEUWE_CONTAINER',
-  NIEUWE_CONTAINER: 'KEUZE'
+  NIEUWE_CONTAINER: 'KEUZE',
+  JOHNNY_ROUTE: 'KLUIS',
+  KLUIS: 'LOTUS_GEVONDEN'
 };
 
 const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: db.event.name });
@@ -104,6 +108,17 @@ app.post('/api/teams/:id/route', (req, res) => {
   if (!['Johnny','Politie'].includes(route)) return res.status(422).json({ error: 'Ongeldige routekeuze.' });
   team.chosenRoute = route;
   team.currentPhase = route === 'Johnny' ? 'JOHNNY_ROUTE' : 'EINDE';
+  res.json({ team: enrich(team) });
+});
+
+app.post('/api/teams/:id/final-choice', (req, res) => {
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if (team.currentPhase !== 'LOTUS_GEVONDEN' || team.chosenRoute !== 'Johnny') return res.status(409).json({ error: 'Deze eindkeuze is nu niet actief.' });
+  const choice = String(req.body.choice || '');
+  if (!['VAL','DUBBELSPEL'].includes(choice)) return res.status(422).json({ error: 'Ongeldige eindkeuze.' });
+  team.finalChoice = choice;
+  team.currentPhase = 'EINDE';
   res.json({ team: enrich(team) });
 });
 

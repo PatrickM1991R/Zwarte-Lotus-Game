@@ -21,3 +21,6 @@ Werkende technische basis voor het dinerspel.
 ## Demo
 
 Teamcode: `LOTUS-4171`
+
+## v0.6
+Johnny-route uitgebreid met fysieke kluislocatie, drie raadsels voor de 6-cijferige code 203409, Lotus-gevonden scherm, kopergegevens en twee eindplannen.
