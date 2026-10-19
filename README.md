@@ -24,3 +24,9 @@ Teamcode: `LOTUS-4171`
 
 ## v0.6
 Johnny-route uitgebreid met fysieke kluislocatie, drie raadsels voor de 6-cijferige code 203409, Lotus-gevonden scherm, kopergegevens en twee eindplannen.
+
+
+## v0.7 wijziging
+- Transportlog wordt niet meer digitaal getoond.
+- Na Rotje Knor geeft de spelbegeleider het fysieke transportlog aan het team.
+- De website gebruikt dit document alleen als fysiek bewijsmateriaal voor de vervolgpuzzels.

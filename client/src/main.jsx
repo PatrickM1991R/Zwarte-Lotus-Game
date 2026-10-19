@@ -263,7 +263,7 @@ function RotjeKnorPhase({loading,feedback,submitAnswer}) {
     </div>
     {!ROTJE_PHONE && <details className="test-audio"><summary>Testmodus · reservebandje afspelen</summary><audio className="audio-player" controls preload="metadata" src="/assets/story/rotje-knor.mp3" /></details>}
     <div className="mission-card"><span>OPDRACHT</span><strong>Luister naar de initialen, het tijdstip en de containerstatus.</strong></div>
-    <button className="primary" disabled={loading} onClick={()=>submitAnswer('ROTJE_KNOR','beluisterd')}>{loading?'Openen...':'Bandje beluisterd · open transportlog'}</button>
+    <button className="primary" disabled={loading} onClick={()=>submitAnswer('ROTJE_KNOR','beluisterd')}>{loading?'Openen...':'Bandje beluisterd · bewijsmateriaal ontvangen'}</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -273,8 +273,8 @@ function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
   return <section className="panel dossier-ready">
     <div className="section-label">FASE 5 · LAATSTE WIJZIGING</div>
     <h2>Wie heeft het transportplan aangepast?</h2>
-    <p>Vergelijk het bericht van Rotje Knor met het transportlog. De wijziging is uitgevoerd nadat de andere drie rollen al klaar waren.</p>
-    <img className="document-image" src="/assets/story/transportlog.png" alt="Transportlog met de laatste wijzigingen aan het transportplan" />
+    <p>Gebruik het <strong>fysieke transportlog</strong> dat jullie nu van de spelbegeleider hebben ontvangen. Vergelijk dit document met het bericht van Rotje Knor. De wijziging is uitgevoerd nadat de andere drie rollen al klaar waren.</p>
+    <div className="mission-card"><span>BEWIJSMATERIAAL</span><strong>Transportlog – Laatste wijziging</strong><small>Wordt fysiek uitgereikt door de spelbegeleider.</small></div>
     <div className="single-suspect-grid">{suspects.map(s=><button key={s.id} type="button" className={`mini-suspect ${selected===s.id?'selected':''}`} onClick={()=>setSelected(s.id)} aria-pressed={selected===s.id}><img src={s.image} alt=""/><span><strong>{s.name}</strong><small>{s.alias}</small></span></button>)}</div>
     <div className="selection-footer"><span>{selected?'1 verdachte geselecteerd':'Selecteer de verdachte die bij J.J. past'}</span><button className="primary" disabled={loading||!selected} onClick={()=>submitAnswer('JOHNNY_ONTMASKERD',selected)}>{loading?'Controleren...':'Ontmasker J.J.'}</button></div>
     <button className="hint-link" onClick={()=>requestHint('Hint: combineer de initialen J.J., het signalement, de transportmap en de rol van de chauffeur.')}>Hint aanvragen</button>
@@ -304,7 +304,7 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   return <section className="panel container-puzzle">
     <div className="section-label">FASE 6 · JOHNNY'S NIEUWE ROUTE</div>
     <h2>Waar heeft J.J. De Zwarte Lotus naartoe verplaatst?</h2>
-    <p>MBX-4717 is een <strong>lege huls</strong>. Filter nu het gewijzigde transportregister. Gebruik alleen informatie die Rotje Knor en het transportlog bevestigen.</p>
+    <p>MBX-4717 is een <strong>lege huls</strong>. Filter nu het gewijzigde transportregister. Gebruik het fysieke transportlog van de spelbegeleider en de informatie uit Rotje Knors bericht.</p>
     <div className="filter-progress"><span className={step>=1?'active':''}>1 · Reeks</span><span className={step>=2?'active':''}>2 · Tijd</span><span className={step>=3?'active':''}>3 · Route</span><span className={step>=4?'active':''}>4 · Bevestiging</span></div>
     <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Routekenmerk</th><th>Status</th></tr></thead><tbody>{rows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
     <div className="manifest-count">{rows.length} {rows.length===1?'container over':'containers zichtbaar'}</div>
