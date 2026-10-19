@@ -1,40 +1,23 @@
-# De Zwarte Lotus — spelplatform v0.2
+# De Zwarte Lotus — spelplatform v0.5
 
-Werkende basis voor het dinerspel.
+Werkende technische basis voor het dinerspel.
 
-## v0.2
+## Nieuw in v0.5
 
-De echte openingsflow is ingebouwd:
+- Rotje Knor-fase met configureerbaar telefoonnummer en reserve-audio voor testmodus
+- Transportlog in beeld
+- Johnny Jatwerk ontmaskeren via J.J. + signalement
+- Tweede containerpuzzel: JJX-reeks → 20:34 → stille route → JJX-2034
+- Eindbevestiging: dader + nieuwe container
+- 30-secondenkeuze: samenwerken met Johnny of politie inlichten
+- Johnny-route opent na keuze
 
-1. Introductie Maison Beaumont
-2. Alarmfragment → antwoord 14
-3. Camerafeeds → antwoord 03
-4. Kistcode → 1403
-5. Overgang naar dossierfase
+## Omgevingsvariabelen frontend
 
-Nieuwe teams starten op fase START met 0 hints. De testknop is uit de spelersomgeving verwijderd.
+- `VITE_API_URL` — URL van de Render API
+- `VITE_ROTJE_PHONE` — telefoonnummer van de douanelijn
+- `VITE_JOHNNY_COORDS` — locatie/coördinaten die Johnny aan spelers toont
 
 ## Demo
 
 Teamcode: `LOTUS-4171`
-
-## Render
-
-Backend: Node/Express vanuit `server/`.
-Frontend: Vite/React vanuit `client/`.
-Frontend environment variable:
-
-`VITE_API_URL=https://zwarte-lotus-api.onrender.com`
-
-## v0.3
-- Dossierfase interactief gemaakt.
-- Acht verdachten zichtbaar in de spelersomgeving.
-- Spelers moeten precies vier verdachten selecteren.
-- Juiste heist-team: Carla Kraak, Freddy Flessentrekker, Don Diamantini en Johnny Jatwerk.
-- Verkeerde combinatie geeft alleen een inhoudelijke hint, niet de oplossing.
-- Juiste combinatie ontgrendelt de fase `ORIGINELE_CONTAINER`.
-
-## v0.4
-- Dossierselectie met portretten van alle acht verdachten.
-- Verbeterde foutmelding en instructie dat niet elke verdachte bij de roof hoort.
-- Oorspronkelijke containerpuzzel toegevoegd met drie filters: Dock 17 → 20:15 → Zwitserland → MBX-4717.

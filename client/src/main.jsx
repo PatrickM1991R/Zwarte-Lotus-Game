@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
+const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
 const phases = ['START','ALARM','CAMERA','KIST_OPEN','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDE'];
 
 const phaseLabels = {
@@ -64,12 +66,21 @@ function App() {
     } catch {}
   };
 
+  const chooseRoute = async (route) => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/route`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ route }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Keuze opslaan mislukt');
+      setTeam(j.team);
+    } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
+  };
+
   if (mode === 'game' && team) {
     const idx = Math.max(0, phases.indexOf(team.currentPhase));
     return <main className="app-shell game-shell">
       <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
       <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-      <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint}/>
+      <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute}/>
       <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
     </main>;
   }
@@ -93,7 +104,7 @@ function App() {
   </main>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHint }) {
+function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHint, chooseRoute }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -129,6 +140,12 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
   if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
   if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'ROTJE_KNOR') return <RotjeKnorPhase loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
+  if (phase === 'JOHNNY_ONTMASKERD') return <JohnnyIdentifyPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'KEUZE') return <JohnnyChoice loading={loading} feedback={feedback} chooseRoute={chooseRoute} />;
+  if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro />;
+  if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
 }
@@ -216,6 +233,102 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
     {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
     <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: begin niet bij het containernummer. Zoek eerst in de routegegevens welk dock bij het viertal hoort.':step===2?'Hint: na het juiste dock blijven vijf regels over. De aankomsttijd ligt één minuut na het vitrinecontact.':step===3?'Hint: Don noteerde CH en GVA en schreef over horloges, banken en gesloten kluizen.': 'Hint: na drie correcte filters hoort er nog maar één regel in de vrachtlijst te staan.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+
+function RotjeKnorPhase({loading,feedback,submitAnswer}) {
+  const callHref = ROTJE_PHONE ? `tel:${ROTJE_PHONE.replace(/\s+/g,'')}` : null;
+  return <section className="panel cinematic informant-panel">
+    <div className="section-label">FASE 4 · DOUANELIJN</div>
+    <h2>Het oude transportplan klopt. Maar iemand heeft het gewijzigd.</h2>
+    <p>Jullie hebben <strong>Dock 17</strong> en <strong>MBX-4717</strong> gereconstrueerd. Een infiltrant bij de douane heeft aanvullende informatie. Bel de lijn en luister het bericht volledig af.</p>
+    <div className="phone-card">
+      <span>CONTACTPERSOON</span>
+      <strong>Rotje Knor</strong>
+      <small>Douane-infiltrant · vertrouwelijk kanaal</small>
+      {ROTJE_PHONE ? <a className="primary call-button" href={callHref}>Bel {ROTJE_PHONE}</a> : <div className="phone-placeholder">Telefoonnummer nog niet ingesteld</div>}
+    </div>
+    {!ROTJE_PHONE && <details className="test-audio"><summary>Testmodus · reservebandje afspelen</summary><audio className="audio-player" controls preload="metadata" src="/assets/story/rotje-knor.mp3" /></details>}
+    <div className="mission-card"><span>OPDRACHT</span><strong>Luister naar de initialen, het tijdstip en de containerstatus.</strong></div>
+    <button className="primary" disabled={loading} onClick={()=>submitAnswer('ROTJE_KNOR','beluisterd')}>{loading?'Openen...':'Bandje beluisterd · open transportlog'}</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [selected,setSelected]=useState('');
+  return <section className="panel dossier-ready">
+    <div className="section-label">FASE 5 · LAATSTE WIJZIGING</div>
+    <h2>Wie heeft het transportplan aangepast?</h2>
+    <p>Vergelijk het bericht van Rotje Knor met het transportlog. De wijziging is uitgevoerd nadat de andere drie rollen al klaar waren.</p>
+    <img className="document-image" src="/assets/story/transportlog.png" alt="Transportlog met de laatste wijzigingen aan het transportplan" />
+    <div className="single-suspect-grid">{suspects.map(s=><button key={s.id} type="button" className={`mini-suspect ${selected===s.id?'selected':''}`} onClick={()=>setSelected(s.id)} aria-pressed={selected===s.id}><img src={s.image} alt=""/><span><strong>{s.name}</strong><small>{s.alias}</small></span></button>)}</div>
+    <div className="selection-footer"><span>{selected?'1 verdachte geselecteerd':'Selecteer de verdachte die bij J.J. past'}</span><button className="primary" disabled={loading||!selected} onClick={()=>submitAnswer('JOHNNY_ONTMASKERD',selected)}>{loading?'Controleren...':'Ontmasker J.J.'}</button></div>
+    <button className="hint-link" onClick={()=>requestHint('Hint: combineer de initialen J.J., het signalement, de transportmap en de rol van de chauffeur.')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+const johnnyRows = [
+  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere rit',status:'Gesloten'},
+  {container:'JJX-2034',series:'JJX',time:'20:34',route:'Stille route',status:'Actief'},
+  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wachtroute',status:'Vertraagd'},
+  {container:'JJX-2047',series:'JJX',time:'20:34',route:'Koerierswissel',status:'Controle'},
+  {container:'JJX-7334',series:'JJX',time:'20:34',route:'Opslagroute',status:'Wacht'},
+  {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retour',status:'Gesloten'},
+  {container:'RDX-2034',series:'RDX',time:'20:34',route:'Stille route',status:'Foutieve reeks'},
+  {container:'MBX-2034',series:'MBX',time:'20:34',route:'Oude route',status:'Geannuleerd'}
+];
+
+function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [step,setStep]=useState(1); const [series,setSeries]=useState(''); const [time,setTime]=useState(''); const [route,setRoute]=useState(''); const [culprit,setCulprit]=useState(''); const [container,setContainer]=useState(''); const [localFeedback,setLocalFeedback]=useState('');
+  const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const checkSeries=e=>{e.preventDefault(); if(norm(series)==='jjx'){setStep(2);setLocalFeedback('JJX-reeks bevestigd. Zes containers blijven over.');}else setLocalFeedback('Die reeks is niet gekoppeld aan de laatste wijziging. Bekijk het transportlog opnieuw.');};
+  const checkTime=e=>{e.preventDefault(); if(norm(time).replace(':','')==='2034'){setStep(3);setLocalFeedback('20:34 bevestigd. Drie containers blijven over.');}else setLocalFeedback('Dat tijdstip klopt niet met Rotje Knor en het transportlog.');};
+  const checkRoute=e=>{e.preventDefault(); if(norm(route)==='stille route'){setStep(4);setLocalFeedback('Routekenmerk bevestigd. Er blijft één container over.');}else setLocalFeedback('Dat routekenmerk hoort niet bij Johnny’s nieuwe rit.');};
+  const rows=johnnyRows.filter(r=>step===1?true:step===2?r.series==='JJX':step===3?r.series==='JJX'&&r.time==='20:34':r.series==='JJX'&&r.time==='20:34'&&r.route==='Stille route');
+  const finalSubmit=e=>{e.preventDefault(); submitAnswer('NIEUWE_CONTAINER', {culprit,container});};
+  return <section className="panel container-puzzle">
+    <div className="section-label">FASE 6 · JOHNNY'S NIEUWE ROUTE</div>
+    <h2>Waar heeft J.J. De Zwarte Lotus naartoe verplaatst?</h2>
+    <p>MBX-4717 is een <strong>lege huls</strong>. Filter nu het gewijzigde transportregister. Gebruik alleen informatie die Rotje Knor en het transportlog bevestigen.</p>
+    <div className="filter-progress"><span className={step>=1?'active':''}>1 · Reeks</span><span className={step>=2?'active':''}>2 · Tijd</span><span className={step>=3?'active':''}>3 · Route</span><span className={step>=4?'active':''}>4 · Bevestiging</span></div>
+    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Routekenmerk</th><th>Status</th></tr></thead><tbody>{rows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
+    <div className="manifest-count">{rows.length} {rows.length===1?'container over':'containers zichtbaar'}</div>
+    {step===1&&<form className="filter-form" onSubmit={checkSeries}><div><span>FILTER 1</span><strong>Welke containergroep is na de wijziging gebruikt?</strong><small>Zoek de nieuwe reeks in het transportlog.</small></div><div className="filter-input"><input value={series} onChange={e=>setSeries(e.target.value)} placeholder="Bijv. ABC" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===2&&<form className="filter-form" onSubmit={checkTime}><div><span>FILTER 2</span><strong>Op welk tijdstip nam J.J. het plan over?</strong><small>Rotje Knor noemt het tijdstip expliciet.</small></div><div className="filter-input"><input value={time} onChange={e=>setTime(e.target.value)} placeholder="Bijv. 20:34" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===3&&<form className="filter-form" onSubmit={checkRoute}><div><span>FILTER 3</span><strong>Welk routekenmerk hoort bij Johnny?</strong><small>Het is de route die buiten de gewone controle blijft.</small></div><div className="filter-input"><input value={route} onChange={e=>setRoute(e.target.value)} placeholder="Routekenmerk" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===4&&<form className="final-confirm" onSubmit={finalSubmit}><span>LAATSTE CONTROLE</span><h3>Bevestig dader én nieuwe container.</h3><div className="two-inputs"><label>Dader<input value={culprit} onChange={e=>setCulprit(e.target.value)} placeholder="Initialen of naam" required/></label><label>Container<input value={container} onChange={e=>setContainer(e.target.value)} placeholder="JJX-••••" required/></label></div><button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig nieuwe route'}</button></form>}
+    {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
+    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: de nieuwe reeks staat letterlijk in het transportlog.':step===2?'Hint: de wijziging vond plaats om 20:34.':step===3?'Hint: Johnny noemt dit de stille route.':'Hint: de dader is J.J. en er hoort nog maar één regel in de lijst te staan.')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function JohnnyChoice({loading,feedback,chooseRoute}) {
+  const [seconds,setSeconds]=useState(30); const [locked,setLocked]=useState(false);
+  useEffect(()=>{if(locked||seconds<=0)return; const id=setInterval(()=>setSeconds(s=>Math.max(0,s-1)),1000); return()=>clearInterval(id);},[locked,seconds]);
+  useEffect(()=>{if(seconds===0)setLocked(true);},[seconds]);
+  const choose=async route=>{setLocked(true); await chooseRoute(route);};
+  return <section className="panel cinematic johnny-choice">
+    <div className="section-label">VERSLEUTELD BERICHT · J.J.</div>
+    <h2>“Ik heb jullie door.”</h2>
+    <div className="johnny-message"><p>Jullie dachten mij te pakken. Leuk geprobeerd.</p><p>Of ik verplaats alles opnieuw — en dan zijn jullie mij én De Zwarte Lotus kwijt — of jullie laten de overdracht doorgaan.</p><p>De Zwarte Lotus is verkocht voor <strong>€ 37.000.000</strong>. Jullie krijgen <strong>30%</strong>: € 11.100.000.</p><p>Jullie volgende locatie: <strong>{JOHNNY_COORDS}</strong>.</p><p>Jullie hebben dertig seconden. Werken jullie met mij samen, of lichten jullie de mede-agenten in?</p></div>
+    <div className={`choice-timer ${seconds<=10?'urgent':''}`}><span>TIJD OVER</span><strong>{String(seconds).padStart(2,'0')}</strong></div>
+    <div className="choice-grid"><button className="choice-card criminal" disabled={loading||locked} onClick={()=>choose('Johnny')}><span>OPTIE 1</span><strong>Werk samen met Jatwerk</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button><button className="choice-card police" disabled={loading||locked} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Waarschuw de mede-agenten en bereid een inval voor.</small></button></div>
+    {seconds===0&&<div className="feedback">Tijd verstreken. Gebruik het begeleidersdashboard om deze testfase opnieuw te starten.</div>}
+    {feedback&&<div className="feedback">{feedback}</div>}
+  </section>;
+}
+
+function JohnnyRouteIntro() {
+  return <section className="panel cinematic">
+    <div className="success-seal">SAMENWERKING ACTIEF</div>
+    <div className="section-label">JOHNNY-ROUTE · VOLGENDE FASE</div>
+    <h2>Johnny geeft jullie toegang tot de kluis.</h2>
+    <p>Jullie hebben gekozen om de overdracht voorlopig te laten doorgaan. Op de opgegeven locatie wacht een fysieke kluis. In de volgende bouwstap maken we de drie raadsels die samen de zescijferige kluiscode vormen.</p>
+    <div className="mission-card"><span>VOLGENDE OPDRACHT</span><strong>Vind drie antwoorden · vorm zes cijfers · open de kluis · vind De Zwarte Lotus.</strong></div>
   </section>;
 }
 
