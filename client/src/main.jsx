@@ -128,19 +128,21 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
 
   if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
+  if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
 }
 
 
 const suspects = [
-  { id:'johnny', name:'Johnny Jatwerk', alias:'De Wegbrenger' },
-  { id:'don', name:'Don Diamantini', alias:'De Koning van de Karaat' },
-  { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning' },
-  { id:'carla', name:'Carla Kraak', alias:'De Slotfluisteraar' },
-  { id:'rita', name:'Rita Ratel', alias:'De Fluwelen Hand' },
-  { id:'boris', name:'Boris Breekijzer', alias:'De Man met de Koevoet' },
-  { id:'vera', name:'Valse Vera', alias:'De Vrouw met Zeven Namen' },
-  { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder' }
+  { id:'johnny', name:'Johnny Jatwerk', alias:'De Wegbrenger', image:'/assets/suspects/johnny.jpg' },
+  { id:'don', name:'Don Diamantini', alias:'De Koning van de Karaat', image:'/assets/suspects/don.jpg' },
+  { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning', image:'/assets/suspects/freddy.jpg' },
+  { id:'carla', name:'Carla Kraak', alias:'De Slotfluisteraar', image:'/assets/suspects/carla.jpg' },
+  { id:'rita', name:'Rita Ratel', alias:'De Fluwelen Hand', image:'/assets/suspects/rita.jpg' },
+  { id:'boris', name:'Boris Breekijzer', alias:'De Man met de Koevoet', image:'/assets/suspects/boris.jpg' },
+  { id:'vera', name:'Valse Vera', alias:'De Vrouw met Zeven Namen', image:'/assets/suspects/vera.jpg' },
+  { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder', image:'/assets/suspects/max.jpg' }
 ];
 
 function DossierPuzzle({loading,feedback,submitAnswer,requestHint}) {
@@ -153,19 +155,66 @@ function DossierPuzzle({loading,feedback,submitAnswer,requestHint}) {
   return <section className="panel dossier-ready">
     <div className="success-seal">KIST ONTGRENDELD</div>
     <div className="section-label">FASE 2 · HET DOSSIER</div>
-    <h2>Wie vormden samen het heist-team?</h2>
-    <p>Leg de acht fysieke dossierkaarten voor jullie neer. Gebruik de bewijsstukken uit de kist en bepaal welke <strong>vier personen noodzakelijk waren voor de oorspronkelijke roof</strong>.</p>
+    <h2>Wie vormden samen het oorspronkelijke heist-team?</h2>
+    <p>Leg de acht fysieke dossierkaarten voor jullie neer. Gebruik de bewijsstukken uit de kist. <strong>Niet iedere verdachte hoort bij deze roof.</strong> Bepaal welke vier personen noodzakelijk waren om de operatie uit te voeren.</p>
     <div className="mission-card"><span>OPDRACHT</span><strong>Selecteer precies vier verdachten.</strong></div>
     <div className="suspect-grid">{suspects.map(s=>{
       const active=selected.includes(s.id);
       return <button type="button" key={s.id} className={`suspect-card ${active?'selected':''}`} onClick={()=>toggle(s.id)} aria-pressed={active}>
+        <img className="suspect-photo" src={s.image} alt={`Dossierfoto van ${s.name}`} />
+        <span className="suspect-info"><strong>{s.name}</strong><small>{s.alias}</small></span>
         <span className="suspect-check">{active?'✓':'○'}</span>
-        <strong>{s.name}</strong>
-        <small>{s.alias}</small>
       </button>
     })}</div>
     <div className="selection-footer"><span><strong>{selected.length}/4</strong> geselecteerd</span><button className="primary" type="button" disabled={loading||selected.length!==4} onClick={submit}>{loading?'Controleren...':'Controleer verdachten'}</button></div>
-    <button className="hint-link" onClick={()=>requestHint('Hint: denk niet alleen aan wie verdacht is. Welke vier functies waren noodzakelijk om de vitrine te openen, papieren te regelen, een koper te hebben en de diamant te vervoeren?')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint('Hint: denk niet alleen aan wie verdacht is. Welke vier functies waren noodzakelijk voor techniek, documenten, koper en transport?')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+const containerRows = [
+  {container:'MBX-1120',dock:'11',arrival:'19:40',origin:'Frankrijk',status:'Vrijgegeven'},
+  {container:'MBX-2408',dock:'24',arrival:'20:08',origin:'Italië',status:'Vrijgegeven'},
+  {container:'MBX-3314',dock:'33',arrival:'20:14',origin:'België',status:'Vertraagd'},
+  {container:'MBX-4717',dock:'17',arrival:'20:15',origin:'Zwitserland',status:'Handmatige controle'},
+  {container:'MBX-8617',dock:'17',arrival:'19:55',origin:'België',status:'Vrijgegeven'},
+  {container:'MBX-7317',dock:'17',arrival:'20:15',origin:'Frankrijk',status:'Wacht op controle'},
+  {container:'MBX-9017',dock:'17',arrival:'20:18',origin:'Duitsland',status:'Gesloten'},
+  {container:'MBX-2517',dock:'17',arrival:'20:15',origin:'Italië',status:'Vrijgegeven'},
+  {container:'MBX-7303',dock:'07',arrival:'20:15',origin:'Zwitserland',status:'Technische controle'},
+  {container:'MBX-1906',dock:'19',arrival:'20:06',origin:'Oostenrijk',status:'Vrijgegeven'},
+  {container:'MBX-4417',dock:'44',arrival:'20:17',origin:'Spanje',status:'Vertraagd'}
+];
+
+function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [step,setStep]=useState(1);
+  const [dock,setDock]=useState('');
+  const [arrival,setArrival]=useState('');
+  const [origin,setOrigin]=useState('');
+  const [localFeedback,setLocalFeedback]=useState('');
+
+  const normal=(v)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const checkDock=(e)=>{e.preventDefault(); if(normal(dock)==='17'){setStep(2);setLocalFeedback('Dock 17 bevestigd. Er blijven vijf containers over.');}else setLocalFeedback('Dat dock past niet bij de gereconstrueerde route. Controleer de routegegevens uit het dossier.');};
+  const checkArrival=(e)=>{e.preventDefault(); const v=normal(arrival).replace(':',''); if(v==='2015'){setStep(3);setLocalFeedback('Aankomsttijd 20:15 bevestigd. Er blijven drie containers over.');}else setLocalFeedback('Die aankomsttijd klopt niet. Zoek het moment dat één minuut na het vitrinecontact ligt.');};
+  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setStep(4);setLocalFeedback('Herkomst bevestigd. Er blijft één container over.');}else setLocalFeedback('Dat land past niet bij de aantekeningen van Don Diamantini. Bekijk zijn codes en aanwijzingen opnieuw.');};
+  const visibleRows=containerRows.filter(r=>step===1?true:step===2?r.dock==='17':step===3?r.dock==='17'&&r.arrival==='20:15':r.dock==='17'&&r.arrival==='20:15'&&r.origin==='Zwitserland');
+
+  return <section className="panel container-puzzle">
+    <div className="section-label">FASE 3 · OORSPRONKELIJK TRANSPORTPLAN</div>
+    <h2>Welke container was bestemd voor De Zwarte Lotus?</h2>
+    <p>De vier criminelen brachten ieder een deel van het plan mee. Gebruik de fysieke routegegevens en de stukken uit de kist om de vrachtlijst stap voor stap te filteren. <strong>Raad niet.</strong> Iedere stap moet door het dossier worden bewezen.</p>
+    <div className="filter-progress"><span className={step>=1?'active':''}>1 · Dock</span><span className={step>=2?'active':''}>2 · Aankomst</span><span className={step>=3?'active':''}>3 · Herkomst</span><span className={step>=4?'active':''}>4 · Container</span></div>
+
+    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Dock</th><th>Aankomst</th><th>Herkomst</th><th>Status</th></tr></thead><tbody>{visibleRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.dock}</td><td>{r.arrival}</td><td>{r.origin}</td><td>{r.status}</td></tr>)}</tbody></table></div>
+    <div className="manifest-count">{visibleRows.length} {visibleRows.length===1?'container over':'containers zichtbaar'}</div>
+
+    {step===1&&<form className="filter-form" onSubmit={checkDock}><div><span>FILTER 1</span><strong>Welk dock hoort bij de oorspronkelijke route?</strong><small>Gebruik de routegegevens van het heist-team.</small></div><div className="filter-input"><input value={dock} onChange={e=>setDock(e.target.value)} placeholder="Docknummer" inputMode="numeric" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===2&&<form className="filter-form" onSubmit={checkArrival}><div><span>FILTER 2</span><strong>Welke aankomsttijd hoort bij de zending?</strong><small>Gebruik de tijdlijn van vitrinecontact en camera-uitval.</small></div><div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} placeholder="Bijv. 20:15" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===3&&<form className="filter-form" onSubmit={checkOrigin}><div><span>FILTER 3</span><strong>Uit welk land kwam de juiste zending?</strong><small>Gebruik de privé-aantekeningen van Don Diamantini.</small></div><div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="Land van herkomst" required/><button className="primary">Filter lijst</button></div></form>}
+    {step===4&&<div className="final-container"><span>LAATSTE CONTROLE</span><h3>Er is nog één container over.</h3><p>Voer het volledige containernummer in om het oorspronkelijke transportplan te bevestigen.</p><AnswerForm loading={loading} placeholder="MBX-••••" maxLength={12} button="Bevestig container" onSubmit={(v)=>submitAnswer('ORIGINELE_CONTAINER',v)} /></div>}
+
+    {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
+    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: begin niet bij het containernummer. Zoek eerst in de routegegevens welk dock bij het viertal hoort.':step===2?'Hint: na het juiste dock blijven vijf regels over. De aankomsttijd ligt één minuut na het vitrinecontact.':step===3?'Hint: Don noteerde CH en GVA en schreef over horloges, banken en gesloten kluizen.': 'Hint: na drie correcte filters hoort er nog maar één regel in de vrachtlijst te staan.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }

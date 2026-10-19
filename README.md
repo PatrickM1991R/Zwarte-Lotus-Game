@@ -25,3 +25,16 @@ Frontend: Vite/React vanuit `client/`.
 Frontend environment variable:
 
 `VITE_API_URL=https://zwarte-lotus-api.onrender.com`
+
+## v0.3
+- Dossierfase interactief gemaakt.
+- Acht verdachten zichtbaar in de spelersomgeving.
+- Spelers moeten precies vier verdachten selecteren.
+- Juiste heist-team: Carla Kraak, Freddy Flessentrekker, Don Diamantini en Johnny Jatwerk.
+- Verkeerde combinatie geeft alleen een inhoudelijke hint, niet de oplossing.
+- Juiste combinatie ontgrendelt de fase `ORIGINELE_CONTAINER`.
+
+## v0.4
+- Dossierselectie met portretten van alle acht verdachten.
+- Verbeterde foutmelding en instructie dat niet elke verdachte bij de roof hoort.
+- Oorspronkelijke containerpuzzel toegevoegd met drie filters: Dock 17 → 20:15 → Zwitserland → MBX-4717.

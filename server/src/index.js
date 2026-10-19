@@ -22,14 +22,17 @@ const db = {
 const phaseAnswers = {
   ALARM: ['14', '20:14', '2014'],
   CAMERA: ['03', '3', 'camera 03', 'camera3'],
-  KIST_OPEN: ['1403']
+  KIST_OPEN: ['1403'],
+  ORIGINELE_CONTAINER: ['mbx-4717', 'mbx4717']
 };
 
 const phaseNext = {
   START: 'ALARM',
   ALARM: 'CAMERA',
   CAMERA: 'KIST_OPEN',
-  KIST_OPEN: 'DOSSIER'
+  KIST_OPEN: 'DOSSIER',
+  DOSSIER: 'ORIGINELE_CONTAINER',
+  ORIGINELE_CONTAINER: 'ROTJE_KNOR'
 };
 
 const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: db.event.name });
@@ -57,10 +60,19 @@ app.post('/api/teams/:id/answer', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
   const phase = String(req.body.phase || team.currentPhase || '').toUpperCase();
-  const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
   if (phase !== team.currentPhase) return res.status(409).json({ error: 'Deze puzzel is niet actief voor dit team.' });
-  const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
-  if (!accepted.includes(answer)) return res.status(422).json({ correct: false, error: 'Dat antwoord klopt nog niet.' });
+
+  if (phase === 'DOSSIER') {
+    const selected = Array.isArray(req.body.answer) ? req.body.answer.map(x => String(x).toLowerCase()).sort() : [];
+    const correct = ['carla','don','freddy','johnny'].sort();
+    const isCorrect = selected.length === 4 && selected.every((x,i) => x === correct[i]);
+    if (!isCorrect) return res.status(422).json({ correct: false, error: 'De samenstelling klopt niet. Controleer welke vier rollen noodzakelijk waren voor techniek, documenten, koper en transport.' });
+  } else {
+    const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
+    if (!accepted.includes(answer)) return res.status(422).json({ correct: false, error: 'Dat antwoord klopt nog niet.' });
+  }
+
   team.currentPhase = phaseNext[phase] || team.currentPhase;
   res.json({ correct: true, team: enrich(team) });
 });

@@ -1,1 +1,12 @@
-{"name":"zwarte-lotus-game","private":true,"scripts":{"dev":"concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"","build":"npm --prefix client run build"},"devDependencies":{"concurrently":"^9.0.0"}}
+{
+  "name": "zwarte-lotus-game",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "version": "0.4.0"
+}
