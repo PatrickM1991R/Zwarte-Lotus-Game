@@ -41,7 +41,8 @@ const phaseNext = {
   JOHNNY_ONTMASKERD: 'NIEUWE_CONTAINER',
   NIEUWE_CONTAINER: 'KEUZE',
   JOHNNY_ROUTE: 'KLUIS',
-  KLUIS: 'LOTUS_GEVONDEN'
+  KLUIS: 'LOTUS_GEVONDEN',
+  EINDOPERATIE: 'RESULTAAT'
 };
 
 const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: db.event.name });
@@ -83,6 +84,15 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const culpritOk = ['j.j.','jj','johnny','johnny jatwerk'].includes(culprit);
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
     if (!culpritOk || !containerOk) return res.status(422).json({ correct:false, error:'De combinatie klopt nog niet. Bevestig zowel wie de wijziging uitvoerde als de nieuwe container.' });
+  } else if (phase === 'EINDOPERATIE') {
+    const raw = req.body.answer || {};
+    const a1 = String(raw.answer1 || '').trim().toLowerCase().replace(/\s+/g,' ');
+    const a2 = String(raw.answer2 || '').trim().toLowerCase().replace(/\s+/g,' ');
+    const a3 = String(raw.answer3 || '').trim().toLowerCase().replace(/\s+/g,' ').replace('.',':');
+    const ok1 = ['niet meer','nietmeer'].includes(a1);
+    const ok2 = a2 === 'nachtglas';
+    const ok3 = ['23:10','2310'].includes(a3);
+    if (!ok1 || !ok2 || !ok3) return res.status(422).json({ correct:false, error:'De operatiegegevens kloppen nog niet. Controleer verificatie, tweede codewoord en tijdstip.' });
   } else {
     const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
@@ -118,7 +128,7 @@ app.post('/api/teams/:id/final-choice', (req, res) => {
   const choice = String(req.body.choice || '');
   if (!['VAL','DUBBELSPEL'].includes(choice)) return res.status(422).json({ error: 'Ongeldige eindkeuze.' });
   team.finalChoice = choice;
-  team.currentPhase = 'EINDE';
+  team.currentPhase = 'EINDOPERATIE';
   res.json({ team: enrich(team) });
 });
 

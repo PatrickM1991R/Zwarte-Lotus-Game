@@ -5,11 +5,11 @@ import './styles.css';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
 const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
-const phases = ['START','ALARM','CAMERA','KIST_OPEN','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDE'];
+const phases = ['START','ALARM','CAMERA','KIST_OPEN','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Alarmreconstructie', CAMERA: 'Camerafeeds', KIST_OPEN: 'Kistcode', DOSSIER: 'Dossier',
-  ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDE: 'Eindplan'
+  ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
 function App() {
@@ -157,7 +157,8 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
   if (phase === 'KLUIS') return <SafePuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} chooseFinal={chooseFinal} />;
   if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
-  if (phase === 'EINDE' && team.chosenRoute === 'Johnny') return <JohnnyEndPlan team={team} />;
+  if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
 }
@@ -478,13 +479,61 @@ function LotusFound({loading,feedback,chooseFinal}) {
   </section>;
 }
 
-function JohnnyEndPlan({team}) {
+function JohnnyFinalOperation({team,loading,feedback,submitAnswer,requestHint}) {
   const double=team.finalChoice==='DUBBELSPEL';
-  return <section className="panel cinematic end-plan">
-    <div className="section-label">EINDPLAN GEREGISTREERD</div>
-    <h2>{double?'Dubbel spel':'De val staat klaar'}</h2>
-    <p>{double?'Jullie houden Johnny in de waan dat de deal doorgaat, sturen hem naar een tweede locatie en gebruiken de koperafspraak om beide doelwitten apart te laten oppakken.':'Jullie bevestigen de afspraak met de koper en gebruiken de overdracht als val. Johnny en de koper moeten op hetzelfde moment worden geïsoleerd en aangehouden.'}</p>
-    <div className="mission-card"><span>VOLGENDE BOUWSTAP</span><strong>De precieze berichten, timing en inval van dit eindplan bouwen we in de volgende versie.</strong></div>
+  const [answer1,setAnswer1]=useState('');
+  const [answer2,setAnswer2]=useState('');
+  const [answer3,setAnswer3]=useState('');
+  const submit=e=>{e.preventDefault(); submitAnswer('EINDOPERATIE',{answer1,answer2,answer3});};
+
+  return <section className="panel cinematic final-operation">
+    <div className="section-label">EINDOPERATIE · {double?'DUBBEL SPEL':'VALSTRIK'}</div>
+    <h2>{double?'Twee doelwitten. Twee locaties. Eén moment.':'Breng Johnny en de koper samen.'}</h2>
+    {double ? <>
+      <p>Jullie houden de koper aan de praat en sturen Johnny terug naar zijn eigen schuilplaats. De politie staat op beide locaties klaar, maar grijpt pas in als jullie het afgesproken moment bevestigen.</p>
+      <div className="operation-grid">
+        <article><span>KOPER</span><strong>Perron 3 · Oude goederenloods</strong><small>Victor Valmont verwacht de steen.</small></article>
+        <article><span>JOHNNY</span><strong>Chauffeurskeet · Laadzone West</strong><small>Laat hem geloven dat de route opnieuw verandert.</small></article>
+      </div>
+      <form className="operation-form" onSubmit={submit}>
+        <label>Antwoord op de verificatievraag<input value={answer1} onChange={e=>setAnswer1(e.target.value)} placeholder="Is de kluis nog gesloten? → ..." required/></label>
+        <label>Tweede codewoord<input value={answer2} onChange={e=>setAnswer2(e.target.value)} placeholder="Codewoord" required/></label>
+        <label>Moment van gelijktijdige arrestatie<input value={answer3} onChange={e=>setAnswer3(e.target.value)} placeholder="Bijv. 23:10" required/></label>
+        <button className="primary" disabled={loading}>{loading?'Operatie bevestigen...':'Start gelijktijdige inval'}</button>
+      </form>
+      <button className="hint-link" onClick={()=>requestHint('Hint: de verificatie luidt “Niet meer”, het tweede codewoord is Nachtglas en de afspraak staat om 23:10.')}>Hint aanvragen</button>
+    </> : <>
+      <p>Bevestig de afspraak met Victor Valmont en laat Johnny geloven dat de overdracht gewoon doorgaat. Zodra beide mannen op Perron 3 staan, sluit de politie de goederenloods af.</p>
+      <div className="operation-grid">
+        <article><span>OVERDRACHT</span><strong>Perron 3 · Oude goederenloods</strong><small>Herkenningsteken: zwarte handschoen op tafel.</small></article>
+        <article><span>DOELWITTEN</span><strong>Johnny Jatwerk + Victor Valmont</strong><small>Arrestatie pas na verificatie.</small></article>
+      </div>
+      <form className="operation-form" onSubmit={submit}>
+        <label>Antwoord op de verificatievraag<input value={answer1} onChange={e=>setAnswer1(e.target.value)} placeholder="Is de kluis nog gesloten? → ..." required/></label>
+        <label>Tweede codewoord<input value={answer2} onChange={e=>setAnswer2(e.target.value)} placeholder="Codewoord" required/></label>
+        <label>Tijdstip van de overdracht<input value={answer3} onChange={e=>setAnswer3(e.target.value)} placeholder="Bijv. 23:10" required/></label>
+        <button className="primary" disabled={loading}>{loading?'Operatie bevestigen...':'Bevestig de valstrik'}</button>
+      </form>
+      <button className="hint-link" onClick={()=>requestHint('Hint: de verificatie luidt “Niet meer”, het tweede codewoord is Nachtglas en de afspraak staat om 23:10.')}>Hint aanvragen</button>
+    </>}
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
+function JohnnyResult({team}) {
+  const double=team.finalChoice==='DUBBELSPEL';
+  return <section className="panel cinematic case-result">
+    <div className="success-seal">OPERATIE GESLAAGD</div>
+    <div className="section-label">MAISON BEAUMONT · ZAAK AFGESLOTEN</div>
+    <h2>De Zwarte Lotus is veiliggesteld.</h2>
+    <p>{double?'Victor Valmont werd bij Perron 3 aangehouden terwijl Johnny Jatwerk gelijktijdig bij Laadzone West in de boeien werd geslagen. Geen van beiden kreeg de kans de ander te waarschuwen.':'Victor Valmont en Johnny Jatwerk liepen samen de goederenloods binnen. Na de verificatie sloot de politie beide uitgangen af en werden ze zonder de diamant te bemachtigen aangehouden.'}</p>
+    <div className="result-grid">
+      <article><span>DIAMANT</span><strong>Veilig</strong><small>De Zwarte Lotus terug in bewaring.</small></article>
+      <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong><small>Transportfraude en diefstal.</small></article>
+      <article><span>VICTOR VALMONT</span><strong>Aangehouden</strong><small>Poging tot aankoop van de gestolen diamant.</small></article>
+      <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Eindroute succesvol afgerond.</small></article>
+    </div>
+    <div className="mission-card"><span>EINDE</span><strong>Zaak Zwarte Lotus gesloten. Meld jullie bij de spelbegeleider.</strong></div>
   </section>;
 }
 
