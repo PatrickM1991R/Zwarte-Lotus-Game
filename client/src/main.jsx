@@ -354,20 +354,47 @@ function JohnnyRouteIntro({loading,feedback,submitAnswer}) {
 function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
   const [step,setStep]=useState(1);
   const [a,setA]=useState(''); const [b,setB]=useState(''); const [c,setC]=useState('');
+  const [safeCode,setSafeCode]=useState('');
   const [local,setLocal]=useState('');
+  const [safeState,setSafeState]=useState('closed');
+  const [unlocking,setUnlocking]=useState(false);
   const digits=[step>1?'20':'••',step>2?'34':'••',step>3?'09':'••'];
+
   const check=(which,e)=>{
     e.preventDefault();
     const v=(which===1?a:which===2?b:c).trim().replace(/\D/g,'').padStart(2,'0');
     const correct=which===1?'20':which===2?'34':'09';
     if(v!==correct){setLocal('Dat deel van de code klopt nog niet. Gebruik alleen informatie die jullie al in het dossier hebben bewezen.');return;}
-    setLocal(which===3?'Alle drie de codeparen zijn gevonden. Combineer ze nu van links naar rechts.':`Codepaar ${which} bevestigd.`);
+    setLocal(which===3?'Alle drie de codeparen zijn gevonden. Combineer ze nu van links naar rechts en open de kluis.':`Codepaar ${which} bevestigd.`);
     setStep(which+1);
   };
-  return <section className="panel safe-panel">
+
+  const unlockSafe = async (e) => {
+    e.preventDefault();
+    const normalized = safeCode.replace(/\D/g,'').slice(0,6);
+    if(normalized !== '203409') {
+      setSafeState('error');
+      setLocal('Code geweigerd. De kluis blijft vergrendeld. Controleer het moment en de poort nogmaals.');
+      return;
+    }
+    setSafeState('opening');
+    setLocal('Code geaccepteerd. Kluis wordt ontgrendeld...');
+    setUnlocking(true);
+    setTimeout(() => {
+      setSafeState('open');
+      setUnlocking(false);
+      setLocal('Klik. De kluis springt open. Binnenin ligt De Zwarte Lotus.');
+    }, 1100);
+  };
+
+  const continueAfterOpen = async () => {
+    await submitAnswer('KLUIS','203409');
+  };
+
+  return <section className="panel safe-panel cinematic">
     <div className="section-label">FASE 8 · DE KLUIS</div>
     <h2>Drie raadsels. Zes cijfers.</h2>
-    <p>De kluis gebruikt drie codeparen. Los ieder raadsel afzonderlijk op. Zet de drie antwoorden daarna direct achter elkaar.</p>
+    <p>De kluis gebruikt drie codeparen. Los ieder raadsel afzonderlijk op. Zet de drie antwoorden daarna direct achter elkaar — en gebruik ze om de kluis op het scherm te openen.</p>
     <div className="safe-display"><span>{digits[0]}</span><i>·</i><span>{digits[1]}</span><i>·</i><span>{digits[2]}</span></div>
 
     <div className="riddle-stack">
@@ -396,7 +423,29 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
       </article>
     </div>
 
-    {step===4&&<div className="safe-final"><span>KLUISCODE GERECONSTRUEERD</span><h3>Voer de zes cijfers in op de fysieke kluis én bevestig ze hieronder.</h3><AnswerForm loading={loading} placeholder="••••••" inputMode="numeric" maxLength={6} button="Open de kluis" onSubmit={v=>submitAnswer('KLUIS',v)} /></div>}
+    {step===4&&<div className="safe-stage">
+      <div className={`vault ${safeState}`}>
+        <div className="vault-frame">
+          <div className="vault-door">
+            <div className="vault-wheel"><span></span><span></span><span></span><span></span></div>
+            <div className="vault-keypad">203409</div>
+            <div className="vault-bars"><i></i><i></i><i></i></div>
+          </div>
+          <div className="vault-interior">
+            <div className="lotus-gem"></div>
+            <div className="vault-note-stack">
+              <div className="vault-note"><strong>DE ZWARTE LOTUS</strong><small>Zwarte diamant veiliggesteld</small></div>
+              <div className="vault-note"><strong>V.V.-37</strong><small>Koperkanaal · KARAAT</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {safeState !== 'open' && <div className="safe-final screen-safe-final"><span>KLUISCODE GERECONSTRUEERD</span><h3>Voer de zes cijfers in en open de kluis.</h3><form className="screen-safe-form" onSubmit={unlockSafe}><input value={safeCode} onChange={e=>setSafeCode(e.target.value)} placeholder="203409" inputMode="numeric" maxLength={6} required/><button className="primary" disabled={unlocking}>{unlocking?'Ontgrendelen...':'Open de kluis'}</button></form><small>Bij de juiste code draait de kluis open en wordt de inhoud zichtbaar.</small></div>}
+
+      {safeState === 'open' && <div className="safe-open-actions"><div className="safe-final success"><span>KLUIS GEOPEND</span><h3>De Zwarte Lotus ligt in de kluis.</h3><p>Jullie hebben het object én de begeleidende informatie gevonden. Ga verder naar de inhoud van de kluis.</p><button className="primary" disabled={loading} onClick={continueAfterOpen}>{loading?'Laden...':'Bekijk inhoud van de kluis'}</button></div></div>}
+    </div>}
+
     {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
     <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: vergelijk 20:17 met 20:34.':step===2?'Hint: 20:17 plus 17 minuten is 20:34.':step===3?'Hint: de markering bij de kluis noemt Poort 9. Schrijf 9 als twee cijfers.':'Hint: zet 20, 34 en 09 direct achter elkaar.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
