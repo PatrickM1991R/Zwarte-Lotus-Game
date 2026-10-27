@@ -12,10 +12,10 @@ const db = {
   location: { id: 1, name: 'Paviljoen Schoonhoven' },
   event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
   teams: [
-    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now },
-    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000 },
-    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000 },
-    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000 }
+    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null },
+    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null },
+    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null },
+    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null }
   ]
 };
 
@@ -118,6 +118,13 @@ app.post('/api/teams/:id/answer', (req, res) => {
   team.currentPhase = phaseNext[phase] || team.currentPhase;
   if (phase === 'EINDOPERATIE') team.status = 'klaar';
   res.json({ correct: true, team: enrich(team) });
+});
+
+app.post('/api/teams/:id/timer-start', (req, res) => {
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if (!team.timerStartedAt) team.timerStartedAt = Date.now();
+  res.json({ team: enrich(team), durationSeconds: 5400 });
 });
 
 app.post('/api/teams/:id/hint', (req, res) => {

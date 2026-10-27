@@ -47,6 +47,14 @@ function App() {
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
   };
 
+  const startCountdown = async () => {
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/timer-start`, { method:'POST' });
+      const j = await r.json();
+      if (r.ok) setTeam(j.team);
+    } catch {}
+  };
+
   const submitOpening = async (answers) => {
     setLoading(true); setFeedback('');
     try {
@@ -101,9 +109,9 @@ function App() {
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
-        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
+        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
+        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
       </div>
     </main>;
@@ -157,7 +165,22 @@ function App() {
   </main>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitOpening, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
+function GameCountdown({timerStartedAt}) {
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{
+    if(!timerStartedAt) return;
+    const id=setInterval(()=>setNow(Date.now()),1000);
+    return()=>clearInterval(id);
+  },[timerStartedAt]);
+  if(!timerStartedAt) return <div className="game-countdown waiting"><span>TIJD</span><strong>90:00</strong><small>start na briefing</small></div>;
+  const elapsed=Math.floor((now-Number(timerStartedAt))/1000);
+  const remaining=Math.max(0,5400-elapsed);
+  const min=Math.floor(remaining/60);
+  const sec=remaining%60;
+  return <div className={`game-countdown ${remaining<=900?'urgent':''} ${remaining===0?'expired':''}`}><span>{remaining===0?'TIJD VERSTREKEN':'TIJD OVER'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>90 minuten</small></div>;
+}
+
+function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -167,7 +190,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, submitAn
     <button className="primary" onClick={startGame} disabled={loading}>{loading?'Starten...':'Start het onderzoek'}</button>
   </section>;
 
-  if (['ALARM','CAMERA','KIST_OPEN'].includes(phase)) return <OpeningPuzzlePage loading={loading} feedback={feedback} submitOpening={submitOpening} requestHint={requestHint} />;
+  if (['ALARM','CAMERA','KIST_OPEN'].includes(phase)) return <OpeningPuzzlePage loading={loading} feedback={feedback} submitOpening={submitOpening} startCountdown={startCountdown} requestHint={requestHint} timerStartedAt={team.timerStartedAt} />;
 
   if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
@@ -187,19 +210,18 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, submitAn
 }
 
 
-function OpeningPuzzlePage({loading,feedback,submitOpening,requestHint}) {
-  const [briefingDone,setBriefingDone]=useState(false);
+function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,requestHint,timerStartedAt}) {
+  const [briefingDone,setBriefingDone]=useState(Boolean(timerStartedAt));
   const [alarm,setAlarm]=useState('');
   const [camera,setCamera]=useState('');
   const [code,setCode]=useState('');
   const [local,setLocal]=useState('');
-  const [showCameras,setShowCameras]=useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     if(!briefingDone){setLocal('Luister eerst het volledige bericht van de inspecteur af.');return;}
     const ok = await submitOpening({ alarm, camera, code });
-    if(!ok) setLocal('Minstens één antwoord klopt nog niet. Controleer het alarm, de camerafeed en de uiteindelijke kistcode.');
+    if(!ok) setLocal('Minstens één controle klopt nog niet. Leg de losse bewijsstukken opnieuw naast elkaar en controleer jullie conclusies.');
   };
 
   return <section className="panel opening-case-panel">
@@ -207,56 +229,44 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,requestHint}) {
       <div className="inspector-visual"><img src="/assets/inspector-kist.jpg" alt="Boze inspecteur in een noir recherchekamer"/><div className="inspector-badge">HOOFDINSPECTEUR · MAISON BEAUMONT</div></div>
       <div className="inspector-copy">
         <div className="section-label">SPOEDBRIEFING · OPEN DE KIST</div>
-        <h2>“Jullie hebben niet opgelet!”</h2>
-        <p>De inspecteur is woedend. Luister zijn briefing volledig af. Daarna krijgen jullie toegang tot de eerste drie controles.</p>
+        <h2>“Jullie hebben één taak.”</h2>
+        <p>Luister de inspecteur volledig af. Daarna kunnen jullie de eerste conclusies invoeren. De informatie zelf staat niet op dit scherm: gebruik de bewijsstukken die op tafel liggen.</p>
         <div className={`briefing-audio ${briefingDone?'complete':''}`}>
           <div><span>{briefingDone?'BRIEFING VOLTOOID':'VERPLICHT BERICHT'}</span><strong>Inspecteur Beaumont</strong></div>
-          <audio controls preload="metadata" src="/assets/inspector-briefing.mp3" onEnded={()=>{setBriefingDone(true);setLocal('Briefing voltooid. Los nu alle drie de puzzels op.');}} />
+          <audio controls preload="metadata" src="/assets/inspector-briefing.mp3" onEnded={async()=>{setBriefingDone(true);setLocal('Briefing voltooid. De 90-minutentimer loopt. Onderzoek nu de losse bewijsstukken.');await startCountdown();}} />
         </div>
-        {!briefingDone&&<div className="briefing-lock">🔒 Antwoordvelden worden vrijgegeven nadat het bandje volledig is afgespeeld.</div>}
+        {!briefingDone&&<div className="briefing-lock">🔒 Controles worden vrijgegeven nadat het bandje volledig is afgespeeld.</div>}
       </div>
     </div>
 
-    <form className={`opening-puzzles ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
-      <article className="opening-puzzle-card">
-        <div className="puzzle-number">01</div>
-        <div className="puzzle-kicker">ALARMRECONSTRUCTIE</div>
-        <h3>Wanneer werd de vitrine geopend?</h3>
-        <p>Luister naar het beveiligingsbericht. Het hoofdalarm klinkt om 20:17. Bepaal het tijdstip waarop het vitrinecontact daarvoor werd verbroken.</p>
-        <audio className="audio-player compact-audio" controls preload="metadata" src="/assets/alarmfragment.mp3" />
-        <label>Antwoord<input disabled={!briefingDone} value={alarm} onChange={e=>setAlarm(e.target.value)} placeholder="Twee cijfers" maxLength={5} required/></label>
+    <form className={`opening-puzzles evidence-board ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
+      <article className="opening-puzzle-card evidence-card">
+        <div className="puzzle-kicker">ALARMREGISTRATIE</div>
+        <h3>Wanneer werd het vitrinecontact verbroken?</h3>
+        <p>Gebruik het losse alarmregister van Maison Beaumont. Zoek zelf welk moment in de tijdlijn relevant is voor de vitrine.</p>
+        <div className="physical-evidence-tag"><span>LOS BEWIJSSTUK</span><strong>Alarmregister · Maison Beaumont</strong><small>Uitgereikt door de spelbegeleider</small></div>
+        <label>Conclusie<input disabled={!briefingDone} value={alarm} onChange={e=>setAlarm(e.target.value)} placeholder="Tijd / twee cijfers" maxLength={5} required/></label>
       </article>
 
-      <article className="opening-puzzle-card">
-        <div className="puzzle-number">02</div>
-        <div className="puzzle-kicker">CAMERAFEEDS</div>
-        <h3>Welke camera valt één minuut later uit?</h3>
-        <p>Gebruik jullie antwoord uit puzzel 1. Zoek op het camerabeeld welke feed precies één minuut later wegvalt.</p>
-        <div className={`camera-evidence ${showCameras?'open':'closed'}`}>
-          <button type="button" className="camera-toggle" onClick={()=>setShowCameras(v=>!v)} aria-expanded={showCameras}>
-            <span><b>BEWIJS · CAMERAFEEDS</b><small>{showCameras?'Beelden geopend':'4 beveiligingsfeeds beschikbaar'}</small></span>
-            <strong>{showCameras?'−':'+'}</strong>
-          </button>
-          {showCameras&&<div className="camera-evidence-body">
-            <img className="opening-camera" src="/assets/camera-dashboard.png" alt="Beveiligingscamera's van Maison Beaumont" />
-            <button type="button" className="camera-collapse" onClick={()=>setShowCameras(false)}>Klap camerabeelden in</button>
-          </div>}
-        </div>
-        <label>Antwoord<input disabled={!briefingDone} value={camera} onChange={e=>setCamera(e.target.value)} placeholder="Cameranummer" maxLength={9} required/></label>
+      <article className="opening-puzzle-card evidence-card">
+        <div className="puzzle-kicker">CAMERADOSSIER</div>
+        <h3>Welke camera hoort bij het beslissende moment?</h3>
+        <p>Gebruik uitsluitend het losse cameradossier op tafel. Vergelijk de tijdstempels en bepaal welke feed bij het incident hoort.</p>
+        <div className="physical-evidence-tag"><span>LOS BEWIJSSTUK</span><strong>Cameradossier · beveiligingsfeeds</strong><small>Niet digitaal beschikbaar</small></div>
+        <label>Conclusie<input disabled={!briefingDone} value={camera} onChange={e=>setCamera(e.target.value)} placeholder="Cameranummer" maxLength={9} required/></label>
       </article>
 
-      <article className="opening-puzzle-card final-code-card">
-        <div className="puzzle-number">03</div>
-        <div className="puzzle-kicker">KISTCODE</div>
-        <h3>Combineer beide bewijzen.</h3>
-        <p>Zet de twee cijfers uit puzzel 1 direct voor het tweecijferige cameranummer uit puzzel 2. Dat vormt de viercijferige code van de fysieke kist.</p>
-        <div className="mini-code"><span>PUZZEL 1</span><b>{alarm||'••'}</b><i>+</i><span>PUZZEL 2</span><b>{camera||'••'}</b></div>
+      <article className="opening-puzzle-card final-code-card evidence-card">
+        <div className="puzzle-kicker">KISTVERGRENDELING</div>
+        <h3>Welke code opent de kist?</h3>
+        <p>Gebruik jullie conclusies uit de bewijsstukken. De kist accepteert één viercijferige code.</p>
+        <div className="lock-readout"><span>MAISON BEAUMONT</span><b>••••</b><small>Vier cijfers vereist</small></div>
         <label>Kistcode<input disabled={!briefingDone} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" placeholder="••••" maxLength={4} required/></label>
       </article>
 
       <div className="opening-submit">
-        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: vitrinecontact 20:14 → camera 03 → combineer 14 en 03.')}>Hint aanvragen</button>
-        <button className="primary open-chest-button" disabled={loading||!briefingDone}>{loading?'Controleren...':'Controleer alle antwoorden · open de kist'}</button>
+        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: leg het alarmregister en het cameradossier naast elkaar. Zoek naar tijdstippen en aanduidingen die elkaar bevestigen; de site geeft de volgorde niet cadeau.')}>Hint aanvragen</button>
+        <button className="primary open-chest-button" disabled={loading||!briefingDone}>{loading?'Controleren...':'Controleer conclusies · open de kist'}</button>
       </div>
     </form>
     {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}

@@ -95,3 +95,19 @@
 .camera-toggle span{display:grid;gap:3px}.camera-toggle b{font-size:10px;letter-spacing:.13em;color:#d4b35b}.camera-toggle small{font-size:11px;color:#8f8395;font-weight:600}.camera-toggle strong{display:grid;place-items:center;width:30px;height:30px;border:1px solid rgba(208,169,71,.35);border-radius:50%;color:#e1bd61;font-size:22px;line-height:1}.camera-evidence.open .camera-toggle{border-bottom:1px solid rgba(208,169,71,.16)}
 .camera-evidence-body{padding:12px}.camera-evidence-body .opening-camera{margin:0 0 10px;max-height:360px;object-fit:contain;background:#050608}.camera-collapse{width:100%;padding:10px 12px;background:#17121c;border:1px solid #382c40;color:#b8adbd;font-size:12px}.camera-collapse:hover{border-color:#6b5577;color:#e8ddeb}
 @media(max-width:680px){.camera-evidence-body .opening-camera{max-height:none}.camera-toggle{padding:12px}.camera-toggle strong{width:28px;height:28px}}
+
+
+/* Game v1.7 - fysieke bewijsstukken, minder voorspellende opening */
+.evidence-board{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+.evidence-card{min-height:310px}
+.evidence-card .puzzle-kicker{display:flex;align-items:center;gap:8px}
+.evidence-card .puzzle-kicker:before{content:"";width:18px;height:1px;background:rgba(208,169,71,.42)}
+.physical-evidence-tag{display:grid;gap:4px;margin:8px 0 18px;padding:13px 14px;border:1px dashed rgba(208,169,71,.28);border-radius:11px;background:rgba(208,169,71,.035)}
+.physical-evidence-tag span{font-size:9px;letter-spacing:.16em;color:#c9a227;font-weight:900}
+.physical-evidence-tag strong{font-size:13px;color:#eee2c0}.physical-evidence-tag small{font-size:11px;color:#8f8395}
+.lock-readout{display:grid;justify-items:center;gap:5px;margin:10px 0 18px;padding:16px;border:1px solid rgba(208,169,71,.24);border-radius:12px;background:#09080b}.lock-readout span{font-size:8px;letter-spacing:.18em;color:#8f8395}.lock-readout b{font-size:29px;letter-spacing:.28em;color:#e1bd61}.lock-readout small{font-size:10px;color:#756b79}
+@media(max-width:900px){.evidence-board{grid-template-columns:1fr}.evidence-card{min-height:0}}
+
+
+/* Game v1.8 - 90 minuten countdown */
+.topbar{gap:18px}.game-countdown{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:9px;align-items:baseline;padding:8px 12px;border:1px solid rgba(208,169,71,.34);border-radius:12px;background:rgba(9,8,12,.72);backdrop-filter:blur(9px);box-shadow:0 8px 24px rgba(0,0,0,.22)}.game-countdown span{font-size:8px;letter-spacing:.17em;color:#a9987a;font-weight:900}.game-countdown strong{font-size:20px;letter-spacing:.06em;color:#e6c86c;font-variant-numeric:tabular-nums}.game-countdown small{grid-column:1/-1;text-align:right;font-size:8px;color:#776c7b;letter-spacing:.08em}.game-countdown.waiting{opacity:.58}.game-countdown.urgent{border-color:rgba(204,93,78,.55);box-shadow:0 0 24px rgba(187,65,51,.12)}.game-countdown.urgent strong{color:#ff9d90}.game-countdown.expired{background:rgba(75,18,18,.72);animation:timerPulse 1.2s ease-in-out infinite alternate}.game-countdown.expired strong{color:#ff7669}@keyframes timerPulse{from{box-shadow:0 0 0 rgba(209,67,53,0)}to{box-shadow:0 0 24px rgba(209,67,53,.25)}}@media(max-width:640px){.topbar{display:grid;grid-template-columns:1fr auto}.topbar>.eyebrow{grid-column:1/-1;grid-row:2}.game-countdown{margin-left:0;padding:7px 10px}.game-countdown strong{font-size:18px}}
