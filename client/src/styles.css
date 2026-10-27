@@ -111,3 +111,15 @@
 
 /* Game v1.8 - 90 minuten countdown */
 .topbar{gap:18px}.game-countdown{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:9px;align-items:baseline;padding:8px 12px;border:1px solid rgba(208,169,71,.34);border-radius:12px;background:rgba(9,8,12,.72);backdrop-filter:blur(9px);box-shadow:0 8px 24px rgba(0,0,0,.22)}.game-countdown span{font-size:8px;letter-spacing:.17em;color:#a9987a;font-weight:900}.game-countdown strong{font-size:20px;letter-spacing:.06em;color:#e6c86c;font-variant-numeric:tabular-nums}.game-countdown small{grid-column:1/-1;text-align:right;font-size:8px;color:#776c7b;letter-spacing:.08em}.game-countdown.waiting{opacity:.58}.game-countdown.urgent{border-color:rgba(204,93,78,.55);box-shadow:0 0 24px rgba(187,65,51,.12)}.game-countdown.urgent strong{color:#ff9d90}.game-countdown.expired{background:rgba(75,18,18,.72);animation:timerPulse 1.2s ease-in-out infinite alternate}.game-countdown.expired strong{color:#ff7669}@keyframes timerPulse{from{box-shadow:0 0 0 rgba(209,67,53,0)}to{box-shadow:0 0 24px rgba(209,67,53,.25)}}@media(max-width:640px){.topbar{display:grid;grid-template-columns:1fr auto}.topbar>.eyebrow{grid-column:1/-1;grid-row:2}.game-countdown{margin-left:0;padding:7px 10px}.game-countdown strong{font-size:18px}}
+
+
+/* Game v1.9 - sobere bewijsfase + theatrale timerstart */
+.opening-puzzles.two-evidence{grid-template-columns:repeat(2,minmax(0,1fr));max-width:880px;margin:0 auto}
+.opening-puzzles.two-evidence .opening-submit{grid-column:1/-1}
+.timer-launch-overlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:radial-gradient(circle at 50% 44%,rgba(36,22,46,.97),rgba(3,4,7,.995) 62%);animation:timerLaunchIn .28s ease both}
+.timer-launch-inner{text-align:center;padding:28px;filter:drop-shadow(0 18px 55px rgba(0,0,0,.55))}
+.timer-launch-inner span{display:block;margin-bottom:8px;color:#d1b25f;font-size:clamp(12px,2vw,18px);font-weight:900;letter-spacing:.32em}
+.timer-launch-inner strong{display:block;color:#f0d474;font-size:clamp(92px,22vw,270px);line-height:.86;letter-spacing:-.055em;font-variant-numeric:tabular-nums;text-shadow:0 0 42px rgba(208,169,71,.18)}
+.timer-launch-inner small{display:block;margin-top:22px;color:#c5bbc8;font-size:clamp(14px,2vw,20px);letter-spacing:.08em}
+@keyframes timerLaunchIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:scale(1)}}
+@media(max-width:700px){.opening-puzzles.two-evidence{grid-template-columns:1fr}.opening-puzzles.two-evidence .opening-submit{grid-column:auto}.timer-launch-inner strong{font-size:clamp(82px,26vw,150px)}}
