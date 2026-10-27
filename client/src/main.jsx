@@ -5,10 +5,10 @@ import './styles.css';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
 const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
-const phases = ['START','ALARM','CAMERA','KIST_OPEN','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
+const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
 const phaseLabels = {
-  START: 'Introductie', ALARM: 'Alarmreconstructie', CAMERA: 'Camerafeeds', KIST_OPEN: 'Kistcode', DOSSIER: 'Dossier',
+  START: 'Introductie', ALARM: 'Open de kist', CAMERA: 'Open de kist', KIST_OPEN: 'Open de kist', DOSSIER: 'Dossier',
   ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
@@ -45,6 +45,17 @@ function App() {
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Starten mislukt');
       setTeam(j.team);
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
+  };
+
+  const submitOpening = async (answers) => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/opening`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(answers) });
+      const j = await r.json();
+      if (!r.ok) { setFeedback(j.error || 'Nog niet alle antwoorden kloppen.'); return false; }
+      setTeam(j.team); setFeedback(''); return true;
+    } catch (err) { setFeedback('Verbinding met het spelsysteem mislukt.'); return false; }
+    finally { setLoading(false); }
   };
 
   const submitAnswer = async (phase, answer) => {
@@ -92,7 +103,7 @@ function App() {
       <div className="app-shell game-shell scene-inner">
         <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
+        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
       </div>
     </main>;
@@ -146,7 +157,7 @@ function App() {
   </main>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
+function GamePhase({ team, loading, feedback, startGame, submitOpening, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -156,27 +167,7 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
     <button className="primary" onClick={startGame} disabled={loading}>{loading?'Starten...':'Start het onderzoek'}</button>
   </section>;
 
-  if (phase === 'ALARM') return <PuzzleCard label="PUZZEL 1 · ALARMRECONSTRUCTIE" title="Wanneer werd de vitrine geopend?" feedback={feedback}>
-    <p>Luister naar het beveiligingsbericht van Maison Beaumont. Noteer het tijdstip waarop het <strong>vitrinecontact</strong> werd verbroken.</p>
-    <audio className="audio-player" controls preload="metadata" src="/assets/alarmfragment.mp3" />
-    <AnswerForm loading={loading} placeholder="Bijv. 14" maxLength={5} button="Controleer tijdstip" onSubmit={(v)=>submitAnswer('ALARM',v)} />
-    <button className="hint-link" onClick={()=>requestHint('Hint: het hoofdalarm ging om 20:17 af. De vitrine werd drie minuten eerder geopend.')}>Hint aanvragen</button>
-  </PuzzleCard>;
-
-  if (phase === 'CAMERA') return <PuzzleCard label="PUZZEL 2 · CAMERAFEEDS" title="Welke camera valt uit?" feedback={feedback}>
-    <p>Je weet nu wanneer het vitrinecontact werd verbroken. Analyseer de vier feeds en bepaal welke camera <strong>één minuut later</strong> uitvalt.</p>
-    <img className="evidence-image" src="/assets/camera-dashboard.png" alt="Vier beveiligingscamera's van Maison Beaumont" />
-    <AnswerForm loading={loading} placeholder="Cameranummer, bijv. 03" maxLength={9} button="Controleer camera" onSubmit={(v)=>submitAnswer('CAMERA',v)} />
-    <button className="hint-link" onClick={()=>requestHint('Hint: vergelijk 20:14 met de tijdstempels op de camerafeeds. Zoek exact één minuut later.')}>Hint aanvragen</button>
-  </PuzzleCard>;
-
-  if (phase === 'KIST_OPEN') return <PuzzleCard label="KISTCODE · 4 CIJFERS" title="Combineer beide antwoorden" feedback={feedback}>
-    <p>Je hebt nu twee antwoorden verzameld. Zet ze direct achter elkaar:</p>
-    <div className="code-combine"><span>PUZZEL 1</span><b>••</b><em>+</em><span>PUZZEL 2</span><b>••</b></div>
-    <p>Voer de vier cijfers in. Bij een correcte code mag de fysieke kist op tafel worden geopend.</p>
-    <AnswerForm loading={loading} placeholder="••••" inputMode="numeric" maxLength={4} button="Ontgrendel kist" onSubmit={(v)=>submitAnswer('KIST_OPEN',v)} />
-    <button className="hint-link" onClick={()=>requestHint('Hint: gebruik de twee cijfers uit de alarmreconstructie gevolgd door het tweecijferige cameranummer.')}>Hint aanvragen</button>
-  </PuzzleCard>;
+  if (['ALARM','CAMERA','KIST_OPEN'].includes(phase)) return <OpeningPuzzlePage loading={loading} feedback={feedback} submitOpening={submitOpening} requestHint={requestHint} />;
 
   if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
@@ -193,6 +184,84 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
+}
+
+
+function OpeningPuzzlePage({loading,feedback,submitOpening,requestHint}) {
+  const [briefingDone,setBriefingDone]=useState(false);
+  const [alarm,setAlarm]=useState('');
+  const [camera,setCamera]=useState('');
+  const [code,setCode]=useState('');
+  const [local,setLocal]=useState('');
+  const [showCameras,setShowCameras]=useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if(!briefingDone){setLocal('Luister eerst het volledige bericht van de inspecteur af.');return;}
+    const ok = await submitOpening({ alarm, camera, code });
+    if(!ok) setLocal('Minstens één antwoord klopt nog niet. Controleer het alarm, de camerafeed en de uiteindelijke kistcode.');
+  };
+
+  return <section className="panel opening-case-panel">
+    <div className="opening-briefing">
+      <div className="inspector-visual"><img src="/assets/inspector-kist.jpg" alt="Boze inspecteur in een noir recherchekamer"/><div className="inspector-badge">HOOFDINSPECTEUR · MAISON BEAUMONT</div></div>
+      <div className="inspector-copy">
+        <div className="section-label">SPOEDBRIEFING · OPEN DE KIST</div>
+        <h2>“Jullie hebben niet opgelet!”</h2>
+        <p>De inspecteur is woedend. Luister zijn briefing volledig af. Daarna krijgen jullie toegang tot de eerste drie controles.</p>
+        <div className={`briefing-audio ${briefingDone?'complete':''}`}>
+          <div><span>{briefingDone?'BRIEFING VOLTOOID':'VERPLICHT BERICHT'}</span><strong>Inspecteur Beaumont</strong></div>
+          <audio controls preload="metadata" src="/assets/inspector-briefing.mp3" onEnded={()=>{setBriefingDone(true);setLocal('Briefing voltooid. Los nu alle drie de puzzels op.');}} />
+        </div>
+        {!briefingDone&&<div className="briefing-lock">🔒 Antwoordvelden worden vrijgegeven nadat het bandje volledig is afgespeeld.</div>}
+      </div>
+    </div>
+
+    <form className={`opening-puzzles ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
+      <article className="opening-puzzle-card">
+        <div className="puzzle-number">01</div>
+        <div className="puzzle-kicker">ALARMRECONSTRUCTIE</div>
+        <h3>Wanneer werd de vitrine geopend?</h3>
+        <p>Luister naar het beveiligingsbericht. Het hoofdalarm klinkt om 20:17. Bepaal het tijdstip waarop het vitrinecontact daarvoor werd verbroken.</p>
+        <audio className="audio-player compact-audio" controls preload="metadata" src="/assets/alarmfragment.mp3" />
+        <label>Antwoord<input disabled={!briefingDone} value={alarm} onChange={e=>setAlarm(e.target.value)} placeholder="Twee cijfers" maxLength={5} required/></label>
+      </article>
+
+      <article className="opening-puzzle-card">
+        <div className="puzzle-number">02</div>
+        <div className="puzzle-kicker">CAMERAFEEDS</div>
+        <h3>Welke camera valt één minuut later uit?</h3>
+        <p>Gebruik jullie antwoord uit puzzel 1. Zoek op het camerabeeld welke feed precies één minuut later wegvalt.</p>
+        <div className={`camera-evidence ${showCameras?'open':'closed'}`}>
+          <button type="button" className="camera-toggle" onClick={()=>setShowCameras(v=>!v)} aria-expanded={showCameras}>
+            <span><b>BEWIJS · CAMERAFEEDS</b><small>{showCameras?'Beelden geopend':'4 beveiligingsfeeds beschikbaar'}</small></span>
+            <strong>{showCameras?'−':'+'}</strong>
+          </button>
+          {showCameras&&<div className="camera-evidence-body">
+            <img className="opening-camera" src="/assets/camera-dashboard.png" alt="Beveiligingscamera's van Maison Beaumont" />
+            <button type="button" className="camera-collapse" onClick={()=>setShowCameras(false)}>Klap camerabeelden in</button>
+          </div>}
+        </div>
+        <label>Antwoord<input disabled={!briefingDone} value={camera} onChange={e=>setCamera(e.target.value)} placeholder="Cameranummer" maxLength={9} required/></label>
+      </article>
+
+      <article className="opening-puzzle-card final-code-card">
+        <div className="puzzle-number">03</div>
+        <div className="puzzle-kicker">KISTCODE</div>
+        <h3>Combineer beide bewijzen.</h3>
+        <p>Zet de twee cijfers uit puzzel 1 direct voor het tweecijferige cameranummer uit puzzel 2. Dat vormt de viercijferige code van de fysieke kist.</p>
+        <div className="mini-code"><span>PUZZEL 1</span><b>{alarm||'••'}</b><i>+</i><span>PUZZEL 2</span><b>{camera||'••'}</b></div>
+        <label>Kistcode<input disabled={!briefingDone} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" placeholder="••••" maxLength={4} required/></label>
+      </article>
+
+      <div className="opening-submit">
+        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: vitrinecontact 20:14 → camera 03 → combineer 14 en 03.')}>Hint aanvragen</button>
+        <button className="primary open-chest-button" disabled={loading||!briefingDone}>{loading?'Controleren...':'Controleer alle antwoorden · open de kist'}</button>
+      </div>
+    </form>
+    {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
 }
 
 

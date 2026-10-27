@@ -66,6 +66,22 @@ app.post('/api/teams/:id/start', (req, res) => {
   res.json({ team: enrich(team) });
 });
 
+
+app.post('/api/teams/:id/opening', (req, res) => {
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if (!['ALARM','CAMERA','KIST_OPEN'].includes(team.currentPhase)) return res.status(409).json({ error: 'De openingspuzzels zijn nu niet actief.' });
+  const alarm = String(req.body.alarm || '').trim().toLowerCase().replace(/\s+/g,' ');
+  const camera = String(req.body.camera || '').trim().toLowerCase().replace(/\s+/g,' ');
+  const code = String(req.body.code || '').trim().replace(/\D/g,'');
+  const alarmOk = ['14','20:14','2014'].includes(alarm);
+  const cameraOk = ['03','3','camera 03','camera3'].includes(camera);
+  const codeOk = code === '1403';
+  if (!alarmOk || !cameraOk || !codeOk) return res.status(422).json({ correct:false, error:'Nog niet alle drie de antwoorden kloppen. Controleer alarmtijd, camera en kistcode.' });
+  team.currentPhase = 'DOSSIER';
+  res.json({ correct:true, team: enrich(team) });
+});
+
 app.post('/api/teams/:id/answer', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
