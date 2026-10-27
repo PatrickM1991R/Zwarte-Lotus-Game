@@ -275,14 +275,14 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
 
 
 const suspects = [
-  { id:'johnny', name:'Johnny Jatwerk', alias:'De Wegbrenger', image:'/assets/suspects/johnny.jpg' },
-  { id:'don', name:'Don Diamantini', alias:'De Koning van de Karaat', image:'/assets/suspects/don.jpg' },
-  { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning', image:'/assets/suspects/freddy.jpg' },
-  { id:'carla', name:'Carla Kraak', alias:'De Slotfluisteraar', image:'/assets/suspects/carla.jpg' },
   { id:'rita', name:'Rita Ratel', alias:'De Fluwelen Hand', image:'/assets/suspects/rita.jpg' },
+  { id:'johnny', name:'Johnny Jatwerk', alias:'De Wegbrenger', image:'/assets/suspects/johnny.jpg' },
+  { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder', image:'/assets/suspects/max.jpg' },
+  { id:'carla', name:'Carla Kraak', alias:'De Slotfluisteraar', image:'/assets/suspects/carla.jpg' },
   { id:'boris', name:'Boris Breekijzer', alias:'De Man met de Koevoet', image:'/assets/suspects/boris.jpg' },
+  { id:'don', name:'Don Diamantini', alias:'De Koning van de Karaat', image:'/assets/suspects/don.jpg' },
   { id:'vera', name:'Valse Vera', alias:'De Vrouw met Zeven Namen', image:'/assets/suspects/vera.jpg' },
-  { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder', image:'/assets/suspects/max.jpg' }
+  { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning', image:'/assets/suspects/freddy.jpg' }
 ];
 
 function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
@@ -335,31 +335,35 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
     <div className="success-seal">KIST ONTGRENDELD</div>
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
     <h2>Wie zaten er werkelijk achter de roof?</h2>
-    <p>Gebruik de acht fysieke dossiers. Kies vier verdachten en reconstrueer daarna voor ieder van hen <strong>de rol én het bewijs</strong> dat die rol ondersteunt.</p>
-    <div className="mission-card"><span>RECONSTRUCTIE</span><strong>Vier verdachten. Vier verschillende rollen. Vier bewijsstukken.</strong><small>De controle geeft niet aan welk onderdeel fout is.</small></div>
+    <p>Vergelijk de acht fysieke dossiers. Selecteer maximaal vier verdachten. Zodra je iemand selecteert, moet je direct vastleggen <strong>welke rol</strong> die persoon had en <strong>welk bewijsstuk</strong> dat ondersteunt.</p>
+    <div className="mission-card"><span>RECONSTRUCTIE</span><strong>Vier verdachten. Vier unieke rollen. Vier bewijsstukken.</strong><small>Bij een fout antwoord zie je niet welk onderdeel fout is.</small></div>
 
-    <div className="suspect-grid">{suspects.map(s=>{
+    <div className="suspect-grid evidence-suspect-grid">{suspects.map(s=>{
       const active=selected.includes(s.id);
-      return <button type="button" key={s.id} className={`suspect-card ${active?'selected':''}`} onClick={()=>toggle(s.id)} aria-pressed={active}>
-        <img className="suspect-photo" src={s.image} alt={`Dossierfoto van ${s.name}`} />
-        <span className="suspect-info"><strong>{s.name}</strong><small>{s.alias}</small></span>
-        <span className="suspect-check">{active?'✓':'○'}</span>
-      </button>
+      return <article key={s.id} className={`suspect-card evidence-suspect-card ${active?'selected':''}`}>
+        <button type="button" className="suspect-select-hit" onClick={()=>toggle(s.id)} aria-pressed={active}>
+          <img className="suspect-photo" src={s.image} alt={`Dossierfoto van ${s.name}`} />
+          <span className="suspect-info"><strong>{s.name}</strong><small>{s.alias}</small></span>
+          <span className="suspect-check">{active?'✓':'○'}</span>
+        </button>
+        {active&&<div className="inline-evidence-form">
+          <label>Rol
+            <select value={roles[s.id]||''} onChange={e=>setRoles(r=>({...r,[s.id]:e.target.value}))}>
+              <option value="">Kies rol…</option>
+              {roleOptions.map(o=><option key={o.value} value={o.value} disabled={usedRoles.includes(o.value)&&roles[s.id]!==o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          <label>Bewijs
+            <select value={evidence[s.id]||''} onChange={e=>setEvidence(v=>({...v,[s.id]:e.target.value}))}>
+              <option value="">Kies bewijs…</option>
+              {evidenceOptions[s.id].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        </div>}
+      </article>
     })}</div>
 
-    {selected.length===4&&<div className="reconstruction-board">
-      <div className="reconstruction-head"><span>BEWIJSRECONSTRUCTIE</span><strong>Koppel iedere verdachte aan één unieke rol en één bewijsstuk.</strong></div>
-      {selected.map(id=>{
-        const s=suspects.find(x=>x.id===id);
-        return <article className="reconstruction-row" key={id}>
-          <div className="reconstruction-person"><img src={s.image} alt=""/><div><strong>{s.name}</strong><small>{s.alias}</small></div></div>
-          <label>Rol<select value={roles[id]||''} onChange={e=>setRoles(r=>({...r,[id]:e.target.value}))}><option value="">Kies rol…</option>{roleOptions.map(o=><option key={o.value} value={o.value} disabled={usedRoles.includes(o.value)&&roles[id]!==o.value}>{o.label}</option>)}</select></label>
-          <label>Bewijs<select value={evidence[id]||''} onChange={e=>setEvidence(v=>({...v,[id]:e.target.value}))}><option value="">Kies bewijs…</option>{evidenceOptions[id].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-        </article>
-      })}
-    </div>}
-
-    <div className="selection-footer dossier-submit-footer"><span><strong>{selected.length}/4</strong> verdachten geselecteerd</span><button className="primary" type="button" disabled={loading||!complete||locked} onClick={submit}>{loading?'Reconstructie controleren...':locked?`Opnieuw proberen over ${lockSeconds}s`:'Controleer reconstructie'}</button></div>
+    <div className="selection-footer dossier-submit-footer"><span><strong>{selected.length}/4</strong> verdachten geselecteerd</span><button className="primary" type="button" disabled={loading||!complete||locked} onClick={submit}>{loading?'Reconstructie controleren...':locked?`Opnieuw proberen over ${lockSeconds}s`:'Bevestig reconstructie'}</button></div>
     {locked&&<div className="dossier-lock"><span>CONTROLE GEBLOKKEERD</span><strong>{String(Math.floor(lockSeconds/60)).padStart(2,'0')}:{String(lockSeconds%60).padStart(2,'0')}</strong><small>Gebruik deze tijd om de fysieke dossiers opnieuw te vergelijken.</small></div>}
     <button className="hint-link" onClick={()=>requestHint('Hint: zoek vier verschillende functies die samen noodzakelijk waren: techniek, documenten, koper en transport. Bewijs iedere functie met een concreet stuk uit het juiste dossier.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
