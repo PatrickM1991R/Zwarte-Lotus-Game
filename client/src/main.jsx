@@ -71,7 +71,7 @@ function App() {
     try {
       const r = await fetch(`${API}/api/teams/${team.id}/answer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ phase, answer }) });
       const j = await r.json();
-      if (!r.ok) { setFeedback(j.error || 'Dat antwoord klopt nog niet.'); return false; }
+      if (!r.ok) { if (j.team) setTeam(j.team); setFeedback(j.error || 'Dat antwoord klopt nog niet.'); return false; }
       setTeam(j.team); setFeedback(''); return true;
     } catch (err) { setFeedback('Verbinding met het spelsysteem mislukt.'); return false; }
     finally { setLoading(false); }
@@ -192,7 +192,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
 
   if (['ALARM','CAMERA','KIST_OPEN'].includes(phase)) return <OpeningPuzzlePage loading={loading} feedback={feedback} submitOpening={submitOpening} startCountdown={startCountdown} requestHint={requestHint} timerStartedAt={team.timerStartedAt} />;
 
-  if (phase === 'DOSSIER') return <DossierPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'DOSSIER') return <DossierPuzzle team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
   if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'ROTJE_KNOR') return <RotjeKnorPhase loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
@@ -285,19 +285,59 @@ const suspects = [
   { id:'max', name:'Max Muntwasser', alias:'De Schone Boekhouder', image:'/assets/suspects/max.jpg' }
 ];
 
-function DossierPuzzle({loading,feedback,submitAnswer,requestHint}) {
+function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
   const [selected,setSelected]=useState([]);
-  const toggle=(id)=>setSelected(prev=>prev.includes(id)?prev.filter(x=>x!==id):(prev.length<4?[...prev,id]:prev));
-  const submit=async()=>{
-    if(selected.length!==4) return;
-    await submitAnswer('DOSSIER', selected);
+  const [roles,setRoles]=useState({});
+  const [evidence,setEvidence]=useState({});
+  const [now,setNow]=useState(Date.now());
+
+  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id);},[]);
+
+  const lockUntil=team.dossierLockedUntil||0;
+  const lockSeconds=Math.max(0,Math.ceil((lockUntil-now)/1000));
+  const locked=lockSeconds>0;
+
+  const roleOptions=[
+    {value:'techniek',label:'Techniek / beveiliging'},
+    {value:'documenten',label:'Documenten / vervalsing'},
+    {value:'koper',label:'Koper / afzet'},
+    {value:'transport',label:'Transport / smokkel'}
+  ];
+
+  const evidenceOptions={
+    johnny:[['transportmap','Transportmap met gewijzigde route'],['alarmcodes','Notitie met alarmcodes'],['gastenpas','Gastenpas Maison Beaumont']],
+    don:[['diamantdeal','Koopafspraak voor de diamant'],['onderhoud','Onderhoudsrapport vitrine'],['chauffeurslog','Chauffeurslog van de haven']],
+    freddy:[['vrachtpapieren','Vervalste vracht- en douanepapieren'],['bankafschrift','Verdacht bankafschrift'],['vitrinecontact','Technisch rapport vitrinecontact']],
+    carla:[['alarmsysteem','Schema van alarm- en vitrinesysteem'],['gastlijst','Aangepaste gastenlijst'],['koeriersbon','Koeriersbon voor containertransport']],
+    rita:[['afleiding','Notities over afleiding in de zaal'],['transportmap','Transportmap met gewijzigde route'],['diamantdeal','Koopafspraak voor de diamant']],
+    boris:[['koevoet','Foto van inbraakgereedschap'],['alarmsysteem','Schema van alarm- en vitrinesysteem'],['vrachtpapieren','Vervalste vracht- en douanepapieren']],
+    vera:[['valsebadge','Valse personeelsbadge'],['diamantdeal','Koopafspraak voor de diamant'],['chauffeurslog','Chauffeurslog van de haven']],
+    max:[['betaling','Oude verdachte betaling'],['vrachtpapieren','Vervalste vracht- en douanepapieren'],['alarmsysteem','Schema van alarm- en vitrinesysteem']]
   };
-  return <section className="panel dossier-ready">
+
+  const toggle=(id)=>{
+    setSelected(prev=>{
+      if(prev.includes(id)){
+        setRoles(r=>{const n={...r};delete n[id];return n;});
+        setEvidence(e=>{const n={...e};delete n[id];return n;});
+        return prev.filter(x=>x!==id);
+      }
+      return prev.length<4?[...prev,id]:prev;
+    });
+  };
+
+  const complete=selected.length===4&&selected.every(id=>roles[id]&&evidence[id]);
+  const usedRoles=Object.values(roles);
+  const payload=selected.map(id=>({id,role:roles[id],evidence:evidence[id]}));
+  const submit=async()=>{if(!complete||locked)return;await submitAnswer('DOSSIER',payload);};
+
+  return <section className="panel dossier-ready evidence-reconstruction">
     <div className="success-seal">KIST ONTGRENDELD</div>
-    <div className="section-label">FASE 2 · HET DOSSIER</div>
-    <h2>Wie vormden samen het oorspronkelijke heist-team?</h2>
-    <p>Leg de acht fysieke dossierkaarten voor jullie neer. Gebruik de bewijsstukken uit de kist. <strong>Niet iedere verdachte hoort bij deze roof.</strong> Bepaal welke vier personen noodzakelijk waren om de operatie uit te voeren.</p>
-    <div className="mission-card"><span>OPDRACHT</span><strong>Selecteer precies vier verdachten.</strong></div>
+    <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
+    <h2>Wie zaten er werkelijk achter de roof?</h2>
+    <p>Gebruik de acht fysieke dossiers. Kies vier verdachten en reconstrueer daarna voor ieder van hen <strong>de rol én het bewijs</strong> dat die rol ondersteunt.</p>
+    <div className="mission-card"><span>RECONSTRUCTIE</span><strong>Vier verdachten. Vier verschillende rollen. Vier bewijsstukken.</strong><small>De controle geeft niet aan welk onderdeel fout is.</small></div>
+
     <div className="suspect-grid">{suspects.map(s=>{
       const active=selected.includes(s.id);
       return <button type="button" key={s.id} className={`suspect-card ${active?'selected':''}`} onClick={()=>toggle(s.id)} aria-pressed={active}>
@@ -306,8 +346,22 @@ function DossierPuzzle({loading,feedback,submitAnswer,requestHint}) {
         <span className="suspect-check">{active?'✓':'○'}</span>
       </button>
     })}</div>
-    <div className="selection-footer"><span><strong>{selected.length}/4</strong> geselecteerd</span><button className="primary" type="button" disabled={loading||selected.length!==4} onClick={submit}>{loading?'Controleren...':'Controleer verdachten'}</button></div>
-    <button className="hint-link" onClick={()=>requestHint('Hint: denk niet alleen aan wie verdacht is. Welke vier functies waren noodzakelijk voor techniek, documenten, koper en transport?')}>Hint aanvragen</button>
+
+    {selected.length===4&&<div className="reconstruction-board">
+      <div className="reconstruction-head"><span>BEWIJSRECONSTRUCTIE</span><strong>Koppel iedere verdachte aan één unieke rol en één bewijsstuk.</strong></div>
+      {selected.map(id=>{
+        const s=suspects.find(x=>x.id===id);
+        return <article className="reconstruction-row" key={id}>
+          <div className="reconstruction-person"><img src={s.image} alt=""/><div><strong>{s.name}</strong><small>{s.alias}</small></div></div>
+          <label>Rol<select value={roles[id]||''} onChange={e=>setRoles(r=>({...r,[id]:e.target.value}))}><option value="">Kies rol…</option>{roleOptions.map(o=><option key={o.value} value={o.value} disabled={usedRoles.includes(o.value)&&roles[id]!==o.value}>{o.label}</option>)}</select></label>
+          <label>Bewijs<select value={evidence[id]||''} onChange={e=>setEvidence(v=>({...v,[id]:e.target.value}))}><option value="">Kies bewijs…</option>{evidenceOptions[id].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+        </article>
+      })}
+    </div>}
+
+    <div className="selection-footer dossier-submit-footer"><span><strong>{selected.length}/4</strong> verdachten geselecteerd</span><button className="primary" type="button" disabled={loading||!complete||locked} onClick={submit}>{loading?'Reconstructie controleren...':locked?`Opnieuw proberen over ${lockSeconds}s`:'Controleer reconstructie'}</button></div>
+    {locked&&<div className="dossier-lock"><span>CONTROLE GEBLOKKEERD</span><strong>{String(Math.floor(lockSeconds/60)).padStart(2,'0')}:{String(lockSeconds%60).padStart(2,'0')}</strong><small>Gebruik deze tijd om de fysieke dossiers opnieuw te vergelijken.</small></div>}
+    <button className="hint-link" onClick={()=>requestHint('Hint: zoek vier verschillende functies die samen noodzakelijk waren: techniek, documenten, koper en transport. Bewijs iedere functie met een concreet stuk uit het juiste dossier.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
