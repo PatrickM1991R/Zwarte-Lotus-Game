@@ -30,3 +30,7 @@ Johnny-route uitgebreid met fysieke kluislocatie, drie raadsels voor de 6-cijfer
 - Transportlog wordt niet meer digitaal getoond.
 - Na Rotje Knor geeft de spelbegeleider het fysieke transportlog aan het team.
 - De website gebruikt dit document alleen als fysiek bewijsmateriaal voor de vervolgpuzzels.
+
+
+## v1.0
+Johnny-route afgerond: kopercontact als versleutelde chat, stapsgewijze verificatie, codewoord, tijdstip, groen-lichtmoment, verbeterd resultaat en teamstatus `klaar`.

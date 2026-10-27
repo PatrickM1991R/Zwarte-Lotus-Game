@@ -100,6 +100,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
   }
 
   team.currentPhase = phaseNext[phase] || team.currentPhase;
+  if (phase === 'EINDOPERATIE') team.status = 'klaar';
   res.json({ correct: true, team: enrich(team) });
 });
 
