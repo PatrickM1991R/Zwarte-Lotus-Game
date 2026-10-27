@@ -86,19 +86,27 @@ function App() {
 
   if (mode === 'game' && team) {
     const idx = Math.max(0, phases.indexOf(team.currentPhase));
-    return <main className="app-shell game-shell">
-      <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
-      <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-      <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
-      <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
+    return <main className="scene-page">
+      <div className="scene-backdrop" aria-hidden="true"></div>
+      <div className="scene-vignette" aria-hidden="true"></div>
+      <div className="app-shell game-shell scene-inner">
+        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><div className="eyebrow">DE ZWARTE LOTUS</div></section>
+        <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
+        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
+        <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
+      </div>
     </main>;
   }
 
   if (mode === 'facilitator' && dashboard) {
-    return <main className="app-shell wide">
-      <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Terug</button><div className="eyebrow">SPELBEGELEIDER</div></section>
-      <section className="hero compact"><div><span className="chip">LOCATIE</span><h1>{dashboard.location.name}</h1><p>{dashboard.event.name} · {dashboard.teams.length} teams actief</p></div><button className="secondary" onClick={loadDashboard}>Vernieuwen</button></section>
-      <section className="table-card"><table><thead><tr><th>Team</th><th>Fase</th><th>Tijd</th><th>Hints</th><th>Route</th><th>Status</th></tr></thead><tbody>{dashboard.teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase] || t.currentPhase.replaceAll('_',' ')}</td><td>{t.elapsedMinutes} min</td><td>{t.hintCount}</td><td>{t.chosenRoute||'—'}</td><td><span className={`status ${t.status}`}>{t.status}</span></td></tr>)}</tbody></table></section>
+    return <main className="scene-page">
+      <div className="scene-backdrop" aria-hidden="true"></div>
+      <div className="scene-vignette" aria-hidden="true"></div>
+      <div className="app-shell wide scene-inner">
+        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Terug</button><div className="eyebrow">SPELBEGELEIDER</div></section>
+        <section className="hero compact"><div><span className="chip">LOCATIE</span><h1>{dashboard.location.name}</h1><p>{dashboard.event.name} · {dashboard.teams.length} teams actief</p></div><button className="secondary" onClick={loadDashboard}>Vernieuwen</button></section>
+        <section className="table-card"><table><thead><tr><th>Team</th><th>Fase</th><th>Tijd</th><th>Hints</th><th>Route</th><th>Status</th></tr></thead><tbody>{dashboard.teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase] || t.currentPhase.replaceAll('_',' ')}</td><td>{t.elapsedMinutes} min</td><td>{t.hintCount}</td><td>{t.chosenRoute||'—'}</td><td><span className={`status ${t.status}`}>{t.status}</span></td></tr>)}</tbody></table></section>
+      </div>
     </main>;
   }
 
@@ -144,7 +152,6 @@ function GamePhase({ team, loading, feedback, startGame, submitAnswer, requestHi
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
     <h2>Een diner. Een diamant. Een verdwenen spoor.</h2>
     <p>Vanavond presenteert Maison Beaumont één van de zeldzaamste stenen ter wereld: <strong>De Zwarte Lotus</strong>. Een zwarte diamant met een waarde waar mensen voor liegen, verdwijnen — en erger.</p>
-    <p>Voor jullie staat een afgesloten kist. Open hem pas wanneer het spelsysteem daar opdracht voor geeft. Alles wat jullie nodig hebben, zit in de ruimte, in de dossiers of op dit scherm.</p>
     <div className="mission-card"><span>MISSIE 01</span><strong>Reconstrueer het alarm en achterhaal de code van de kist.</strong></div>
     <button className="primary" onClick={startGame} disabled={loading}>{loading?'Starten...':'Start het onderzoek'}</button>
   </section>;
