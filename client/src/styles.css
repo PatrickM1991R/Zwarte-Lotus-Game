@@ -144,3 +144,26 @@
 .phase-dossier .reconstruction-row{background:rgba(14,11,18,.72);border-color:#43354a}
 .phase-dossier .reconstruction-person img{border-color:#5a4762;box-shadow:0 4px 18px rgba(0,0,0,.22)}
 @media(max-width:760px){.phase-dossier .scene-backdrop{background-position:58% 32%;filter:saturate(.82) contrast(1.03) brightness(.54)}}
+
+
+/* v2.4 - fase 3 volledig op één pagina + lichtere havenachtergrond */
+.phase-originele_container .scene-backdrop{filter:saturate(.88) contrast(1.04) brightness(.62);background-position:center 52%}
+.phase-originele_container .scene-vignette{background:linear-gradient(180deg,rgba(4,6,9,.54) 0%,rgba(5,7,10,.42) 30%,rgba(4,6,9,.58) 100%),radial-gradient(circle at 80% 65%,rgba(210,166,64,.13),transparent 24%),radial-gradient(circle at 14% 14%,rgba(86,43,115,.13),transparent 28%)}
+.phase-originele_container .panel,.phase-originele_container .stats div{background:rgba(15,11,20,.74);backdrop-filter:blur(8px)}
+.transport-onepage .manifest-wrap{margin-top:22px}
+.transport-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+.transport-filter-card{display:grid;align-content:start;gap:8px;padding:17px;border:1px solid rgba(208,169,71,.23);border-radius:14px;background:rgba(12,10,16,.76);min-width:0;transition:.18s ease}
+.transport-filter-card>span{font-size:9px;letter-spacing:.17em;color:#c9a227;font-weight:900}
+.transport-filter-card>strong{font-size:15px;line-height:1.35;color:#f0e7ef}
+.transport-filter-card>small{color:#95899a;line-height:1.45;min-height:40px}
+.transport-filter-card .filter-input{display:grid;grid-template-columns:1fr;gap:8px;margin-top:auto}
+.transport-filter-card .filter-input input{margin:0}
+.transport-filter-card .filter-input button{width:100%}
+.transport-filter-card.solved{border-color:rgba(104,190,139,.42);background:rgba(43,91,61,.10)}
+.transport-filter-card.solved>span{color:#9ed6b3}
+.transport-filter-card.locked{opacity:.48;filter:saturate(.55)}
+.transport-filter-card.locked input,.transport-filter-card.locked button{cursor:not-allowed}
+.transport-final{margin-top:4px}
+.transport-final.locked{opacity:.5}
+.transport-final.locked input,.transport-final.locked button{pointer-events:none}
+@media(max-width:820px){.transport-filter-grid{grid-template-columns:1fr}.transport-filter-card>small{min-height:0}.phase-originele_container .scene-backdrop{background-position:60% center;filter:saturate(.84) contrast(1.03) brightness(.56)}}

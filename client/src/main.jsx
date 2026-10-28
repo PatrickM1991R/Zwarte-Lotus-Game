@@ -397,34 +397,66 @@ const containerRows = [
 ];
 
 function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
-  const [step,setStep]=useState(1);
   const [dock,setDock]=useState('');
   const [arrival,setArrival]=useState('');
   const [origin,setOrigin]=useState('');
+  const [dockOk,setDockOk]=useState(false);
+  const [arrivalOk,setArrivalOk]=useState(false);
+  const [originOk,setOriginOk]=useState(false);
   const [localFeedback,setLocalFeedback]=useState('');
 
   const normal=(v)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkDock=(e)=>{e.preventDefault(); if(normal(dock)==='17'){setStep(2);setLocalFeedback('Dock 17 bevestigd. Er blijven vijf containers over.');}else setLocalFeedback('Dat dock past niet bij de gereconstrueerde route. Controleer de routegegevens uit het dossier.');};
-  const checkArrival=(e)=>{e.preventDefault(); const v=normal(arrival).replace(':',''); if(v==='2015'){setStep(3);setLocalFeedback('Aankomsttijd 20:15 bevestigd. Er blijven drie containers over.');}else setLocalFeedback('Die aankomsttijd klopt niet. Zoek het moment dat één minuut na het vitrinecontact ligt.');};
-  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setStep(4);setLocalFeedback('Herkomst bevestigd. Er blijft één container over.');}else setLocalFeedback('Dat land past niet bij de aantekeningen van Don Diamantini. Bekijk zijn codes en aanwijzingen opnieuw.');};
-  const visibleRows=containerRows.filter(r=>step===1?true:step===2?r.dock==='17':step===3?r.dock==='17'&&r.arrival==='20:15':r.dock==='17'&&r.arrival==='20:15'&&r.origin==='Zwitserland');
+  const checkDock=(e)=>{e.preventDefault(); if(normal(dock)==='17'){setDockOk(true);setLocalFeedback('Dock bevestigd. De vrachtlijst is versmald.');}else{setDockOk(false);setArrivalOk(false);setOriginOk(false);setLocalFeedback('Dat dock past niet bij de oorspronkelijke route. Controleer de fysieke routegegevens opnieuw.');}};
+  const checkArrival=(e)=>{e.preventDefault(); const v=normal(arrival).replace(':',''); if(v==='2015'){setArrivalOk(true);setLocalFeedback('Aankomsttijd bevestigd. Er blijven nog drie mogelijke containers over.');}else{setArrivalOk(false);setOriginOk(false);setLocalFeedback('Die aankomsttijd klopt niet met de gereconstrueerde tijdlijn.');}};
+  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setOriginOk(true);setLocalFeedback('Herkomst bevestigd. Er blijft nog één container over.');}else{setOriginOk(false);setLocalFeedback('Dat land past niet bij de aantekeningen van Don Diamantini.');}};
 
-  return <section className="panel container-puzzle">
+  const visibleRows=containerRows.filter(r=>{
+    if(!dockOk) return true;
+    if(!arrivalOk) return r.dock==='17';
+    if(!originOk) return r.dock==='17'&&r.arrival==='20:15';
+    return r.dock==='17'&&r.arrival==='20:15'&&r.origin==='Zwitserland';
+  });
+
+  return <section className="panel container-puzzle transport-onepage">
     <div className="section-label">FASE 3 · OORSPRONKELIJK TRANSPORTPLAN</div>
-    <h2>Welke container was bestemd voor De Zwarte Lotus?</h2>
-    <p>De vier criminelen brachten ieder een deel van het plan mee. Gebruik de fysieke routegegevens en de stukken uit de kist om de vrachtlijst stap voor stap te filteren. <strong>Raad niet.</strong> Iedere stap moet door het dossier worden bewezen.</p>
-    <div className="filter-progress"><span className={step>=1?'active':''}>1 · Dock</span><span className={step>=2?'active':''}>2 · Aankomst</span><span className={step>=3?'active':''}>3 · Herkomst</span><span className={step>=4?'active':''}>4 · Container</span></div>
+    <h2>Reconstrueer het oorspronkelijke transport.</h2>
+    <p>Gebruik de fysieke bewijsstukken om de vrachtlijst te verkleinen. Elk correct filter haalt onmogelijke containers uit beeld. Pas wanneer alle drie de kenmerken bewezen zijn, blijft de oorspronkelijke container over.</p>
 
     <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Dock</th><th>Aankomst</th><th>Herkomst</th><th>Status</th></tr></thead><tbody>{visibleRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.dock}</td><td>{r.arrival}</td><td>{r.origin}</td><td>{r.status}</td></tr>)}</tbody></table></div>
     <div className="manifest-count">{visibleRows.length} {visibleRows.length===1?'container over':'containers zichtbaar'}</div>
 
-    {step===1&&<form className="filter-form" onSubmit={checkDock}><div><span>FILTER 1</span><strong>Welk dock hoort bij de oorspronkelijke route?</strong><small>Gebruik de routegegevens van het heist-team.</small></div><div className="filter-input"><input value={dock} onChange={e=>setDock(e.target.value)} placeholder="Docknummer" inputMode="numeric" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===2&&<form className="filter-form" onSubmit={checkArrival}><div><span>FILTER 2</span><strong>Welke aankomsttijd hoort bij de zending?</strong><small>Gebruik de tijdlijn van vitrinecontact en camera-uitval.</small></div><div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} placeholder="Bijv. 20:15" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===3&&<form className="filter-form" onSubmit={checkOrigin}><div><span>FILTER 3</span><strong>Uit welk land kwam de juiste zending?</strong><small>Gebruik de privé-aantekeningen van Don Diamantini.</small></div><div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="Land van herkomst" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===4&&<div className="final-container"><span>LAATSTE CONTROLE</span><h3>Er is nog één container over.</h3><p>Voer het volledige containernummer in om het oorspronkelijke transportplan te bevestigen.</p><AnswerForm loading={loading} placeholder="MBX-••••" maxLength={12} button="Bevestig container" onSubmit={(v)=>submitAnswer('ORIGINELE_CONTAINER',v)} /></div>}
+    <div className="transport-filter-grid">
+      <form className={`transport-filter-card ${dockOk?'solved':''}`} onSubmit={checkDock}>
+        <span>ROUTEGEGEVEN</span>
+        <strong>Welk dock hoort bij de oorspronkelijke route?</strong>
+        <small>Gebruik de fysieke routegegevens van het heist-team.</small>
+        <div className="filter-input"><input value={dock} onChange={e=>setDock(e.target.value)} placeholder="Docknummer" inputMode="numeric" required/><button className="primary">{dockOk?'Bevestigd ✓':'Controleer'}</button></div>
+      </form>
+
+      <form className={`transport-filter-card ${arrivalOk?'solved':''} ${!dockOk?'locked':''}`} onSubmit={checkArrival}>
+        <span>TIJDLIJN</span>
+        <strong>Welke aankomsttijd hoort bij de zending?</strong>
+        <small>Combineer de eerder gevonden tijden met de transportinformatie.</small>
+        <div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} placeholder="Bijv. 20:15" disabled={!dockOk} required/><button className="primary" disabled={!dockOk}>{arrivalOk?'Bevestigd ✓':'Controleer'}</button></div>
+      </form>
+
+      <form className={`transport-filter-card ${originOk?'solved':''} ${!arrivalOk?'locked':''}`} onSubmit={checkOrigin}>
+        <span>HERKOMST</span>
+        <strong>Uit welk land kwam de juiste zending?</strong>
+        <small>Gebruik de privé-aantekeningen van Don Diamantini.</small>
+        <div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="Land van herkomst" disabled={!arrivalOk} required/><button className="primary" disabled={!arrivalOk}>{originOk?'Bevestigd ✓':'Controleer'}</button></div>
+      </form>
+    </div>
+
+    <div className={`final-container transport-final ${!originOk?'locked':''}`}>
+      <span>EINDBEVESTIGING</span>
+      <h3>Welke container hoorde bij het oorspronkelijke plan?</h3>
+      <p>{originOk?'De drie kenmerken zijn bevestigd. Voer nu het containernummer in dat overblijft.':'Bevestig eerst dock, aankomsttijd en herkomst.'}</p>
+      <AnswerForm loading={loading||!originOk} placeholder="MBX-••••" maxLength={12} button="Bevestig transportplan" onSubmit={(v)=>originOk?submitAnswer('ORIGINELE_CONTAINER',v):Promise.resolve(false)} />
+    </div>
 
     {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
-    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: begin niet bij het containernummer. Zoek eerst in de routegegevens welk dock bij het viertal hoort.':step===2?'Hint: na het juiste dock blijven vijf regels over. De aankomsttijd ligt één minuut na het vitrinecontact.':step===3?'Hint: Don noteerde CH en GVA en schreef over horloges, banken en gesloten kluizen.': 'Hint: na drie correcte filters hoort er nog maar één regel in de vrachtlijst te staan.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: vergelijk de tijdlijn met de overgebleven aankomsttijden.':!originOk?'Hint: Don noteerde onder andere CH, GVA, horloges, banken en kluizen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
