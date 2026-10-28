@@ -184,6 +184,21 @@ app.post('/api/teams/:id/progress', (req, res) => {
   res.json({ team: enrich(team) });
 });
 
+
+app.post('/api/facilitator/teams/:id/reset', (req, res) => {
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  team.currentPhase = 'START';
+  team.hintCount = 0;
+  team.chosenRoute = null;
+  team.finalChoice = null;
+  team.status = 'bezig';
+  team.startedAt = Date.now();
+  team.timerStartedAt = null;
+  team.dossierLockedUntil = null;
+  res.json({ team: enrich(team) });
+});
+
 app.get('/api/facilitator/location/:id', (req, res) => {
   if (Number(req.params.id) !== db.location.id) return res.status(404).json({ error: 'Locatie niet gevonden' });
   const teams = db.teams.map((t) => ({ ...t, elapsedMinutes: Math.max(0, Math.floor((Date.now() - t.startedAt) / 60000)) }));
