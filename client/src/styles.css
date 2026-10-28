@@ -134,3 +134,13 @@
 .evidence-suspect-grid{align-items:start}.evidence-suspect-card{display:block!important;padding:0!important;overflow:hidden;min-height:0}.suspect-select-hit{width:100%;display:grid;grid-template-columns:82px minmax(0,1fr) 34px;align-items:center;gap:14px;text-align:left;background:transparent;color:inherit;padding:10px;border-radius:0}.suspect-select-hit:hover{background:rgba(255,255,255,.018)}.inline-evidence-form{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;padding:12px;border-top:1px solid rgba(208,169,71,.20);background:rgba(7,7,10,.50)}.inline-evidence-form label{margin:0;font-size:10px;letter-spacing:.08em;color:#9a8ea0;text-transform:uppercase}.inline-evidence-form select{width:100%;margin-top:7px;padding:12px 34px 12px 11px;border-radius:10px;border:1px solid #3a2d42;background:#0a080d;color:#ece6ee;outline:none}.inline-evidence-form select:focus{border-color:#d0a947;box-shadow:0 0 0 3px rgba(208,169,71,.09)}.evidence-suspect-card.selected{border-color:#d0a947;background:rgba(208,169,71,.06)}.evidence-suspect-card.selected .suspect-select-hit{background:rgba(208,169,71,.025)}@media(max-width:680px){.suspect-select-hit{grid-template-columns:70px minmax(0,1fr) 30px}.inline-evidence-form{grid-template-columns:1fr}.inline-evidence-form select{font-size:16px}}
 
 .reset-team-button{background:rgba(120,35,40,.18);color:#ffb6ba;border:1px solid rgba(195,74,80,.35);padding:9px 11px;border-radius:9px;font-size:12px;white-space:nowrap}.reset-team-button:hover{background:rgba(120,35,40,.28)}.reset-team-button:disabled{opacity:.45;cursor:not-allowed}
+
+
+/* Dossierfase: lichtere, duidelijkere achtergrond */
+.phase-dossier .scene-backdrop{filter:saturate(.84) contrast(1.04) brightness(.60);background-position:center 38%}
+.phase-dossier .scene-vignette{background:linear-gradient(180deg,rgba(4,6,9,.58) 0%,rgba(6,7,11,.46) 28%,rgba(5,6,10,.60) 100%),radial-gradient(circle at 15% 12%,rgba(86,43,115,.16),transparent 26%),radial-gradient(circle at 82% 72%,rgba(210,166,64,.12),transparent 22%)}
+.phase-dossier .panel,.phase-dossier .table-card,.phase-dossier .stats div{background:rgba(15,11,20,.76);backdrop-filter:blur(9px);box-shadow:0 20px 60px rgba(0,0,0,.24)}
+.phase-dossier .reconstruction-board{background:rgba(9,9,13,.38)}
+.phase-dossier .reconstruction-row{background:rgba(14,11,18,.72);border-color:#43354a}
+.phase-dossier .reconstruction-person img{border-color:#5a4762;box-shadow:0 4px 18px rgba(0,0,0,.22)}
+@media(max-width:760px){.phase-dossier .scene-backdrop{background-position:58% 32%;filter:saturate(.82) contrast(1.03) brightness(.54)}}

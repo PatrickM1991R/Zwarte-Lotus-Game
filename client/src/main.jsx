@@ -117,7 +117,7 @@ function App() {
 
   if (mode === 'game' && team) {
     const idx = Math.max(0, phases.indexOf(team.currentPhase));
-    return <main className="scene-page">
+    return <main className={`scene-page phase-${String(team.currentPhase || "start").toLowerCase()}`}> 
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
