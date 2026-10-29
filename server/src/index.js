@@ -12,12 +12,45 @@ const db = {
   location: { id: 1, name: 'Paviljoen Schoonhoven' },
   event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
   teams: [
-    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null },
-    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null },
-    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null },
-    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null }
+    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null, charactersConfigured: false, participants: [], dossierPlan: null },
+    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
+    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
+    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null }
   ]
 };
+
+
+const characterDefinitions = {
+  'kees-zoek': { name:'Kees Zoek', specialty:'Opsporing & details' },
+  'rob-berie': { name:'Rob Berie', specialty:'Roof & criminelen' },
+  'al-larm': { name:'Al Larm', specialty:'Beveiliging & tijdlijnen' },
+  'cold-case': { name:'Cold Case', specialty:'Analyse & verbanden' },
+  'ben-de-bajes': { name:'Ben de Bajes', specialty:'Verdachten & antecedenten' },
+  'ferry-fout': { name:'Ferry Fout', specialty:'Afwijkingen & fouten' }
+};
+
+const cluePacks = [
+  { id:'alarmregister', title:'Alarmregister Maison Beaumont', preferred:'al-larm' },
+  { id:'cameradossier', title:'Cameradossier beveiligingsfeeds', preferred:'kees-zoek' },
+  { id:'verdachtennetwerk', title:'Verdachtennetwerk en werkwijzen', preferred:'rob-berie' },
+  { id:'tijdlijn', title:'Tijdlijn en verbanden', preferred:'cold-case' },
+  { id:'antecedenten', title:'Antecedenten en criminele contacten', preferred:'ben-de-bajes' },
+  { id:'afwijkingen', title:'Afwijkingen en foutieve registraties', preferred:'ferry-fout' },
+  { id:'don-notities', title:'Privé-aantekeningen Don Diamantini', preferred:'cold-case' },
+  { id:'transport', title:'Transport- en routebewijs', preferred:'kees-zoek' }
+];
+
+function buildDossierPlan(participants) {
+  const activeIds = participants.map(p=>p.characterId);
+  const load = Object.fromEntries(activeIds.map(id=>[id,0]));
+  const plan = Object.fromEntries(activeIds.map(id=>[id,[]]));
+  cluePacks.forEach(pack=>{
+    let target = activeIds.includes(pack.preferred) ? pack.preferred : [...activeIds].sort((a,b)=>(load[a]||0)-(load[b]||0))[0];
+    plan[target].push({id:pack.id,title:pack.title});
+    load[target]=(load[target]||0)+1;
+  });
+  return plan;
+}
 
 const phaseAnswers = {
   ALARM: ['14', '20:14', '2014'],
@@ -58,9 +91,26 @@ app.post('/api/team-login', (req, res) => {
   res.json({ team: enrich(team) });
 });
 
+
+app.post('/api/teams/:id/team-setup', (req, res) => {
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if (team.currentPhase !== 'START') return res.status(409).json({ error: 'De teamopstelling kan alleen vóór de briefing worden gewijzigd.' });
+  const participants = Array.isArray(req.body.participants) ? req.body.participants : [];
+  if (participants.length < 2 || participants.length > 6) return res.status(422).json({ error:'Kies tussen 2 en 6 deelnemers.' });
+  const clean = participants.map(p=>({ playerName:String(p.playerName||'').trim(), characterId:String(p.characterId||'').trim().toLowerCase() }));
+  if (clean.some(p=>!p.playerName || !characterDefinitions[p.characterId])) return res.status(422).json({ error:'Vul voor iedere deelnemer een naam en geldig karakter in.' });
+  if (new Set(clean.map(p=>p.characterId)).size !== clean.length) return res.status(422).json({ error:'Ieder karakter kan maar door één deelnemer worden gespeeld.' });
+  team.participants = clean.map(p=>({...p, characterName:characterDefinitions[p.characterId].name, specialty:characterDefinitions[p.characterId].specialty}));
+  team.dossierPlan = buildDossierPlan(clean);
+  team.charactersConfigured = true;
+  res.json({ team: enrich(team) });
+});
+
 app.post('/api/teams/:id/start', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if (!team.charactersConfigured) return res.status(409).json({ error:'Stel eerst het rechercheteam samen.' });
   if (team.currentPhase === 'START') team.startedAt = Date.now();
   team.currentPhase = 'ALARM';
   res.json({ team: enrich(team) });
@@ -196,6 +246,9 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.startedAt = Date.now();
   team.timerStartedAt = null;
   team.dossierLockedUntil = null;
+  team.charactersConfigured = false;
+  team.participants = [];
+  team.dossierPlan = null;
   res.json({ team: enrich(team) });
 });
 

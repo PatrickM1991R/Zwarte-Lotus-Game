@@ -34,3 +34,13 @@ Johnny-route uitgebreid met fysieke kluislocatie, drie raadsels voor de 6-cijfer
 
 ## v1.0
 Johnny-route afgerond: kopercontact als versleutelde chat, stapsgewijze verificatie, codewoord, tijdstip, groen-lichtmoment, verbeterd resultaat en teamstatus `klaar`.
+
+## v2.5 – Recherchekarakters
+- Nieuwe teamopstelling vóór de inspecteursbriefing.
+- Kies 2 t/m 6 deelnemers.
+- Vul per deelnemer de naam in en koppel één van zes vaste karakters: Kees Zoek, Rob Berie, Al Larm, Cold Case, Ben de Bajes en Ferry Fout.
+- Ieder karakter heeft een portret, specialisme en korte omschrijving.
+- De gekozen teamopstelling wordt op de server opgeslagen.
+- Het systeem maakt automatisch een dossierplan zodat noodzakelijke bewijssets over de actieve karakters verdeeld kunnen worden, ook bij minder dan zes spelers.
+- Na bevestiging toont de intro nogmaals welk dossierboek bij welke deelnemer hoort.
+- Reset team wist ook de karakteropstelling en dossierverdeling.

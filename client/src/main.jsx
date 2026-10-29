@@ -7,6 +7,16 @@ const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
 const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
 const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
+
+const investigatorCharacters = [
+  { id:'kees-zoek', name:'Kees Zoek', specialty:'Opsporing & details', blurb:'Ziet wat anderen missen en blijft zoeken tot het laatste detail klopt.', image:'/assets/characters/kees-zoek.jpg' },
+  { id:'rob-berie', name:'Rob Berie', specialty:'Roof & criminelen', blurb:'Denkt als een overvaller en herkent patronen in de werkwijze van daders.', image:'/assets/characters/rob-berie.jpg' },
+  { id:'al-larm', name:'Al Larm', specialty:'Beveiliging & tijdlijnen', blurb:'Leeft voor alarmen, logboeken en systemen die nét op het verkeerde moment uitvallen.', image:'/assets/characters/al-larm.jpg' },
+  { id:'cold-case', name:'Cold Case', specialty:'Analyse & verbanden', blurb:'Blijft ijzig kalm en legt verbanden tussen oude en nieuwe sporen.', image:'/assets/characters/cold-case.jpg' },
+  { id:'ben-de-bajes', name:'Ben de Bajes', specialty:'Verdachten & antecedenten', blurb:'Kent het boeventuig, hun contacten en de verhalen die ze liever verzwijgen.', image:'/assets/characters/ben-de-bajes.jpg' },
+  { id:'ferry-fout', name:'Ferry Fout', specialty:'Afwijkingen & fouten', blurb:'Vindt slordigheden, tegenstrijdigheden en precies dat ene detail dat niet klopt.', image:'/assets/characters/ferry-fout.jpg' }
+];
+
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Open de kist', CAMERA: 'Open de kist', KIST_OPEN: 'Open de kist', DOSSIER: 'Dossier',
   ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
@@ -48,6 +58,17 @@ function App() {
       if (!r.ok) throw new Error(j.error || 'Resetten mislukt');
       await loadDashboard();
     } catch (err) { setError(err.message); setLoading(false); }
+  };
+
+  const saveTeamSetup = async (participants) => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/team-setup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ participants }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Teamopstelling opslaan mislukt');
+      setTeam(j.team); return true;
+    } catch (err) { setFeedback(err.message); return false; }
+    finally { setLoading(false); }
   };
 
   const startGame = async () => {
@@ -123,7 +144,9 @@ function App() {
       <div className="app-shell game-shell scene-inner">
         <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
-        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>
+        {team.currentPhase === 'START' && !team.charactersConfigured
+          ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
+          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>}
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
       </div>
     </main>;
@@ -192,13 +215,64 @@ function GameCountdown({timerStartedAt}) {
   return <div className={`game-countdown ${remaining<=900?'urgent':''} ${remaining===0?'expired':''}`}><span>{remaining===0?'TIJD VERSTREKEN':'TIJD OVER'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>90 minuten</small></div>;
 }
 
+
+function TeamSetup({team,loading,feedback,saveTeamSetup}) {
+  const [count,setCount]=useState(2);
+  const [players,setPlayers]=useState([
+    {playerName:'',characterId:''},{playerName:'',characterId:''}
+  ]);
+
+  const changeCount=(n)=>{
+    const next=Math.max(2,Math.min(6,Number(n)||2));
+    setCount(next);
+    setPlayers(prev=>Array.from({length:next},(_,i)=>prev[i]||{playerName:'',characterId:''}));
+  };
+  const update=(i,key,value)=>setPlayers(prev=>prev.map((p,idx)=>idx===i?{...p,[key]:value}:p));
+  const used=new Set(players.map(p=>p.characterId).filter(Boolean));
+  const complete=players.length===count && players.every(p=>p.playerName.trim()&&p.characterId) && used.size===count;
+  const submit=async()=>{ if(!complete)return; await saveTeamSetup(players.map(p=>({playerName:p.playerName.trim(),characterId:p.characterId}))); };
+
+  return <section className="panel cinematic team-setup-panel">
+    <div className="section-label">TEAMOPSTELLING · VERTROUWELIJK</div>
+    <h2>Stel jullie rechercheteam samen.</h2>
+    <p>Iedere deelnemer krijgt een vaste identiteit en het bijbehorende fysieke dossierboek. Kies eerst met hoeveel rechercheurs jullie spelen en koppel daarna iedere speler aan één karakter.</p>
+
+    <div className="player-count-block">
+      <span>AANTAL DEELNEMERS</span>
+      <div className="player-count-buttons">{[2,3,4,5,6].map(n=><button type="button" key={n} className={count===n?'active':''} onClick={()=>changeCount(n)}>{n}</button>)}</div>
+    </div>
+
+    <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className={`character-card ${used.has(c.id)?'taken':''}`}>
+      <img src={c.image} alt={`Portret van ${c.name}`}/>
+      <div><strong>{c.name}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
+    </article>)}</div>
+
+    <div className="assignment-board">
+      <div className="assignment-head"><span>TEAMREGISTRATIE</span><strong>Wie speelt wie?</strong></div>
+      {players.map((p,i)=><div className="assignment-row" key={i}>
+        <label>Naam deelnemer<input value={p.playerName} onChange={e=>update(i,'playerName',e.target.value)} placeholder={`Deelnemer ${i+1}`} /></label>
+        <label>Karakter<select value={p.characterId} onChange={e=>update(i,'characterId',e.target.value)}>
+          <option value="">Kies karakter</option>
+          {investigatorCharacters.map(c=><option key={c.id} value={c.id} disabled={used.has(c.id)&&p.characterId!==c.id}>{c.name} · {c.specialty}</option>)}
+        </select></label>
+        {p.characterId&&<div className="assignment-mini">{(()=>{const c=investigatorCharacters.find(x=>x.id===p.characterId);return c?<><img src={c.image} alt=""/><span><strong>{c.name}</strong><small>{c.specialty}</small></span></>:null})()}</div>}
+      </div>)}
+    </div>
+
+    <div className="dossier-instruction"><span>FYSIEKE DOSSIERS</span><strong>De spelbegeleider geeft iedere deelnemer nu het dossierboek van zijn of haar gekozen karakter.</strong><small>Bewijsstukken worden per groepsgrootte zo verdeeld dat alle noodzakelijke informatie altijd in het actieve team aanwezig is.</small></div>
+    <button type="button" className="primary full team-confirm" disabled={loading||!complete} onClick={submit}>{loading?'Team registreren...':'Bevestig rechercheteam'}</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
+
 function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
     <h2>Een diner. Een diamant. Een verdwenen spoor.</h2>
     <p>Vanavond presenteert Maison Beaumont één van de zeldzaamste stenen ter wereld: <strong>De Zwarte Lotus</strong>. Een zwarte diamant met een waarde waar mensen voor liegen, verdwijnen — en erger.</p>
-    <div className="mission-card"><span>MISSIE 01</span><strong>Reconstrueer het alarm en achterhaal de code van de kist.</strong></div>
+    {team.participants?.length>0&&<div className="active-team-strip">{team.participants.map(p=>{const c=investigatorCharacters.find(x=>x.id===p.characterId);return <article key={p.characterId}>{c&&<img src={c.image} alt=""/>}<span><small>{p.playerName}</small><strong>{p.characterName}</strong></span></article>})}</div>}
+    <div className="mission-card"><span>MISSIE 01</span><strong>Pak jullie persoonlijke dossierboeken. Daarna begint de briefing van de inspecteur.</strong></div>
     <button className="primary" onClick={startGame} disabled={loading}>{loading?'Starten...':'Start het onderzoek'}</button>
   </section>;
 
