@@ -64,3 +64,7 @@ Zet op de backend-service in Render:
 - `INFILTRANT_FROM_EMAIL=De Zwarte Lotus <spel@jouwdomein.nl>`
 
 Het afzenderdomein moet bij de mailprovider geverifieerd zijn.
+
+
+## v3.2
+Fase 2 gebruikt alleen fysieke dossiers. Online worden geen verdachteportretten of verdachtekaarten getoond. Een fout antwoord voegt 60 seconden straftijd toe aan de oplopende speeltijd.

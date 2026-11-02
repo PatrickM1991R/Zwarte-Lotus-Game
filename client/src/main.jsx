@@ -300,8 +300,7 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
       <div className="player-count-buttons">{[2,3,4,5,6].map(n=><button type="button" key={n} className={count===n?'active':''} onClick={()=>changeCount(n)}>{n}</button>)}</div>
     </div>
 
-    <div className="kees-required"><span>VASTE KERN</span><strong>Kees Zoek en Rob Berie doen altijd mee.</strong><small>Vanaf drie deelnemers vult het systeem het team willekeurig aan met Al Larm, Cold Case, Ben de Bajes en Ferry Fout.</small></div>
-
+    <h3 className="research-team-title">Het recherche team</h3>
     <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className="character-card">
       <img src={c.image} alt={`Portret van ${c.name}`}/>
       <div><strong>{c.name}{['kees-zoek','rob-berie'].includes(c.id)&&<em className="required-badge">VASTE KERN</em>}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
@@ -314,7 +313,6 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
       </div>)}
     </div>
 
-    <div className="dossier-instruction"><span>WILLEKEURIGE TOEWIJZING</span><strong>Na bevestigen maakt het systeem de detectiveverdeling bekend.</strong><small>Daarna pakt iedere deelnemer het fysieke dossierboek van het toegewezen karakter.</small></div>
     <button type="button" className="primary full team-confirm" disabled={loading||!complete} onClick={submit}>{loading?'Team samenstellen...':'Verdeel de karakters'}</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
@@ -399,8 +397,8 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
       </article>
 
       <article className="opening-puzzle-card evidence-card">
-        <div className="puzzle-kicker">CAMERADOSSIER</div>
-        <h3>Welke camera hoort bij het beslissende moment?</h3>
+        <div className="puzzle-kicker">VISUEEL SPOOR</div>
+        <h3>Wat valt op in het visuele spoor?</h3>
         <label>Conclusie<input disabled={!briefingDone} value={camera} onChange={e=>setCamera(e.target.value)} placeholder="Jullie conclusie" maxLength={9} required/></label>
       </article>
 
@@ -427,86 +425,60 @@ const suspects = [
 ];
 
 function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
-  const [selected,setSelected]=useState([]);
-  const [roles,setRoles]=useState({});
-  const [evidence,setEvidence]=useState({});
-  const [now,setNow]=useState(Date.now());
+  const [suspectCount,setSuspectCount]=useState('');
+  const [entries,setEntries]=useState([]);
 
-  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id);},[]);
-
-  const lockUntil=team.dossierLockedUntil||0;
-  const lockSeconds=Math.max(0,Math.ceil((lockUntil-now)/1000));
-  const locked=lockSeconds>0;
-
-  const roleOptions=[
+  const skillOptions=[
     {value:'techniek',label:'Techniek / beveiliging'},
     {value:'documenten',label:'Documenten / vervalsing'},
     {value:'koper',label:'Koper / afzet'},
-    {value:'transport',label:'Transport / smokkel'}
+    {value:'transport',label:'Transport / smokkel'},
+    {value:'afleiding',label:'Afleiding / zakkenrollen'},
+    {value:'identiteit',label:'Identiteit / vermomming'},
+    {value:'inbraak',label:'Inbraak / brute kracht'},
+    {value:'financien',label:'Financiën / geldstromen'}
   ];
 
-  const evidenceOptions={
-    johnny:[['transportmap','Transportmap met gewijzigde route'],['alarmcodes','Notitie met alarmcodes'],['gastenpas','Gastenpas Maison Beaumont']],
-    don:[['diamantdeal','Koopafspraak voor de diamant'],['onderhoud','Onderhoudsrapport vitrine'],['chauffeurslog','Chauffeurslog van de haven']],
-    freddy:[['vrachtpapieren','Vervalste vracht- en douanepapieren'],['bankafschrift','Verdacht bankafschrift'],['vitrinecontact','Technisch rapport vitrinecontact']],
-    carla:[['alarmsysteem','Schema van alarm- en vitrinesysteem'],['gastlijst','Aangepaste gastenlijst'],['koeriersbon','Koeriersbon voor containertransport']],
-    rita:[['afleiding','Notities over afleiding in de zaal'],['transportmap','Transportmap met gewijzigde route'],['diamantdeal','Koopafspraak voor de diamant']],
-    boris:[['koevoet','Foto van inbraakgereedschap'],['alarmsysteem','Schema van alarm- en vitrinesysteem'],['vrachtpapieren','Vervalste vracht- en douanepapieren']],
-    vera:[['valsebadge','Valse personeelsbadge'],['diamantdeal','Koopafspraak voor de diamant'],['chauffeurslog','Chauffeurslog van de haven']],
-    max:[['betaling','Oude verdachte betaling'],['vrachtpapieren','Vervalste vracht- en douanepapieren'],['alarmsysteem','Schema van alarm- en vitrinesysteem']]
+  const changeCount=(value)=>{
+    const n=Math.max(0,Math.min(8,Number(value)||0));
+    setSuspectCount(value);
+    setEntries(prev=>Array.from({length:n},(_,i)=>prev[i]||{name:'',skill:''}));
   };
 
-  const toggle=(id)=>{
-    setSelected(prev=>{
-      if(prev.includes(id)){
-        setRoles(r=>{const n={...r};delete n[id];return n;});
-        setEvidence(e=>{const n={...e};delete n[id];return n;});
-        return prev.filter(x=>x!==id);
-      }
-      return prev.length<4?[...prev,id]:prev;
-    });
-  };
+  const updateEntry=(index,key,value)=>setEntries(prev=>prev.map((row,i)=>i===index?{...row,[key]:value}:row));
+  const count=Number(suspectCount)||0;
+  const complete=count>0&&entries.length===count&&entries.every(x=>x.name.trim()&&x.skill);
+  const submit=async()=>{if(!complete)return;await submitAnswer('DOSSIER',{count,entries});};
 
-  const complete=selected.length===4&&selected.every(id=>roles[id]&&evidence[id]);
-  const usedRoles=Object.values(roles);
-  const payload=selected.map(id=>({id,role:roles[id],evidence:evidence[id]}));
-  const submit=async()=>{if(!complete||locked)return;await submitAnswer('DOSSIER',payload);};
-
-  return <section className="panel dossier-ready evidence-reconstruction">
+  return <section className="panel dossier-ready evidence-reconstruction physical-dossier-phase">
     <div className="success-seal">KIST ONTGRENDELD</div>
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
-    <h2>Wie zaten er werkelijk achter de roof?</h2>
-    <p>Vergelijk de acht fysieke dossiers. Selecteer maximaal vier verdachten. Zodra je iemand selecteert, moet je direct vastleggen <strong>welke rol</strong> die persoon had en <strong>welk bewijsstuk</strong> dat ondersteunt.</p>
-    <div className="mission-card"><span>RECONSTRUCTIE</span><strong>Vier verdachten. Vier unieke rollen. Vier bewijsstukken.</strong><small>Bij een fout antwoord zie je niet welk onderdeel fout is.</small></div>
+    <h2>Wie zijn verdacht van de roof?</h2>
+    <p>Gebruik uitsluitend de fysieke dossiers uit de kist. Leg jullie gezamenlijke conclusie hieronder vast.</p>
 
-    <div className="suspect-grid evidence-suspect-grid">{suspects.map(s=>{
-      const active=selected.includes(s.id);
-      return <article key={s.id} className={`suspect-card evidence-suspect-card ${active?'selected':''}`}>
-        <button type="button" className="suspect-select-hit" onClick={()=>toggle(s.id)} aria-pressed={active}>
-          <img className="suspect-photo" src={s.image} alt={`Dossierfoto van ${s.name}`} />
-          <span className="suspect-info"><strong>{s.name}</strong><small>{s.alias}</small></span>
-          <span className="suspect-check">{active?'✓':'○'}</span>
-        </button>
-        {active&&<div className="inline-evidence-form">
-          <label>Rol
-            <select value={roles[s.id]||''} onChange={e=>setRoles(r=>({...r,[s.id]:e.target.value}))}>
-              <option value="">Kies rol…</option>
-              {roleOptions.map(o=><option key={o.value} value={o.value} disabled={usedRoles.includes(o.value)&&roles[s.id]!==o.value}>{o.label}</option>)}
-            </select>
-          </label>
-          <label>Bewijs
-            <select value={evidence[s.id]||''} onChange={e=>setEvidence(v=>({...v,[s.id]:e.target.value}))}>
-              <option value="">Kies bewijs…</option>
-              {evidenceOptions[s.id].map(([value,label])=><option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-        </div>}
-      </article>
-    })}</div>
+    <div className="dossier-count-card">
+      <label>Hoeveel mensen zijn er verdacht?
+        <input type="number" min="1" max="8" inputMode="numeric" value={suspectCount} onChange={e=>changeCount(e.target.value)} placeholder="Aantal verdachten" />
+      </label>
+    </div>
 
-    <div className="selection-footer dossier-submit-footer"><span><strong>{selected.length}/4</strong> verdachten geselecteerd</span><button className="primary" type="button" disabled={loading||!complete||locked} onClick={submit}>{loading?'Reconstructie controleren...':locked?`Opnieuw proberen over ${lockSeconds}s`:'Bevestig reconstructie'}</button></div>
-    {locked&&<div className="dossier-lock"><span>CONTROLE GEBLOKKEERD</span><strong>{String(Math.floor(lockSeconds/60)).padStart(2,'0')}:{String(lockSeconds%60).padStart(2,'0')}</strong><small>Gebruik deze tijd om de fysieke dossiers opnieuw te vergelijken.</small></div>}
-    <button className="hint-link" onClick={()=>requestHint('Hint: zoek vier verschillende functies die samen noodzakelijk waren: techniek, documenten, koper en transport. Bewijs iedere functie met een concreet stuk uit het juiste dossier.')}>Hint aanvragen</button>
+    {count>0&&<div className="physical-suspect-entry-list">
+      {entries.map((entry,index)=><div className="physical-suspect-entry" key={index}>
+        <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
+        <label>Welke verdachte?
+          <input value={entry.name} onChange={e=>updateEntry(index,'name',e.target.value)} placeholder="Naam uit het dossier" autoComplete="off" />
+        </label>
+        <label>Door welke vaardigheid is deze persoon verdacht?
+          <select value={entry.skill} onChange={e=>updateEntry(index,'skill',e.target.value)}>
+            <option value="">Kies vaardigheid…</option>
+            {skillOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+      </div>)}
+    </div>}
+
+    <div className="dossier-submit-footer simple"><button className="primary" type="button" disabled={loading||!complete} onClick={submit}>{loading?'Controleren...':'Bevestig conclusie'}</button></div>
+    <button className="hint-link" onClick={()=>requestHint('Hint: kijk niet alleen naar wat iemand gedaan kan hebben, maar welke verschillende vaardigheden noodzakelijk waren om de roof uit te voeren.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }

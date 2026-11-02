@@ -197,31 +197,28 @@ app.post('/api/teams/:id/answer', (req, res) => {
   if (phase !== team.currentPhase) return res.status(409).json({ error: 'Deze puzzel is niet actief voor dit team.' });
 
   if (phase === 'DOSSIER') {
-    const now = Date.now();
-    if (team.dossierLockedUntil && team.dossierLockedUntil > now) {
-      const retryAfter = Math.ceil((team.dossierLockedUntil - now) / 1000);
-      return res.status(429).json({ correct:false, retryAfter, team:enrich(team), error:`De reconstructiecontrole is tijdelijk geblokkeerd. Probeer het over ${retryAfter} seconden opnieuw.` });
-    }
-    const submitted = Array.isArray(req.body.answer) ? req.body.answer : [];
-    const expected = {
-      johnny:{role:'transport',evidence:'transportmap'},
-      don:{role:'koper',evidence:'diamantdeal'},
-      freddy:{role:'documenten',evidence:'vrachtpapieren'},
-      carla:{role:'techniek',evidence:'alarmsysteem'}
-    };
-    const ids = submitted.map(x=>String(x.id||'').toLowerCase());
-    const uniqueIds = new Set(ids);
-    const uniqueRoles = new Set(submitted.map(x=>String(x.role||'').toLowerCase()));
-    const isCorrect = submitted.length===4 && uniqueIds.size===4 && uniqueRoles.size===4 && submitted.every(item=>{
-      const id=String(item.id||'').toLowerCase();
-      const exp=expected[id];
-      return exp && String(item.role||'').toLowerCase()===exp.role && String(item.evidence||'').toLowerCase()===exp.evidence;
+    const raw = req.body.answer || {};
+    const count = Number(raw.count || 0);
+    const entries = Array.isArray(raw.entries) ? raw.entries : [];
+    const normalizeName = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g,' ');
+    const expected = new Map([
+      ['johnny jatwerk','transport'],
+      ['don diamantini','koper'],
+      ['freddy flessentrekker','documenten'],
+      ['carla kraak','techniek']
+    ]);
+    const submittedNames = entries.map(x=>normalizeName(x.name));
+    const uniqueNames = new Set(submittedNames);
+    const isCorrect = count===4 && entries.length===4 && uniqueNames.size===4 && entries.every(item=>{
+      const name=normalizeName(item.name);
+      const skill=String(item.skill||'').trim().toLowerCase();
+      return expected.get(name)===skill;
     });
     if (!isCorrect) {
-      team.dossierLockedUntil = now + 90*1000;
-      return res.status(422).json({ correct:false, team:enrich(team), retryAfter:90, error:'De reconstructie klopt niet volledig. Minstens één verdachte, rol of bewijsstuk is onjuist. Controleer de dossiers opnieuw.' });
+      const base = team.timerStartedAt ? Number(team.timerStartedAt) : Date.now();
+      team.timerStartedAt = base - 60*1000;
+      return res.status(422).json({ correct:false, team:enrich(team), error:'De conclusie klopt niet. Er is 1 minuut straftijd toegevoegd.' });
     }
-    team.dossierLockedUntil = null;
   } else if (phase === 'NIEUWE_CONTAINER') {
     const raw = req.body.answer || {};
     const culprit = String(raw.culprit || '').trim().toLowerCase().replace(/\s+/g,' ');

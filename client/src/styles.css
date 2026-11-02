@@ -193,3 +193,21 @@
 .game-countdown.expired span{color:#ff9b90}
 .timer-launch-inner small{font-weight:700}
 @media(max-width:640px){.random-assignment-board .assignment-row.name-only{grid-template-columns:1fr}.game-countdown small{white-space:normal}}
+
+
+/* v3.0 - titel rechercheteam */
+.research-team-title{font-family:Georgia,serif;font-size:clamp(28px,4vw,42px);color:#f0dfad;margin:30px 0 16px;letter-spacing:.01em;text-shadow:0 2px 16px rgba(0,0,0,.32)}
+
+
+/* Game v3.2 - fase 2 volledig vanuit fysieke dossiers */
+.physical-dossier-phase .dossier-count-card{margin:22px 0 14px;padding:18px;border:1px solid rgba(208,169,71,.28);border-radius:14px;background:rgba(8,8,11,.42)}
+.physical-dossier-phase .dossier-count-card label{margin:0;font-size:13px;color:#d9d0dc;font-weight:700}
+.physical-dossier-phase .dossier-count-card input{max-width:260px}
+.physical-suspect-entry-list{display:grid;gap:12px;margin:14px 0 18px}
+.physical-suspect-entry{display:grid;grid-template-columns:52px minmax(180px,.85fr) minmax(220px,1.15fr);gap:14px;align-items:end;padding:16px;border:1px solid #3b2e42;border-radius:14px;background:rgba(10,8,13,.64)}
+.physical-suspect-number{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;align-self:center;border:1px solid rgba(208,169,71,.35);color:#d9b95f;font-size:12px;font-weight:900;letter-spacing:.08em}
+.physical-suspect-entry label{margin:0;font-size:11px;letter-spacing:.04em;color:#a99dac}
+.physical-suspect-entry select{width:100%;margin-top:8px;padding:14px 38px 14px 13px;border-radius:11px;border:1px solid #3d3047;background:#0d0a11;color:#fff;outline:none}
+.physical-suspect-entry select:focus{border-color:#e1bd61;box-shadow:0 0 0 3px rgba(225,189,97,.1)}
+.dossier-submit-footer.simple{display:flex;justify-content:flex-end;margin-top:14px}
+@media(max-width:720px){.physical-suspect-entry{grid-template-columns:44px 1fr}.physical-suspect-entry label:last-child{grid-column:1/-1}.physical-suspect-number{width:38px;height:38px}.physical-suspect-entry input,.physical-suspect-entry select{font-size:16px}.dossier-submit-footer.simple .primary{width:100%}}
