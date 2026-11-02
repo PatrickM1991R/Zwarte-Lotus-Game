@@ -67,7 +67,7 @@ function InfiltrantPage() {
     <section className="infiltrant-card">
       <div className="infiltrant-status"><span></span> VERSLEUTELDE VERBINDING</div>
       <div className="section-label">ALLEEN VOOR KEES ZOEK</div>
-      <h1>Je hebt contact.</h1>
+      <h1>De informant stuurt je een bericht</h1>
       <p className="infiltrant-copy">Speel het bericht volledig af. Reageer pas wanneer de verbinding daarom vraagt.</p>
       <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/infiltrant-kees-zoek.mp3" onEnded={()=>setBriefingDone(true)} />
       {!briefingDone&&<div className="infiltrant-locked"><span>BERICHT NOG NIET VOLLEDIG AFGELUISTERD</span></div>}
