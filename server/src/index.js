@@ -1,8 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const INFILTRANT_ACCESS_CODE = process.env.INFILTRANT_ACCESS_CODE || 'KZ-731';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const INFILTRANT_FROM_EMAIL = process.env.INFILTRANT_FROM_EMAIL || 'De Zwarte Lotus <onboarding@resend.dev>';
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -31,7 +39,7 @@ const characterDefinitions = {
 
 const cluePacks = [
   { id:'alarmregister', title:'Alarmregister Maison Beaumont', preferred:'al-larm' },
-  { id:'cameradossier', title:'Cameradossier beveiligingsfeeds', preferred:'kees-zoek' },
+  { id:'infiltrant-kanaal', title:'Vertrouwelijk contactkanaal infiltrant', preferred:'kees-zoek' },
   { id:'verdachtennetwerk', title:'Verdachtennetwerk en werkwijzen', preferred:'rob-berie' },
   { id:'tijdlijn', title:'Tijdlijn en verbanden', preferred:'cold-case' },
   { id:'antecedenten', title:'Antecedenten en criminele contacten', preferred:'ben-de-bajes' },
@@ -82,6 +90,41 @@ const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: 
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+app.get('/api/infiltrant/verify', (req,res)=>{
+  const code=String(req.query.code||'').trim();
+  if(code!==INFILTRANT_ACCESS_CODE) return res.status(403).json({ok:false});
+  res.json({ok:true});
+});
+
+app.post('/api/infiltrant/send-camera', async (req,res)=>{
+  const accessCode=String(req.body.accessCode||'').trim();
+  const email=String(req.body.email||'').trim().toLowerCase();
+  if(accessCode!==INFILTRANT_ACCESS_CODE) return res.status(403).json({error:'Ongeldige dossiercode.'});
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(422).json({error:'Vul een geldig e-mailadres in.'});
+  if(!RESEND_API_KEY) return res.status(503).json({error:'De mailverbinding is nog niet geconfigureerd op de spelserver.'});
+  try{
+    const attachmentPath=path.resolve(__dirname,'../assets/camerabeelden-maison-beaumont.png');
+    const content=fs.readFileSync(attachmentPath).toString('base64');
+    const response=await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${RESEND_API_KEY}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        from:INFILTRANT_FROM_EMAIL,
+        to:[email],
+        subject:'VERTROUWELIJK — camerabeelden Maison Beaumont',
+        html:`<div style="font-family:Arial,sans-serif;background:#0b0b0d;color:#eee;padding:28px"><div style="max-width:620px;margin:auto"><p style="color:#c9a227;letter-spacing:2px;font-size:12px">VERTROUWELIJKE OVERDRACHT</p><h1 style="font-family:Georgia,serif">Kees Zoek,</h1><p>Zoals afgesproken. Dit is alles wat ik van de server heb kunnen halen.</p><p>Bekijk de camerabeelden goed. Let op de tijdstempels en op welk beeld op het beslissende moment wegvalt.</p><p style="margin-top:30px;color:#999">Verwijder dit bericht zodra je hebt wat je nodig hebt.</p><p>— Abrikoos</p></div></div>`,
+        attachments:[{filename:'camerabeelden-maison-beaumont.png',content}]
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) return res.status(502).json({error:data.message||'De infiltrant kon de bestanden niet versturen.'});
+    res.json({ok:true,id:data.id||null});
+  }catch(err){
+    console.error('Infiltrant mail error',err);
+    res.status(500).json({error:'De beveiligde overdracht is mislukt.'});
+  }
+});
+
 app.post('/api/team-login', (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
   const name = String(req.body.teamName || '').trim();
@@ -101,6 +144,7 @@ app.post('/api/teams/:id/team-setup', (req, res) => {
   const clean = participants.map(p=>({ playerName:String(p.playerName||'').trim(), characterId:String(p.characterId||'').trim().toLowerCase() }));
   if (clean.some(p=>!p.playerName || !characterDefinitions[p.characterId])) return res.status(422).json({ error:'Vul voor iedere deelnemer een naam en geldig karakter in.' });
   if (new Set(clean.map(p=>p.characterId)).size !== clean.length) return res.status(422).json({ error:'Ieder karakter kan maar door één deelnemer worden gespeeld.' });
+  if (!clean.some(p=>p.characterId==='kees-zoek')) return res.status(422).json({ error:'Kees Zoek moet altijd onderdeel zijn van het rechercheteam.' });
   team.participants = clean.map(p=>({...p, characterName:characterDefinitions[p.characterId].name, specialty:characterDefinitions[p.characterId].specialty}));
   team.dossierPlan = buildDossierPlan(clean);
   team.charactersConfigured = true;

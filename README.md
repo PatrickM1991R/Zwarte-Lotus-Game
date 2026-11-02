@@ -44,3 +44,23 @@ Johnny-route afgerond: kopercontact als versleutelde chat, stapsgewijze verifica
 - Het systeem maakt automatisch een dossierplan zodat noodzakelijke bewijssets over de actieve karakters verdeeld kunnen worden, ook bij minder dan zes spelers.
 - Na bevestiging toont de intro nogmaals welk dossierboek bij welke deelnemer hoort.
 - Reset team wist ook de karakteropstelling en dossierverdeling.
+
+## v2.6 – Kees Zoek / infiltrantenroute
+
+- Kees Zoek is verplicht onderdeel van ieder rechercheteam.
+- Het cameradossier staat niet meer in de openbare frontend.
+- In Kees' fysieke dossierboek komt deze geheime link:
+  `https://zwarte-lotus-game.onrender.com/#/infiltrant?code=KZ-731`
+- Op die pagina speelt eerst het infiltrantenbandje af.
+- Pas nadat het bandje volledig is afgespeeld verschijnt het veld voor een e-mailadres.
+- Daarna verstuurt de backend de camerabeelden als e-mailbijlage.
+
+### Render environment variables voor e-mail
+
+Zet op de backend-service in Render:
+
+- `INFILTRANT_ACCESS_CODE=KZ-731`
+- `RESEND_API_KEY=<jouw Resend API key>`
+- `INFILTRANT_FROM_EMAIL=De Zwarte Lotus <spel@jouwdomein.nl>`
+
+Het afzenderdomein moet bij de mailprovider geverifieerd zijn.

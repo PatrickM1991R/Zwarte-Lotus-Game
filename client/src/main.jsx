@@ -22,6 +22,66 @@ const phaseLabels = {
   ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
+
+function Root() {
+  const hash = window.location.hash || '';
+  return hash.startsWith('#/infiltrant') ? <InfiltrantPage /> : <App />;
+}
+
+function InfiltrantPage() {
+  const hash = window.location.hash || '';
+  const query = hash.includes('?') ? hash.split('?').slice(1).join('?') : '';
+  const params = new URLSearchParams(query);
+  const accessCode = params.get('code') || '';
+  const [verified,setVerified]=useState(null);
+  const [briefingDone,setBriefingDone]=useState(false);
+  const [email,setEmail]=useState('');
+  const [sending,setSending]=useState(false);
+  const [status,setStatus]=useState('');
+
+  useEffect(()=>{
+    let active=true;
+    fetch(`${API}/api/infiltrant/verify?code=${encodeURIComponent(accessCode)}`)
+      .then(async r=>({ok:r.ok,body:await r.json().catch(()=>({}))}))
+      .then(({ok})=>{if(active)setVerified(ok);})
+      .catch(()=>{if(active)setVerified(false);});
+    return()=>{active=false};
+  },[accessCode]);
+
+  const sendCamera=async(e)=>{
+    e.preventDefault(); setSending(true); setStatus('');
+    try{
+      const r=await fetch(`${API}/api/infiltrant/send-camera`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode,email})
+      });
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.error||'Versturen mislukt');
+      setStatus('VERZONDEN');
+    }catch(err){setStatus(err.message);}finally{setSending(false);}
+  };
+
+  if(verified===null) return <main className="infiltrant-page"><section className="infiltrant-card"><div className="section-label">VERBINDING CONTROLEREN</div><h1>Beveiligd kanaal</h1><p>Een ogenblik.</p></section></main>;
+  if(!verified) return <main className="infiltrant-page denied"><section className="infiltrant-card"><div className="section-label">TOEGANG GEWEIGERD</div><h1>Onbekend kanaal.</h1><p>Deze verbinding bestaat niet of de dossiercode is ongeldig.</p></section></main>;
+
+  return <main className="infiltrant-page">
+    <section className="infiltrant-card">
+      <div className="infiltrant-status"><span></span> VERSLEUTELDE VERBINDING</div>
+      <div className="section-label">ALLEEN VOOR KEES ZOEK</div>
+      <h1>Je hebt contact.</h1>
+      <p className="infiltrant-copy">Speel het bericht volledig af. Reageer pas wanneer de verbinding daarom vraagt.</p>
+      <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/infiltrant-kees-zoek.mp3" onEnded={()=>setBriefingDone(true)} />
+      {!briefingDone&&<div className="infiltrant-locked"><span>BERICHT NOG NIET VOLLEDIG AFGELUISTERD</span></div>}
+      {briefingDone&&status!=='VERZONDEN'&&<form className="infiltrant-mail-form" onSubmit={sendCamera}>
+        <div><span>BEVEILIGDE OVERDRACHT</span><h2>Waar moeten de bestanden naartoe?</h2><p>Vul één e-mailadres in. De bron stuurt het cameramateriaal direct door.</p></div>
+        <label>E-mailadres<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="naam@voorbeeld.nl" autoComplete="email" required/></label>
+        <button className="primary" disabled={sending}>{sending?'Bestanden verzenden...':'Verstuur beveiligde bestanden'}</button>
+      </form>}
+      {status==='VERZONDEN'&&<div className="infiltrant-sent"><span>OVERDRACHT VOLTOOID</span><h2>Controleer je inbox.</h2><p>De camerabeelden zijn verzonden. Verwijder dit spoor en keer terug naar het onderzoek.</p></div>}
+      {status&&status!=='VERZONDEN'&&<div className="feedback">{status}</div>}
+    </section>
+  </main>;
+}
+
 function App() {
   const [mode, setMode] = useState('login');
   const [team, setTeam] = useState(null);
@@ -229,7 +289,8 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
   };
   const update=(i,key,value)=>setPlayers(prev=>prev.map((p,idx)=>idx===i?{...p,[key]:value}:p));
   const used=new Set(players.map(p=>p.characterId).filter(Boolean));
-  const complete=players.length===count && players.every(p=>p.playerName.trim()&&p.characterId) && used.size===count;
+  const keesSelected=players.some(p=>p.characterId==='kees-zoek');
+  const complete=players.length===count && players.every(p=>p.playerName.trim()&&p.characterId) && used.size===count && keesSelected;
   const submit=async()=>{ if(!complete)return; await saveTeamSetup(players.map(p=>({playerName:p.playerName.trim(),characterId:p.characterId}))); };
 
   return <section className="panel cinematic team-setup-panel">
@@ -241,10 +302,11 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
       <span>AANTAL DEELNEMERS</span>
       <div className="player-count-buttons">{[2,3,4,5,6].map(n=><button type="button" key={n} className={count===n?'active':''} onClick={()=>changeCount(n)}>{n}</button>)}</div>
     </div>
+    <div className="kees-required"><span>VERPLICHT KARAKTER</span><strong>Kees Zoek moet altijd onderdeel zijn van het rechercheteam.</strong><small>In zijn fysieke dossier zit informatie die later in het onderzoek nodig is.</small></div>
 
     <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className={`character-card ${used.has(c.id)?'taken':''}`}>
       <img src={c.image} alt={`Portret van ${c.name}`}/>
-      <div><strong>{c.name}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
+      <div><strong>{c.name}{c.id==='kees-zoek'&&<em className="required-badge">VERPLICHT</em>}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
     </article>)}</div>
 
     <div className="assignment-board">
@@ -856,4 +918,4 @@ function AnswerForm({onSubmit,loading,placeholder,button,maxLength=12,inputMode=
   return <form className="answer-form" onSubmit={submit}><input value={value} onChange={e=>setValue(e.target.value)} placeholder={placeholder} maxLength={maxLength} inputMode={inputMode} autoComplete="off" required/><button className="primary" disabled={loading}>{loading?'Controleren...':button}</button></form>;
 }
 
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<Root/>);
