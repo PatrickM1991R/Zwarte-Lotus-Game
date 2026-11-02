@@ -76,7 +76,6 @@ function InfiltrantPage() {
         <label>E-mailadres<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="naam@voorbeeld.nl" autoComplete="email" required/></label>
         <button className="primary" disabled={sending}>{sending?'Bestanden verzenden...':'Verstuur beveiligde bestanden'}</button>
       </form>}
-      {status==='VERZONDEN'&&<div className="infiltrant-sent"><span>OVERDRACHT VOLTOOID</span><h2>Controleer je inbox.</h2><p>De camerabeelden zijn verzonden. Verwijder dit spoor en keer terug naar het onderzoek.</p></div>}
       {status&&status!=='VERZONDEN'&&<div className="feedback">{status}</div>}
     </section>
   </main>;
@@ -267,62 +266,56 @@ function GameCountdown({timerStartedAt}) {
     const id=setInterval(()=>setNow(Date.now()),1000);
     return()=>clearInterval(id);
   },[timerStartedAt]);
-  if(!timerStartedAt) return <div className="game-countdown waiting"><span>TIJD</span><strong>90:00</strong><small>start na briefing</small></div>;
-  const elapsed=Math.floor((now-Number(timerStartedAt))/1000);
-  const remaining=Math.max(0,5400-elapsed);
-  const min=Math.floor(remaining/60);
-  const sec=remaining%60;
-  return <div className={`game-countdown ${remaining<=900?'urgent':''} ${remaining===0?'expired':''}`}><span>{remaining===0?'TIJD VERSTREKEN':'TIJD OVER'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>90 minuten</small></div>;
+  if(!timerStartedAt) return <div className="game-countdown waiting"><span>SPEELTIJD</span><strong>00:00</strong><small>max. 90:00 · start na briefing</small></div>;
+  const elapsed=Math.max(0,Math.floor((now-Number(timerStartedAt))/1000));
+  const shown=Math.min(5400,elapsed);
+  const min=Math.floor(shown/60);
+  const sec=shown%60;
+  const urgent=elapsed>=4500 && elapsed<5400;
+  const expired=elapsed>=5400;
+  return <div className={`game-countdown ${urgent?'urgent':''} ${expired?'expired':''}`}><span>{expired?'MAXIMALE TIJD':'SPEELTIJD'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>maximaal 90:00</small></div>;
 }
 
 
 function TeamSetup({team,loading,feedback,saveTeamSetup}) {
   const [count,setCount]=useState(2);
-  const [players,setPlayers]=useState([
-    {playerName:'',characterId:''},{playerName:'',characterId:''}
-  ]);
+  const [players,setPlayers]=useState([{playerName:''},{playerName:''}]);
 
   const changeCount=(n)=>{
     const next=Math.max(2,Math.min(6,Number(n)||2));
     setCount(next);
-    setPlayers(prev=>Array.from({length:next},(_,i)=>prev[i]||{playerName:'',characterId:''}));
+    setPlayers(prev=>Array.from({length:next},(_,i)=>prev[i]||{playerName:''}));
   };
-  const update=(i,key,value)=>setPlayers(prev=>prev.map((p,idx)=>idx===i?{...p,[key]:value}:p));
-  const used=new Set(players.map(p=>p.characterId).filter(Boolean));
-  const keesSelected=players.some(p=>p.characterId==='kees-zoek');
-  const complete=players.length===count && players.every(p=>p.playerName.trim()&&p.characterId) && used.size===count && keesSelected;
-  const submit=async()=>{ if(!complete)return; await saveTeamSetup(players.map(p=>({playerName:p.playerName.trim(),characterId:p.characterId}))); };
+  const update=(i,value)=>setPlayers(prev=>prev.map((p,idx)=>idx===i?{playerName:value}:p));
+  const complete=players.length===count && players.every(p=>p.playerName.trim()) && new Set(players.map(p=>p.playerName.trim().toLowerCase())).size===count;
+  const submit=async()=>{ if(!complete)return; await saveTeamSetup(players.map(p=>({playerName:p.playerName.trim()}))); };
 
   return <section className="panel cinematic team-setup-panel">
     <div className="section-label">TEAMOPSTELLING · VERTROUWELIJK</div>
-    <h2>Stel jullie rechercheteam samen.</h2>
-    <p>Iedere deelnemer krijgt een vaste identiteit en het bijbehorende fysieke dossierboek. Kies eerst met hoeveel rechercheurs jullie spelen en koppel daarna iedere speler aan één karakter.</p>
+    <h2>Wie zitten er in jullie rechercheteam?</h2>
+    <p>Vul alleen de namen van de deelnemers in. Het spelsysteem bepaalt daarna willekeurig welke detective iedere deelnemer wordt.</p>
 
     <div className="player-count-block">
       <span>AANTAL DEELNEMERS</span>
       <div className="player-count-buttons">{[2,3,4,5,6].map(n=><button type="button" key={n} className={count===n?'active':''} onClick={()=>changeCount(n)}>{n}</button>)}</div>
     </div>
-    <div className="kees-required"><span>VERPLICHT KARAKTER</span><strong>Kees Zoek moet altijd onderdeel zijn van het rechercheteam.</strong><small>In zijn fysieke dossier zit informatie die later in het onderzoek nodig is.</small></div>
 
-    <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className={`character-card ${used.has(c.id)?'taken':''}`}>
+    <div className="kees-required"><span>VASTE KERN</span><strong>Kees Zoek en Rob Berie doen altijd mee.</strong><small>Vanaf drie deelnemers vult het systeem het team willekeurig aan met Al Larm, Cold Case, Ben de Bajes en Ferry Fout.</small></div>
+
+    <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className="character-card">
       <img src={c.image} alt={`Portret van ${c.name}`}/>
-      <div><strong>{c.name}{c.id==='kees-zoek'&&<em className="required-badge">VERPLICHT</em>}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
+      <div><strong>{c.name}{['kees-zoek','rob-berie'].includes(c.id)&&<em className="required-badge">VASTE KERN</em>}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
     </article>)}</div>
 
-    <div className="assignment-board">
-      <div className="assignment-head"><span>TEAMREGISTRATIE</span><strong>Wie speelt wie?</strong></div>
-      {players.map((p,i)=><div className="assignment-row" key={i}>
-        <label>Naam deelnemer<input value={p.playerName} onChange={e=>update(i,'playerName',e.target.value)} placeholder={`Deelnemer ${i+1}`} /></label>
-        <label>Karakter<select value={p.characterId} onChange={e=>update(i,'characterId',e.target.value)}>
-          <option value="">Kies karakter</option>
-          {investigatorCharacters.map(c=><option key={c.id} value={c.id} disabled={used.has(c.id)&&p.characterId!==c.id}>{c.name} · {c.specialty}</option>)}
-        </select></label>
-        {p.characterId&&<div className="assignment-mini">{(()=>{const c=investigatorCharacters.find(x=>x.id===p.characterId);return c?<><img src={c.image} alt=""/><span><strong>{c.name}</strong><small>{c.specialty}</small></span></>:null})()}</div>}
+    <div className="assignment-board random-assignment-board">
+      <div className="assignment-head"><span>DEELNEMERS</span><strong>Vul jullie namen in</strong></div>
+      {players.map((p,i)=><div className="assignment-row name-only" key={i}>
+        <label>Deelnemer {i+1}<input value={p.playerName} onChange={e=>update(i,e.target.value)} placeholder={`Naam deelnemer ${i+1}`} /></label>
       </div>)}
     </div>
 
-    <div className="dossier-instruction"><span>FYSIEKE DOSSIERS</span><strong>De spelbegeleider geeft iedere deelnemer nu het dossierboek van zijn of haar gekozen karakter.</strong><small>Bewijsstukken worden per groepsgrootte zo verdeeld dat alle noodzakelijke informatie altijd in het actieve team aanwezig is.</small></div>
-    <button type="button" className="primary full team-confirm" disabled={loading||!complete} onClick={submit}>{loading?'Team registreren...':'Bevestig rechercheteam'}</button>
+    <div className="dossier-instruction"><span>WILLEKEURIGE TOEWIJZING</span><strong>Na bevestigen maakt het systeem de detectiveverdeling bekend.</strong><small>Daarna pakt iedere deelnemer het fysieke dossierboek van het toegewezen karakter.</small></div>
+    <button type="button" className="primary full team-confirm" disabled={loading||!complete} onClick={submit}>{loading?'Team samenstellen...':'Verdeel de karakters'}</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -369,7 +362,7 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
     if(briefingDone) return;
     setBriefingDone(true);
     setTimerLaunch(true);
-    setLocal('De timer loopt. Ga direct aan de slag.');
+    setLocal('De speeltijd loopt. Jullie hebben maximaal 90 minuten.');
     await startCountdown();
     setTimeout(()=>setTimerLaunch(false),4000);
   };
@@ -382,7 +375,7 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
   };
 
   return <section className="panel opening-case-panel">
-    {timerLaunch&&<div className="timer-launch-overlay" role="status" aria-live="assertive"><div className="timer-launch-inner"><span>DE TIJD LOOPT</span><strong>90:00</strong><small>Jullie hebben anderhalf uur.</small></div></div>}
+    {timerLaunch&&<div className="timer-launch-overlay" role="status" aria-live="assertive"><div className="timer-launch-inner"><span>DE SPEELTIJD START</span><strong>00:00</strong><small>Maximale speeltijd: 90 minuten.</small></div></div>}
 
     <div className="opening-briefing">
       <div className="inspector-visual"><img src="/assets/inspector-kist.jpg" alt="Boze inspecteur in een noir recherchekamer"/><div className="inspector-badge">HOOFDINSPECTEUR · MAISON BEAUMONT</div></div>

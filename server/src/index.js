@@ -141,12 +141,28 @@ app.post('/api/teams/:id/team-setup', (req, res) => {
   if (team.currentPhase !== 'START') return res.status(409).json({ error: 'De teamopstelling kan alleen vóór de briefing worden gewijzigd.' });
   const participants = Array.isArray(req.body.participants) ? req.body.participants : [];
   if (participants.length < 2 || participants.length > 6) return res.status(422).json({ error:'Kies tussen 2 en 6 deelnemers.' });
-  const clean = participants.map(p=>({ playerName:String(p.playerName||'').trim(), characterId:String(p.characterId||'').trim().toLowerCase() }));
-  if (clean.some(p=>!p.playerName || !characterDefinitions[p.characterId])) return res.status(422).json({ error:'Vul voor iedere deelnemer een naam en geldig karakter in.' });
-  if (new Set(clean.map(p=>p.characterId)).size !== clean.length) return res.status(422).json({ error:'Ieder karakter kan maar door één deelnemer worden gespeeld.' });
-  if (!clean.some(p=>p.characterId==='kees-zoek')) return res.status(422).json({ error:'Kees Zoek moet altijd onderdeel zijn van het rechercheteam.' });
-  team.participants = clean.map(p=>({...p, characterName:characterDefinitions[p.characterId].name, specialty:characterDefinitions[p.characterId].specialty}));
-  team.dossierPlan = buildDossierPlan(clean);
+  const names = participants.map(p=>String(p.playerName||'').trim());
+  if (names.some(name=>!name)) return res.status(422).json({ error:'Vul voor iedere deelnemer een naam in.' });
+  if (new Set(names.map(name=>name.toLowerCase())).size !== names.length) return res.status(422).json({ error:'Gebruik voor iedere deelnemer een unieke naam.' });
+
+  const shuffle = (items) => {
+    const copy=[...items];
+    for(let i=copy.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [copy[i],copy[j]]=[copy[j],copy[i]];
+    }
+    return copy;
+  };
+
+  const fixedCharacters=['kees-zoek','rob-berie'];
+  const optionalCharacters=shuffle(['al-larm','cold-case','ben-de-bajes','ferry-fout']);
+  const activeCharacters=[...fixedCharacters,...optionalCharacters.slice(0,Math.max(0,names.length-2))];
+  const assignedCharacters=shuffle(activeCharacters);
+  const shuffledNames=shuffle(names);
+  const assigned = shuffledNames.map((playerName,index)=>({ playerName, characterId:assignedCharacters[index] }));
+
+  team.participants = assigned.map(p=>({...p, characterName:characterDefinitions[p.characterId].name, specialty:characterDefinitions[p.characterId].specialty}));
+  team.dossierPlan = buildDossierPlan(assigned);
   team.charactersConfigured = true;
   res.json({ team: enrich(team) });
 });
