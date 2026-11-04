@@ -88,6 +88,7 @@ function App() {
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dossierPenalty, setDossierPenalty] = useState(false);
 
   const loginTeam = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
@@ -163,7 +164,16 @@ function App() {
     try {
       const r = await fetch(`${API}/api/teams/${team.id}/answer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ phase, answer }) });
       const j = await r.json();
-      if (!r.ok) { if (j.team) setTeam(j.team); setFeedback(j.error || 'Dat antwoord klopt nog niet.'); return false; }
+      if (!r.ok) {
+        if (j.team) setTeam(j.team);
+        if (phase === 'DOSSIER' && r.status === 422 && j.team) {
+          setDossierPenalty(true);
+          setFeedback('');
+        } else {
+          setFeedback(j.error || 'Dat antwoord klopt nog niet.');
+        }
+        return false;
+      }
       setTeam(j.team); setFeedback(''); return true;
     } catch (err) { setFeedback('Verbinding met het spelsysteem mislukt.'); return false; }
     finally { setLoading(false); }
@@ -202,10 +212,19 @@ function App() {
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
         <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
-        <section className="hero compact"><div><span className="chip">{team.locationName}</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
+        <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
           : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>}
+        {dossierPenalty && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
+          <div className="penalty-screen">
+            <div className="penalty-exclamation" aria-hidden="true">!</div>
+            <div className="penalty-eyebrow">ONJUISTE RECONSTRUCTIE</div>
+            <h2>+1 MINUUT</h2>
+            <p>Strafminuut toegevoegd aan jullie speeltijd.</p>
+            <button className="primary" onClick={()=>setDossierPenalty(false)}>Terug naar het onderzoek</button>
+          </div>
+        </div>}
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
       </div>
     </main>;
@@ -217,7 +236,7 @@ function App() {
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell wide scene-inner">
         <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Terug</button><div className="eyebrow">SPELBEGELEIDER</div></section>
-        <section className="hero compact"><div><span className="chip">LOCATIE</span><h1>{dashboard.location.name}</h1><p>{dashboard.event.name} · {dashboard.teams.length} teams actief</p></div><button className="secondary" onClick={loadDashboard}>Vernieuwen</button></section>
+        <section className="hero compact"><div><span className="chip">SPELBEGELEIDING</span><h1>Locatiedashboard</h1><p>{dashboard.event.name} · {dashboard.teams.length} teams actief</p></div><button className="secondary" onClick={loadDashboard}>Vernieuwen</button></section>
         <section className="table-card"><table><thead><tr><th>Team</th><th>Fase</th><th>Tijd</th><th>Hints</th><th>Route</th><th>Status</th><th>Actie</th></tr></thead><tbody>{dashboard.teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase] || t.currentPhase.replaceAll('_',' ')}</td><td>{t.elapsedMinutes} min</td><td>{t.hintCount}</td><td>{t.chosenRoute||'—'}</td><td><span className={`status ${t.status}`}>{t.status}</span></td><td><button className="reset-team-button" disabled={loading} onClick={()=>resetTeam(t.id,t.teamName)}>Reset team</button></td></tr>)}</tbody></table></section>
       </div>
     </main>;

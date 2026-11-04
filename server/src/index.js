@@ -17,7 +17,7 @@ app.use(express.json());
 
 const now = Date.now();
 const db = {
-  location: { id: 1, name: 'Paviljoen Schoonhoven' },
+  location: { id: 1, name: 'Spellocatie' },
   event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
   teams: [
     { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null, charactersConfigured: false, participants: [], dossierPlan: null },

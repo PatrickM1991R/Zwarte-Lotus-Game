@@ -211,3 +211,16 @@
 .physical-suspect-entry select:focus{border-color:#e1bd61;box-shadow:0 0 0 3px rgba(225,189,97,.1)}
 .dossier-submit-footer.simple{display:flex;justify-content:flex-end;margin-top:14px}
 @media(max-width:720px){.physical-suspect-entry{grid-template-columns:44px 1fr}.physical-suspect-entry label:last-child{grid-column:1/-1}.physical-suspect-number{width:38px;height:38px}.physical-suspect-entry input,.physical-suspect-entry select{font-size:16px}.dossier-submit-footer.simple .primary{width:100%}}
+
+/* v3.3 - dossierfout: schermvullende straftijdmelding */
+.penalty-overlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:rgba(4,2,8,.96);backdrop-filter:blur(14px);animation:penalty-in .22s ease-out}
+.penalty-screen{width:min(100%,700px);text-align:center;display:grid;justify-items:center;gap:14px;padding:32px 24px 38px;border:1px solid rgba(224,89,75,.48);border-radius:24px;background:radial-gradient(circle at 50% 20%,rgba(147,36,34,.28),rgba(15,8,16,.95) 65%);box-shadow:0 0 85px rgba(182,45,44,.15),inset 0 0 0 1px rgba(255,255,255,.025)}
+.penalty-exclamation{display:grid;place-items:center;width:clamp(140px,32vw,240px);height:clamp(140px,32vw,240px);border:12px solid #e55b52;border-radius:50%;font-size:clamp(120px,28vw,220px);font-weight:1000;line-height:1;color:#ffded6;text-shadow:0 0 30px rgba(245,76,66,.65);box-shadow:0 0 32px rgba(223,71,60,.28);animation:penalty-pulse .8s ease-in-out 2}
+.penalty-eyebrow{font-size:12px;letter-spacing:.28em;font-weight:900;color:#ff988f}
+.penalty-screen h2{font:900 clamp(44px,9vw,84px)/1 Georgia,serif;letter-spacing:.02em;color:#ffd9ab;margin:0}
+.penalty-screen p{font-size:clamp(16px,2vw,21px);color:#f0d9d8;line-height:1.5;margin:0}
+.penalty-screen .penalty-subline{max-width:500px;color:#b6a3ad;font-size:14px}
+.penalty-screen .primary{margin-top:14px;min-height:52px;padding-inline:28px}
+@keyframes penalty-in{from{opacity:0}to{opacity:1}}
+@keyframes penalty-pulse{50%{transform:scale(1.06);box-shadow:0 0 70px rgba(223,71,60,.5)}}
+@media(prefers-reduced-motion:reduce){.penalty-overlay,.penalty-exclamation{animation:none}}
