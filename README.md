@@ -68,3 +68,15 @@ Het afzenderdomein moet bij de mailprovider geverifieerd zijn.
 
 ## v3.2
 Fase 2 gebruikt alleen fysieke dossiers. Online worden geen verdachteportretten of verdachtekaarten getoond. Een fout antwoord voegt 60 seconden straftijd toe aan de oplopende speeltijd.
+
+
+## v3.5 – Koos Toms: inkomende e-mail als bron in fase 3
+
+- Het herkomstland is uit de online transporttabel verwijderd; alleen de mailbijlage bevat de herkomstregistraties.
+- Zet in één van de fysieke detective-dossiers de contactgegevens van Koos Toms (Douane).
+- Inkomend mailadres moet in Resend Receiving worden aangemaakt of gekozen; dit is **geen** fictief adres uit de code.
+- Koppel een Resend-webhook `email.received` aan `https://zwarte-lotus-api.onrender.com/api/webhooks/koos-toms`.
+- Render backend: `KOOS_INBOUND_EMAIL` = exacte inkomende adres, `RESEND_WEBHOOK_SECRET` = ondertekeningsgeheim van de webhook, `KOOS_FROM_EMAIL` = geverifieerde afzender (bv. `Koos Toms <koos@spel.jouwdomein.nl>`); bestaande `RESEND_API_KEY` blijft nodig.
+- Elke e-mail **van een geldig afzenderadres** aan Koos krijgt dezelfde geautomatiseerde tekst en de PDF `Transportregister-herkomst-Koos-Toms.pdf` als bijlage. Onderwerp/inhoud worden niet gecontroleerd.
+- Beveiliging: webhook-handtekening gevalideerd; alleen exact Koos-adres triggert antwoord; zelfmail-loop wordt geblokkeerd. In-memory event-deduplicatie is geschikt voor de demo, gebruik duurzame opslag/queue voor productie bij serverherstarts.
+- **Let op:** e-mailontvangst werkt pas wanneer Resend Receiving, afzenderverificatie en de genoemde Render-variabelen zijn ingesteld. Een bestaande API key op zichzelf is onvoldoende.

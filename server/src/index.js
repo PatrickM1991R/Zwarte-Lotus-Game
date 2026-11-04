@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
@@ -11,8 +12,69 @@ const __dirname = path.dirname(__filename);
 const INFILTRANT_ACCESS_CODE = process.env.INFILTRANT_ACCESS_CODE || 'KZ-731';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const INFILTRANT_FROM_EMAIL = process.env.INFILTRANT_FROM_EMAIL || 'De Zwarte Lotus <onboarding@resend.dev>';
+const KOOS_INBOUND_EMAIL = (process.env.KOOS_INBOUND_EMAIL || '').trim().toLowerCase();
+const KOOS_FROM_EMAIL = process.env.KOOS_FROM_EMAIL || INFILTRANT_FROM_EMAIL;
+const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
+const processedKoosMail = new Set();
 const app = express();
 app.use(cors());
+// Beveiligde inkomende e-mail: Koos Toms (ongeacht onderwerp of berichttekst).
+// De webhook staat vóór express.json(): de ruwe bytes zijn nodig voor de Svix-handtekening.
+function verifyResendWebhook(raw, req) {
+  const id = req.get('svix-id') || '';
+  const timestamp = req.get('svix-timestamp') || '';
+  const signatures = req.get('svix-signature') || '';
+  if (!RESEND_WEBHOOK_SECRET || !id || !/^\d+$/.test(timestamp) || !signatures) return false;
+  if (Math.abs(Math.floor(Date.now()/1000)-Number(timestamp)) > 300) return false;
+  const secret = RESEND_WEBHOOK_SECRET.replace(/^whsec_/, '');
+  let key;
+  try { key = Buffer.from(secret, 'base64'); } catch { return false; }
+  const expected = createHmac('sha256', key).update(`${id}.${timestamp}.${raw}`).digest();
+  return signatures.split(/\s+/).some(part => {
+    const match = part.match(/^v1,(.+)$/);
+    if (!match) return false;
+    try {const actual = Buffer.from(match[1], 'base64');return actual.length===expected.length && timingSafeEqual(actual,expected);}catch{return false;}
+  });
+}
+
+app.post('/api/webhooks/koos-toms', express.text({type:'application/json',limit:'250kb'}), async (req,res)=>{
+  const raw = req.body;
+  if (typeof raw !== 'string' || !verifyResendWebhook(raw, req)) return res.status(401).json({error:'Ongeldige webhook-handtekening'});
+  let event;
+  try {event=JSON.parse(raw);} catch {return res.status(400).json({error:'Ongeldige JSON'});}
+  if (event.type !== 'email.received') return res.json({ok:true,ignored:true});
+  if (!KOOS_INBOUND_EMAIL || !RESEND_API_KEY) return res.status(503).json({error:'Koos Toms is nog niet geconfigureerd.'});
+  const recipients = Array.isArray(event.data?.to) ? event.data.to.map(v=>String(v).trim().toLowerCase()) : [];
+  if (!recipients.includes(KOOS_INBOUND_EMAIL)) return res.json({ok:true,ignored:true});
+  const emailId = String(event.data?.email_id||'');
+  const fromRaw = String(event.data?.from||'');
+  const from = (fromRaw.match(/<([^<>]+)>/)?.[1] || fromRaw).trim().toLowerCase();
+  if (!emailId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)) return res.json({ok:true,ignored:true});
+  // Voorkom een mail-loop en dubbele replies na eventuele webhook-herlevering.
+  const outgoingAddress = (KOOS_FROM_EMAIL.match(/<([^<>]+)>/)?.[1] || KOOS_FROM_EMAIL).trim().toLowerCase();
+  if (from===outgoingAddress || from===KOOS_INBOUND_EMAIL || processedKoosMail.has(emailId)) return res.json({ok:true,ignored:true});
+  try {
+    const attachmentPath=path.resolve(__dirname,'../assets/transportregister-herkomst-koos-toms.pdf');
+    const content=fs.readFileSync(attachmentPath).toString('base64');
+    const result=await fetch('https://api.resend.com/emails',{
+      method:'POST',
+      headers:{Authorization:`Bearer ${RESEND_API_KEY}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        from:KOOS_FROM_EMAIL,
+        to:[from],
+        subject:'RE: Vertrouwelijk – transportregistratie',
+        text:'Ik ben Koos Toms van de Douane. Zoals gevraagd stuur ik hierbij een export uit het transportregister. De herkomstlanden staan in de bijlage. Ik heb niet lang toegang tot dit systeem, dus gebruik deze gegevens zorgvuldig.\n\nKoos Toms\nContaineradministratie',
+        attachments:[{filename:'Transportregister-herkomst-Koos-Toms.pdf',content}]
+      })
+    });
+    const data=await result.json().catch(()=>({}));
+    if (!result.ok) {console.error('Koos mail delivery:',result.status,data.message||'onbekend');return res.status(502).json({error:'Koos kon de mail niet versturen'});}
+    processedKoosMail.add(emailId);
+    if(processedKoosMail.size>2000)processedKoosMail.clear();
+    res.json({ok:true});
+  }catch(error){console.error('Koos mail error',error);res.status(500).json({error:'Verzending mislukt'});}
+});
+
 app.use(express.json());
 
 const now = Date.now();

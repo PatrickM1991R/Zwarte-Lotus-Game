@@ -503,17 +503,17 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
 }
 
 const containerRows = [
-  {container:'MBX-1120',dock:'11',arrival:'19:40',origin:'Frankrijk',status:'Vrijgegeven'},
-  {container:'MBX-2408',dock:'24',arrival:'20:08',origin:'Italië',status:'Vrijgegeven'},
-  {container:'MBX-3314',dock:'33',arrival:'20:14',origin:'België',status:'Vertraagd'},
-  {container:'MBX-4717',dock:'17',arrival:'20:15',origin:'Zwitserland',status:'Handmatige controle'},
-  {container:'MBX-8617',dock:'17',arrival:'19:55',origin:'België',status:'Vrijgegeven'},
-  {container:'MBX-7317',dock:'17',arrival:'20:15',origin:'Frankrijk',status:'Wacht op controle'},
-  {container:'MBX-9017',dock:'17',arrival:'20:18',origin:'Duitsland',status:'Gesloten'},
-  {container:'MBX-2517',dock:'17',arrival:'20:15',origin:'Italië',status:'Vrijgegeven'},
-  {container:'MBX-7303',dock:'07',arrival:'20:15',origin:'Zwitserland',status:'Technische controle'},
-  {container:'MBX-1906',dock:'19',arrival:'20:06',origin:'Oostenrijk',status:'Vrijgegeven'},
-  {container:'MBX-4417',dock:'44',arrival:'20:17',origin:'Spanje',status:'Vertraagd'}
+  {container:'MBX-1120',dock:'11',arrival:'19:40',status:'Vrijgegeven'},
+  {container:'MBX-2408',dock:'24',arrival:'20:08',status:'Vrijgegeven'},
+  {container:'MBX-3314',dock:'33',arrival:'20:14',status:'Vertraagd'},
+  {container:'MBX-4717',dock:'17',arrival:'20:15',status:'Handmatige controle'},
+  {container:'MBX-8617',dock:'17',arrival:'19:55',status:'Vrijgegeven'},
+  {container:'MBX-7317',dock:'17',arrival:'20:15',status:'Wacht op controle'},
+  {container:'MBX-9017',dock:'17',arrival:'20:18',status:'Gesloten'},
+  {container:'MBX-2517',dock:'17',arrival:'20:15',status:'Vrijgegeven'},
+  {container:'MBX-7303',dock:'07',arrival:'20:15',status:'Technische controle'},
+  {container:'MBX-1906',dock:'19',arrival:'20:06',status:'Vrijgegeven'},
+  {container:'MBX-4417',dock:'44',arrival:'20:17',status:'Vertraagd'}
 ];
 
 function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
@@ -528,13 +528,13 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   const normal=(v)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
   const checkDock=(e)=>{e.preventDefault(); if(normal(dock)==='17'){setDockOk(true);setLocalFeedback('Dock bevestigd. De vrachtlijst is versmald.');}else{setDockOk(false);setArrivalOk(false);setOriginOk(false);setLocalFeedback('Dat dock past niet bij de oorspronkelijke route. Controleer de fysieke routegegevens opnieuw.');}};
   const checkArrival=(e)=>{e.preventDefault(); const v=normal(arrival).replace(':',''); if(v==='2015'){setArrivalOk(true);setLocalFeedback('Aankomsttijd bevestigd. Er blijven nog drie mogelijke containers over.');}else{setArrivalOk(false);setOriginOk(false);setLocalFeedback('Die aankomsttijd klopt niet met de gereconstrueerde tijdlijn.');}};
-  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setOriginOk(true);setLocalFeedback('Herkomst bevestigd. Er blijft nog één container over.');}else{setOriginOk(false);setLocalFeedback('Dat land past niet bij de aantekeningen van Don Diamantini.');}};
+  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setOriginOk(true);setLocalFeedback('Herkomst bevestigd. Er blijft nog één container over.');}else{setOriginOk(false);setLocalFeedback('Dit herkomstgegeven is niet bevestigd. Raadpleeg de juiste bron.');}};
 
   const visibleRows=containerRows.filter(r=>{
     if(!dockOk) return true;
     if(!arrivalOk) return r.dock==='17';
     if(!originOk) return r.dock==='17'&&r.arrival==='20:15';
-    return r.dock==='17'&&r.arrival==='20:15'&&r.origin==='Zwitserland';
+    return r.container==='MBX-4717';
   });
 
   return <section className="panel container-puzzle transport-onepage">
@@ -542,7 +542,7 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
     <h2>Reconstrueer het oorspronkelijke transport.</h2>
     <p>Gebruik de fysieke bewijsstukken om de vrachtlijst te verkleinen. Elk correct filter haalt onmogelijke containers uit beeld. Pas wanneer alle drie de kenmerken bewezen zijn, blijft de oorspronkelijke container over.</p>
 
-    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Dock</th><th>Aankomst</th><th>Herkomst</th><th>Status</th></tr></thead><tbody>{visibleRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.dock}</td><td>{r.arrival}</td><td>{r.origin}</td><td>{r.status}</td></tr>)}</tbody></table></div>
+    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Dock</th><th>Aankomst</th><th>Status</th></tr></thead><tbody>{visibleRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.dock}</td><td>{r.arrival}</td><td>{r.status}</td></tr>)}</tbody></table></div>
     <div className="manifest-count">{visibleRows.length} {visibleRows.length===1?'container over':'containers zichtbaar'}</div>
 
     <div className="transport-filter-grid">
@@ -563,7 +563,7 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
       <form className={`transport-filter-card ${originOk?'solved':''} ${!arrivalOk?'locked':''}`} onSubmit={checkOrigin}>
         <span>HERKOMST</span>
         <strong>Uit welk land kwam de juiste zending?</strong>
-        <small>Gebruik de privé-aantekeningen van Don Diamantini.</small>
+        <small>Onderzoek welke herkomstgegevens nog ontbreken.</small>
         <div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="Land van herkomst" disabled={!arrivalOk} required/><button className="primary" disabled={!arrivalOk}>{originOk?'Bevestigd ✓':'Controleer'}</button></div>
       </form>
     </div>
@@ -576,7 +576,7 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
     </div>
 
     {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
-    <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: vergelijk de tijdlijn met de overgebleven aankomsttijden.':!originOk?'Hint: Don noteerde onder andere CH, GVA, horloges, banken en kluizen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: vergelijk de tijdlijn met de overgebleven aankomsttijden.':!originOk?'Hint: vergelijk de herkomstgegevens uit het externe transportregister met de overgebleven zendingen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
