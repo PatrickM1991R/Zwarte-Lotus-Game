@@ -5,7 +5,7 @@ import './styles.css';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
 const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
-const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
+const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
 
 const investigatorCharacters = [
@@ -19,7 +19,7 @@ const investigatorCharacters = [
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Open de kist', CAMERA: 'Open de kist', KIST_OPEN: 'Open de kist', DOSSIER: 'Dossier',
-  ORIGINELE_CONTAINER: 'Originele container', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
+  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
 
@@ -371,7 +371,8 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
 
   if (phase === 'DOSSIER') return <DossierPuzzle team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
-  if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle team={team} checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'ORIGINELE_CONTAINER_BEVESTIGEN') return <OriginalContainerConfirmation loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'ROTJE_KNOR') return <RotjeKnorPhase loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_ONTMASKERD') return <JohnnyIdentifyPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
@@ -535,13 +536,13 @@ const containerRows = [
   {container:'MBX-4417',dock:'44',arrival:'20:17',status:'Vertraagd'}
 ];
 
-function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
+function OriginalContainerPuzzle({team,loading,feedback,submitAnswer,requestHint,checkStep}) {
   const [dock,setDock]=useState('');
   const [arrival,setArrival]=useState('');
   const [origin,setOrigin]=useState('');
-  const [dockOk,setDockOk]=useState(false);
-  const [arrivalOk,setArrivalOk]=useState(false);
-  const [originOk,setOriginOk]=useState(false);
+  const [dockOk,setDockOk]=useState(!!team?.completedSteps?.ORIGINELE_CONTAINER?.dock);
+  const [arrivalOk,setArrivalOk]=useState(!!team?.completedSteps?.ORIGINELE_CONTAINER?.arrival);
+  const [originOk,setOriginOk]=useState(!!team?.completedSteps?.ORIGINELE_CONTAINER?.origin);
   const [localFeedback,setLocalFeedback]=useState('');
 
   const normal=(v)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -587,12 +588,12 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint,chec
       </form>
     </div>
 
-    <div className={`final-container transport-final ${!originOk?'locked':''}`}>
-      <span>EINDBEVESTIGING</span>
-      <h3>Welke container hoorde bij het oorspronkelijke plan?</h3>
-      <p>{originOk?'De drie kenmerken zijn bevestigd. Voer nu het containernummer in dat overblijft.':'Bevestig eerst dock, aankomsttijd en herkomst.'}</p>
-      <AnswerForm loading={loading||!originOk} placeholder="MBX-••••" maxLength={12} button="Bevestig transportplan" onSubmit={(v)=>originOk?submitAnswer('ORIGINELE_CONTAINER',v):Promise.resolve(false)} />
-    </div>
+    {originOk&&<div className="transport-next-screen">
+      <span>TRANSPORTONDERZOEK AFGEROND</span>
+      <h3>Jullie hebben de vrachtlijst teruggebracht tot één mogelijke zending.</h3>
+      <p>Ga verder om de eindconclusie apart vast te leggen.</p>
+      <button className="primary" type="button" disabled={loading} onClick={()=>submitAnswer('ORIGINELE_CONTAINER','verder')}>{loading?'Laden...':'Ga naar eindbevestiging'}</button>
+    </div>}
 
     {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
     <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: vergelijk de tijdlijn met de overgebleven aankomsttijden.':!originOk?'Hint: vergelijk de herkomstgegevens uit het externe transportregister met de overgebleven zendingen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
@@ -600,6 +601,20 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint,chec
   </section>;
 }
 
+
+function OriginalContainerConfirmation({loading,feedback,submitAnswer,requestHint}) {
+  return <section className="panel container-puzzle transport-confirmation">
+    <div className="section-label">FASE 3 · EINDBEVESTIGING</div>
+    <h2>Leg jullie conclusie vast.</h2>
+    <p>Het transportonderzoek is afgerond. Welk containernummer hoort volgens jullie bij het oorspronkelijke plan?</p>
+    <div className="transport-confirmation-card">
+      <span>DEFINITIEVE IDENTIFICATIE</span>
+      <AnswerForm loading={loading} placeholder="Containernummer" maxLength={16} button="Bevestig container" onSubmit={v=>submitAnswer('ORIGINELE_CONTAINER_BEVESTIGEN',v)}/>
+    </div>
+    <button className="hint-link" onClick={()=>requestHint('Hint: controleer de enige overgebleven regel uit het transportonderzoek.')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+  </section>;
+}
 
 function RotjeKnorPhase({loading,feedback,submitAnswer}) {
   const callHref = ROTJE_PHONE ? `tel:${ROTJE_PHONE.replace(/\s+/g,'')}` : null;

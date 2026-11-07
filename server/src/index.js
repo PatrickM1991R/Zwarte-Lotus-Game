@@ -128,7 +128,8 @@ const phaseAnswers = {
   ALARM: ['14', '20:14', '2014'],
   CAMERA: ['03', '3', 'camera 03', 'camera3'],
   KIST_OPEN: ['1403'],
-  ORIGINELE_CONTAINER: ['mbx-4717', 'mbx4717'],
+  ORIGINELE_CONTAINER: ['verder'],
+  ORIGINELE_CONTAINER_BEVESTIGEN: ['mbx-4717', 'mbx4717'],
   ROTJE_KNOR: ['beluisterd'],
   JOHNNY_ONTMASKERD: ['johnny', 'j.j.', 'jj', 'johnny jatwerk'],
   JOHNNY_ROUTE: ['locatie bereikt'],
@@ -141,7 +142,8 @@ const phaseNext = {
   CAMERA: 'KIST_OPEN',
   KIST_OPEN: 'DOSSIER',
   DOSSIER: 'ORIGINELE_CONTAINER',
-  ORIGINELE_CONTAINER: 'ROTJE_KNOR',
+  ORIGINELE_CONTAINER: 'ORIGINELE_CONTAINER_BEVESTIGEN',
+  ORIGINELE_CONTAINER_BEVESTIGEN: 'ROTJE_KNOR',
   ROTJE_KNOR: 'JOHNNY_ONTMASKERD',
   JOHNNY_ONTMASKERD: 'NIEUWE_CONTAINER',
   NIEUWE_CONTAINER: 'KEUZE',
@@ -181,6 +183,11 @@ app.post('/api/teams/:id/check-step', (req,res)=>{
   const value=String(req.body.value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
   const valid=localStepAnswers[phase][step].includes(value);
   if(!valid) return wrongGameAnswer(res,team);
+  if(phase==='ORIGINELE_CONTAINER') {
+    team.completedSteps ??= {};
+    team.completedSteps.ORIGINELE_CONTAINER ??= {};
+    team.completedSteps.ORIGINELE_CONTAINER[step]=true;
+  }
   return res.json({correct:true});
 });
 
@@ -293,6 +300,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
   const phase = String(req.body.phase || team.currentPhase || '').toUpperCase();
   if (phase !== team.currentPhase) return res.status(409).json({ error: 'Deze puzzel is niet actief voor dit team.' });
 
+  if (phase === 'ORIGINELE_CONTAINER') {
+    const steps=team.completedSteps?.ORIGINELE_CONTAINER||{};
+    if(!steps.dock || !steps.arrival || !steps.origin) return res.status(409).json({error:'Rond eerst het transportonderzoek af.'});
+  }
+
   if (phase === 'DOSSIER') {
     const raw = req.body.answer || {};
     const count = Number(raw.count || 0);
@@ -402,6 +414,7 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.charactersConfigured = false;
   team.participants = [];
   team.dossierPlan = null;
+  team.completedSteps = {};
   res.json({ team: enrich(team) });
 });
 

@@ -224,3 +224,13 @@
 @keyframes penalty-in{from{opacity:0}to{opacity:1}}
 @keyframes penalty-pulse{50%{transform:scale(1.06);box-shadow:0 0 70px rgba(223,71,60,.5)}}
 @media(prefers-reduced-motion:reduce){.penalty-overlay,.penalty-exclamation{animation:none}}
+
+/* v3.9 – losse eindbevestiging voor fase 3 */
+.transport-next-screen,.transport-confirmation-card{position:relative;display:grid;gap:12px;margin-top:22px;padding:23px;border:1px solid rgba(208,169,71,.38);border-radius:16px;background:rgba(208,169,71,.055)}
+.transport-next-screen>span,.transport-confirmation-card>span{font-size:10px;letter-spacing:.16em;font-weight:900;color:#e3bd64}
+.transport-next-screen h3{margin:0;color:#f0dfad;font-family:Georgia,serif;font-size:23px}
+.transport-next-screen p{margin:0 0 5px}.transport-next-screen button{justify-self:start}
+.transport-confirmation-card .answer-form{margin:8px 0 0}
+.phase-originele_container_bevestigen .scene-backdrop{filter:saturate(.84) contrast(1.04) brightness(.60)}
+.phase-originele_container_bevestigen .scene-vignette{background:linear-gradient(180deg,rgba(4,6,9,.58),rgba(5,6,10,.60))}
+@media(max-width:680px){.transport-next-screen button{width:100%}.transport-next-screen,.transport-confirmation-card{padding:18px}}
