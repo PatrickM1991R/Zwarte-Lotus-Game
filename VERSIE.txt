@@ -1,3 +1,4 @@
-De Zwarte Lotus – v4.7
-Fase 4: alleen Nieuw spoor, geen ontvangstcode op hoofdwebsite.
-Rotje-code RK-7318 uitsluitend voor het aparte transportsysteem.
+De Zwarte Lotus v5.0
+Nieuwe container: één onderzoeksopdracht, geen tussenfilters.
+Route/registratie: Ongeplande overslag. Eindantwoord JJX-2034.
+Fout antwoord: +1 minuut op de server.

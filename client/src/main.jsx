@@ -692,7 +692,7 @@ function RotjeKnorPhase({loading,feedback,submitAnswer}) {
         <input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" placeholder="Jullie bevinding" />
       </label>
       <label>Wie heeft de route gewijzigd?
-        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Naam of initialen" />
+        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Volledige voor- en achternaam" />
       </label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig conclusie'}</button>
     </form>
@@ -715,37 +715,31 @@ function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
 }
 
 const johnnyRows = [
-  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere rit',status:'Gesloten'},
-  {container:'JJX-2034',series:'JJX',time:'20:34',route:'Stille route',status:'Actief'},
-  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wachtroute',status:'Vertraagd'},
-  {container:'JJX-2047',series:'JJX',time:'20:34',route:'Koerierswissel',status:'Controle'},
-  {container:'JJX-7334',series:'JJX',time:'20:34',route:'Opslagroute',status:'Wacht'},
-  {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retour',status:'Gesloten'},
-  {container:'RDX-2034',series:'RDX',time:'20:34',route:'Stille route',status:'Foutieve reeks'},
+  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere afvoer',status:'Afgerond'},
+  {container:'JJX-2034',series:'JJX',time:'20:34',route:'Ongeplande overslag',status:'Actief'},
+  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wacht op vrijgave',status:'Vertraagd'},
+  {container:'JJX-2047',series:'JJX',time:'20:34',route:'Chauffeurswissel',status:'Controle'},
+  {container:'JJX-7334',series:'JJX',time:'20:34',route:'Verplaatsing opslagvak',status:'Wacht'},
+  {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retourzending',status:'Afgerond'},
+  {container:'RDX-2034',series:'RDX',time:'20:34',route:'Reguliere overslag',status:'Controle'},
   {container:'MBX-2034',series:'MBX',time:'20:34',route:'Oude route',status:'Geannuleerd'}
 ];
 
-function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
-  const [step,setStep]=useState(1); const [series,setSeries]=useState(''); const [time,setTime]=useState(''); const [route,setRoute]=useState(''); const [culprit,setCulprit]=useState(''); const [container,setContainer]=useState(''); const [localFeedback,setLocalFeedback]=useState('');
-  const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkSeries=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','series',norm(series))){setStep(2);setLocalFeedback('JJX-reeks bevestigd. Zes containers blijven over.');}else setLocalFeedback('');};
-  const checkTime=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','time',norm(time))){setStep(3);setLocalFeedback('20:34 bevestigd. Drie containers blijven over.');}else setLocalFeedback('');};
-  const checkRoute=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','route',norm(route))){setStep(4);setLocalFeedback('Routekenmerk bevestigd. Er blijft één container over.');}else setLocalFeedback('');};
-  const rows=johnnyRows.filter(r=>step===1?true:step===2?r.series==='JJX':step===3?r.series==='JJX'&&r.time==='20:34':r.series==='JJX'&&r.time==='20:34'&&r.route==='Stille route');
-  const finalSubmit=e=>{e.preventDefault(); submitAnswer('NIEUWE_CONTAINER', {culprit,container});};
+function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
+  const [container,setContainer]=useState('');
+  const finalSubmit=e=>{e.preventDefault();submitAnswer('NIEUWE_CONTAINER',{container});};
   return <section className="panel container-puzzle">
-    <div className="section-label">FASE 6 · JOHNNY'S NIEUWE ROUTE</div>
-    <h2>Waar heeft J.J. De Zwarte Lotus naartoe verplaatst?</h2>
-    <p>MBX-4717 is een <strong>lege huls</strong>. Filter nu het gewijzigde transportregister. Gebruik het fysieke transportlog van de spelbegeleider en de informatie uit Rotje Knors bericht.</p>
-    <div className="filter-progress"><span className={step>=1?'active':''}>1 · Reeks</span><span className={step>=2?'active':''}>2 · Tijd</span><span className={step>=3?'active':''}>3 · Route</span><span className={step>=4?'active':''}>4 · Bevestiging</span></div>
-    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Routekenmerk</th><th>Status</th></tr></thead><tbody>{rows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
-    <div className="manifest-count">{rows.length} {rows.length===1?'container over':'containers zichtbaar'}</div>
-    {step===1&&<form className="filter-form" onSubmit={checkSeries}><div><span>FILTER 1</span><strong>Welke containergroep is na de wijziging gebruikt?</strong><small>Zoek de nieuwe reeks in het transportlog.</small></div><div className="filter-input"><input value={series} onChange={e=>setSeries(e.target.value)} placeholder="Bijv. ABC" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===2&&<form className="filter-form" onSubmit={checkTime}><div><span>FILTER 2</span><strong>Op welk tijdstip nam J.J. het plan over?</strong><small>Rotje Knor noemt het tijdstip expliciet.</small></div><div className="filter-input"><input value={time} onChange={e=>setTime(e.target.value)} placeholder="Bijv. 20:34" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===3&&<form className="filter-form" onSubmit={checkRoute}><div><span>FILTER 3</span><strong>Welk routekenmerk hoort bij Johnny?</strong><small>Het is de route die buiten de gewone controle blijft.</small></div><div className="filter-input"><input value={route} onChange={e=>setRoute(e.target.value)} placeholder="Routekenmerk" required/><button className="primary">Filter lijst</button></div></form>}
-    {step===4&&<form className="final-confirm" onSubmit={finalSubmit}><span>LAATSTE CONTROLE</span><h3>Bevestig dader én nieuwe container.</h3><div className="two-inputs"><label>Dader<input value={culprit} onChange={e=>setCulprit(e.target.value)} placeholder="Initialen of naam" required/></label><label>Container<input value={container} onChange={e=>setContainer(e.target.value)} placeholder="JJX-••••" required/></label></div><button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig nieuwe route'}</button></form>}
-    {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
-    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: de nieuwe reeks staat letterlijk in het transportlog.':step===2?'Hint: de wijziging vond plaats om 20:34.':step===3?'Hint: Johnny noemt dit de stille route.':'Hint: de dader is J.J. en er hoort nog maar één regel in de lijst te staan.')}>Hint aanvragen</button>
+    <div className="section-label">FASE 6 · GEWIJZIGDE ZENDING</div>
+    <h2>Waar is De Zwarte Lotus naartoe verplaatst?</h2>
+    <p>Onderzoek het containerregister en vergelijk de registraties met jullie bevindingen. Bepaal welke container bij de gewijzigde zending hoort.</p>
+    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Registratie</th><th>Status</th></tr></thead><tbody>{johnnyRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
+    <div className="manifest-count">8 containers in het register</div>
+    <form className="final-confirm" onSubmit={finalSubmit}>
+      <span>CONCLUSIE</span><h3>Welk containernummer hoort bij de gewijzigde zending?</h3>
+      <label>Containernummer<input value={container} onChange={e=>setContainer(e.target.value)} autoComplete="off" placeholder="Containernummer" required/></label>
+      <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig containernummer'}</button>
+    </form>
+    <button className="hint-link" onClick={()=>requestHint('Hint: vergelijk de mutatietijd en transportregistratie uit het afgeschermde transportsysteem met de volledige containerlijst.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -847,7 +841,7 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
 
       <article className={`riddle-card ${step>3?'solved':''} ${step<3?'locked':''}`}>
         <span>RAADSEL 3 · TWEE CIJFERS</span>
-        <h3>Waar eindigt de stille route?</h3>
+        <h3>Waar eindigt het transport?</h3>
         <p>Niet bij de pier. Niet bij de terminal. Zoek het nummer van de poort bij de kluis en schrijf het als twee cijfers.</p>
         {step===3&&<form onSubmit={e=>check(3,e)} className="riddle-form"><input value={c} onChange={e=>setC(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
         {step>3&&<strong className="riddle-answer">09</strong>}

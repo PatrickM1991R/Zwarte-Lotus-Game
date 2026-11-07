@@ -169,7 +169,6 @@ function wrongGameAnswer(res, team) {
 }
 const localStepAnswers = {
   ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
-  NIEUWE_CONTAINER:{series:['jjx'],time:['2034','20:34'],route:['stille route']},
   KLUIS:{riddle1:['20'],riddle2:['34'],riddle3:['09','9'],code:['203409']},
   EINDOPERATIE:{verification:['niet meer','nietmeer'],codeword:['nachtglas'],time:['23:10','2310']}
 };
@@ -203,7 +202,7 @@ app.post('/api/transport-system/access', (req,res)=>{
   return res.json({ok:true, record:{
     originalContainer:'MBX-4717', modifiedAt:'20:34', initials:'J.J.',
     modifiedBy:'J.J.', role:'Transport / chauffeur',
-    originalStatus:'Lege huls', action:'Oorspronkelijke zending omgeleid; vervangende route afgeschermd'
+    originalStatus:'Lege huls', action:'Ongeplande overslag geregistreerd; vervangende container afgeschermd'
   }});
 });
 
@@ -347,16 +346,14 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const raw = req.body.answer || {};
     const event = String(raw.event || '').trim().toLowerCase();
     const who = String(raw.who || '').trim().toLowerCase().replace(/\s+/g,' ');
-    const eventOk = ['lege huls','leeg','lege container','leeg gemaakt','omgeleid','route gewijzigd','verplaatst','andere route','container leeg'].some(fragment => event.includes(fragment));
-    const whoOk = ['johnny jatwerk','johnny','j.j.','jj'].includes(who);
+    const eventOk = event.length > 0; // Vrije conclusie: iedere niet-lege omschrijving wordt geaccepteerd.
+    const whoOk = who === 'johnny jatwerk';
     if(!eventOk || !whoOk) return wrongGameAnswer(res,team);
   } else if (phase === 'NIEUWE_CONTAINER') {
     const raw = req.body.answer || {};
-    const culprit = String(raw.culprit || '').trim().toLowerCase().replace(/\s+/g,' ');
     const container = String(raw.container || '').trim().toLowerCase().replace(/\s+/g,'');
-    const culpritOk = ['j.j.','jj','johnny','johnny jatwerk'].includes(culprit);
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
-    if (!culpritOk || !containerOk) return wrongGameAnswer(res,team);
+    if (!containerOk) return wrongGameAnswer(res,team);
   } else if (phase === 'EINDOPERATIE') {
     const raw = req.body.answer || {};
     const a1 = String(raw.answer1 || '').trim().toLowerCase().replace(/\s+/g,' ');
