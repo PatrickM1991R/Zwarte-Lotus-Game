@@ -127,3 +127,12 @@ De telefoonknop van Rotje Knor is vervangen door een geïntegreerd audiobericht.
 
 ## v4.6 – Transportregistratie
 Het beveiligde transportsysteem toont alleen de initialen **J.J.** bij 'Wijziging uitgevoerd door'. De volledige naam Johnny Jatwerk wordt hier niet meer weergegeven; spelers leiden de identiteit af uit fysieke verdachte-dossiers. Overige fases blijven intact.
+
+
+## v5.1 - Johnny's videobericht
+- Originele opname van de gebruiker: `client/public/assets/story/johnny-jatwerk-offer.mp3` (~53 sec).
+- Goedgekeurd Johnny-portret: `client/public/assets/story/johnny-jatwerk-offer.png`.
+- Tijdens audio: filmische beweging (CSS / licht-effect), geen lip-sync, geen tekst of keuze.
+- Na het audio-einde: gesproken tekst onder portret en 30 seconden om te kiezen.
+- Server start de keuzeperiode slechts eenmaal, bewaakt de deadline en laat herladen niet resetten.
+- Het serverdemogeheugen is niet permanent: bij een volledige backend-restart resetten demo-teams. Voor productie is een persistente database vereist.

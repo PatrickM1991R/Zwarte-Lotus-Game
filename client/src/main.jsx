@@ -275,6 +275,15 @@ function App() {
     } catch {}
   };
 
+  const startJohnnyOffer = async () => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/johnny-offer-start`, {method:'POST'});
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Kon de keuzeperiode niet starten.');
+      setTeam(j.team);
+    } catch(err) { setFeedback(err.message); } finally { setLoading(false); }
+  };
+
   const chooseRoute = async (route) => {
     setLoading(true); setFeedback('');
     try {
@@ -303,7 +312,7 @@ function App() {
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
-          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} checkStep={checkStep}/>}
+          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
         {penaltyShown && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
           <div className="penalty-screen">
             <div className="penalty-exclamation" aria-hidden="true">!</div>
@@ -425,7 +434,7 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
   </section>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, checkStep }) {
+function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, checkStep, startJohnnyOffer }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -445,7 +454,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
   if (phase === 'ROTJE_KNOR') return <RotjeKnorPhase loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_ONTMASKERD') return <JohnnyIdentifyPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
-  if (phase === 'KEUZE') return <JohnnyChoice loading={loading} feedback={feedback} chooseRoute={chooseRoute} />;
+  if (phase === 'KEUZE') return <JohnnyChoice team={team} loading={loading} feedback={feedback} chooseRoute={chooseRoute} startJohnnyOffer={startJohnnyOffer} />;
   if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'KLUIS') return <SafePuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} chooseFinal={chooseFinal} />;
@@ -744,19 +753,57 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   </section>;
 }
 
-function JohnnyChoice({loading,feedback,chooseRoute}) {
-  const [seconds,setSeconds]=useState(30); const [locked,setLocked]=useState(false);
-  useEffect(()=>{if(locked||seconds<=0)return; const id=setInterval(()=>setSeconds(s=>Math.max(0,s-1)),1000); return()=>clearInterval(id);},[locked,seconds]);
-  useEffect(()=>{if(seconds===0)setLocked(true);},[seconds]);
-  const choose=async route=>{setLocked(true); await chooseRoute(route);};
-  return <section className="panel cinematic johnny-choice">
-    <div className="section-label">VERSLEUTELD BERICHT · J.J.</div>
-    <h2>“Ik heb jullie door.”</h2>
-    <div className="johnny-message"><p>Jullie dachten mij te pakken. Leuk geprobeerd.</p><p>Of ik verplaats alles opnieuw — en dan zijn jullie mij én De Zwarte Lotus kwijt — of jullie laten de overdracht doorgaan.</p><p>De Zwarte Lotus is verkocht voor <strong>€ 37.000.000</strong>. Jullie krijgen <strong>30%</strong>: € 11.100.000.</p><p>Jullie volgende locatie: <strong>{JOHNNY_COORDS}</strong>.</p><p>Jullie hebben dertig seconden. Werken jullie met mij samen, of lichten jullie de mede-agenten in?</p></div>
-    <div className={`choice-timer ${seconds<=10?'urgent':''}`}><span>TIJD OVER</span><strong>{String(seconds).padStart(2,'0')}</strong></div>
-    <div className="choice-grid"><button className="choice-card criminal" disabled={loading||locked} onClick={()=>choose('Johnny')}><span>OPTIE 1</span><strong>Werk samen met Jatwerk</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button><button className="choice-card police" disabled={loading||locked} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Waarschuw de mede-agenten en bereid een inval voor.</small></button></div>
-    {seconds===0&&<div className="feedback">Tijd verstreken. Gebruik het begeleidersdashboard om deze testfase opnieuw te starten.</div>}
-    {feedback&&<div className="feedback">{feedback}</div>}
+function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
+  const startedAt = team.johnnyOfferStartedAt ? Number(team.johnnyOfferStartedAt) : null;
+  const [now,setNow] = useState(Date.now());
+  const [audioStarted,setAudioStarted] = useState(false);
+  const [audioError,setAudioError] = useState(false);
+  const [choiceSubmitted,setChoiceSubmitted] = useState(false);
+  useEffect(()=>{
+    if(!startedAt)return;
+    const id=setInterval(()=>setNow(Date.now()),200);
+    return ()=>clearInterval(id);
+  },[startedAt]);
+  const seconds=startedAt ? Math.max(0,Math.ceil((startedAt+30000-now)/1000)) : 30;
+  const expired=!!startedAt && seconds===0;
+  const choose = async(route)=>{
+    if(!startedAt || expired || choiceSubmitted || loading)return;
+    setChoiceSubmitted(true);
+    await chooseRoute(route);
+    setChoiceSubmitted(false);
+  };
+  return <section className="panel cinematic johnny-choice johnny-transmission">
+    <div className="section-label">VERSLEUTELDE VERBINDING · J.J.</div>
+    <h2>Johnny Jatwerk neemt contact op.</h2>
+    <div className={`johnny-film ${audioStarted&&!startedAt?'speaking':''}`}>
+      <img src="/assets/story/johnny-jatwerk-offer.png" alt="Johnny Jatwerk in een duistere videoverbinding" />
+      <div className="johnny-film-grain" aria-hidden="true" />
+      <div className="johnny-film-line" aria-hidden="true" />
+      <div className="johnny-film-badge"><span className="red-dot"/> LIVE VERBINDING · J.J.</div>
+    </div>
+    {!startedAt ? <div className="johnny-audio-briefing">
+      <strong>Vertrouwelijk audiobericht</strong>
+      <audio controls autoPlay preload="metadata" src="/assets/story/johnny-jatwerk-offer.mp3"
+        onPlay={()=>{setAudioStarted(true);setAudioError(false);}}
+        onPause={()=>setAudioStarted(false)}
+        onEnded={()=>{setAudioStarted(false);startJohnnyOffer();}}
+        onError={()=>{setAudioStarted(false);setAudioError(true);}} />
+      <p>Luister naar Johnny. De tekst en de keuze verschijnen pas na het volledige bericht.</p>
+      {audioError&&<p className="feedback">De opname kan niet worden afgespeeld. Controleer de verbinding.</p>}
+    </div> : <>
+      <div className="johnny-message johnny-offer-transcript">
+        <p>Oké, jullie dachten mij te pakken. Leuk geprobeerd.</p>
+        <p>Jullie hebben twee opties. Of ik verplaats alles opnieuw, en dan zijn jullie mij en De Zwarte Lotus kwijt. Of jullie laten de overdracht doorgaan.</p>
+        <p>De Zwarte Lotus is verkocht voor <strong>€ 37.000.000</strong>. Ik bied jullie <strong>30 procent</strong>: <strong>€ 11.100.000</strong>.</p>
+        <p>Jullie hebben dertig seconden. Werken jullie met mij samen, of lichten jullie nog wat andere sukkeltjes met blauwe petjes in? Dan zien jullie mij en De Zwarte Lotus nooit meer terug.</p>
+      </div>
+      <div className={`choice-timer ${seconds<=10?'urgent':''}`} role="timer" aria-label={`Nog ${seconds} seconden`}>
+        <span>TIJD OVER</span><strong>{String(seconds).padStart(2,'0')}</strong>
+      </div>
+      <div className="choice-grid"><button className="choice-card criminal" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Johnny')}><span>OPTIE 1</span><strong>Werk samen met Jatwerk</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button><button className="choice-card police" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Waarschuw de mede-agenten en bereid een inval voor.</small></button></div>
+      {expired&&<div className="feedback">De 30 seconden zijn voorbij. Vraag de spelbegeleider om deze testfase opnieuw te starten.</div>}
+    </>}
+    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
 

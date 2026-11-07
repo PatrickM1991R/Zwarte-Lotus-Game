@@ -264,3 +264,24 @@
 .transport-record-head{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;color:#cba747;font-size:10px;letter-spacing:.13em}.transport-record h2{margin:0;color:#f5dfaf;font-size:clamp(20px,3vw,28px)}
 .transport-system-table{width:100%;border-collapse:collapse}.transport-system-table th,.transport-system-table td{padding:13px 10px;border-bottom:1px solid rgba(208,169,71,.15);text-align:left;vertical-align:top}.transport-system-table th{width:48%;font-size:12px;color:#a7a0ac;font-weight:600}.transport-system-table td{font-size:14px;color:#ece5ed;font-weight:700}.transport-record-foot{color:#a8a1ad;line-height:1.6;font-size:12px}
 @media(max-width:600px){.transport-record{padding:16px}.transport-system-table th,.transport-system-table td{padding:11px 6px;font-size:12px}.transport-login .primary{width:100%}}
+
+/* v5.1 · Filmisch Johnny-bericht: geen ondertiteling tijdens audio */
+.johnny-transmission{max-width:100%;overflow:hidden}
+.johnny-film{position:relative;isolation:isolate;overflow:hidden;border-radius:17px;border:1px solid rgba(201,162,39,.45);background:#08060d;aspect-ratio:16/9;margin:20px 0 12px;box-shadow:0 26px 75px rgba(0,0,0,.45)}
+.johnny-film img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 30%;transform:scale(1.025);filter:brightness(.88) contrast(1.08) saturate(.87)}
+.johnny-film.speaking img{animation:johnny-live-breath 6s ease-in-out infinite alternate,johnny-live-signal 8.5s steps(1,end) infinite}
+.johnny-film-grain{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0px,transparent 2px,transparent 5px);opacity:.28;pointer-events:none}
+.johnny-film-line{position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,7,11,.6),transparent 33%,transparent 70%,rgba(7,7,11,.2));pointer-events:none}
+.johnny-film-badge{position:absolute;left:14px;top:14px;border:1px solid rgba(225,189,97,.34);background:rgba(6,7,10,.76);padding:8px 11px;border-radius:8px;color:#ebdcae;font-size:10px;font-weight:850;letter-spacing:.12em;display:flex;align-items:center;gap:9px}
+.johnny-film-badge .red-dot{width:7px;height:7px;background:#d64b45;border-radius:50%;box-shadow:0 0 9px #b83031}
+.johnny-film.speaking .red-dot{animation:johnny-record 1.2s infinite}
+.johnny-audio-briefing{display:grid;gap:12px;margin:0 0 16px;border:1px solid rgba(201,162,39,.22);border-radius:14px;padding:17px 19px;background:rgba(8,7,12,.75)}
+.johnny-audio-briefing strong{color:#f1daa1}
+.johnny-audio-briefing audio{width:100%;min-width:0}
+.johnny-audio-briefing p{margin:0;color:#bfb4c6;font-size:13px}
+.johnny-offer-transcript{margin-top:16px}
+@keyframes johnny-live-breath{from{transform:scale(1.025) translate(0,0)}to{transform:scale(1.075) translate(-1%,.5%)}}
+@keyframes johnny-live-signal{0%,97%,100%{filter:brightness(.88) contrast(1.08) saturate(.87)}98%{filter:brightness(.7) contrast(1.3) saturate(.5)}99%{filter:brightness(.99) contrast(1.1) saturate(.9)}}
+@keyframes johnny-record{50%{opacity:.28}}
+@media(max-width:600px){.johnny-film{aspect-ratio:4/5}.johnny-film img{object-position:center}.johnny-film-badge{left:10px;top:10px;font-size:9px}.johnny-offer-transcript{padding:16px}.johnny-choice .choice-grid{grid-template-columns:1fr}.johnny-choice .choice-card{min-height:110px}}
+@media(prefers-reduced-motion:reduce){.johnny-film.speaking img,.johnny-film.speaking .red-dot{animation:none}}

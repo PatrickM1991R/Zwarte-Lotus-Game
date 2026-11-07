@@ -86,10 +86,10 @@ const db = {
   location: { id: 1, name: 'Spellocatie' },
   event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
   teams: [
-    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null, charactersConfigured: false, participants: [], dossierPlan: null },
-    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
-    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
-    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null }
+    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null, charactersConfigured: false, participants: [], dossierPlan: null },
+    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
+    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
+    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null }
   ]
 };
 
@@ -388,10 +388,22 @@ app.post('/api/teams/:id/hint', (req, res) => {
   res.json({ team: enrich(team) });
 });
 
+// Johnny spreekt eerst zijn hele bericht uit. De server start de keuzeperiode
+// slechts eenmaal per team, wanneer het audiobandje is afgelopen.
+app.post('/api/teams/:id/johnny-offer-start', (req,res)=>{
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team)return res.status(404).json({error:'Team niet gevonden'});
+  if(team.currentPhase!=='KEUZE')return res.status(409).json({error:'Deze keuze is niet actief.'});
+  if(!team.johnnyOfferStartedAt)team.johnnyOfferStartedAt=Date.now();
+  res.json({team:enrich(team),durationSeconds:30});
+});
+
 app.post('/api/teams/:id/route', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
   if (team.currentPhase !== 'KEUZE') return res.status(409).json({ error: 'Deze keuze is nu niet actief.' });
+  if (!team.johnnyOfferStartedAt) return res.status(409).json({error:'Luister eerst het volledige bericht van Johnny af.'});
+  if (Date.now() >= team.johnnyOfferStartedAt + 30_000) return res.status(409).json({error:'De keuzeperiode van 30 seconden is voorbij.'});
   const route = String(req.body.route || '');
   if (!['Johnny','Politie'].includes(route)) return res.status(422).json({ error: 'Ongeldige routekeuze.' });
   team.chosenRoute = route;
@@ -427,6 +439,7 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.hintCount = 0;
   team.chosenRoute = null;
   team.finalChoice = null;
+  team.johnnyOfferStartedAt = null;
   team.status = 'bezig';
   team.startedAt = Date.now();
   team.timerStartedAt = null;
