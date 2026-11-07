@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const INFILTRANT_ACCESS_CODE = process.env.INFILTRANT_ACCESS_CODE || 'KZ-731';
 const ROTJE_ACCESS_CODE = process.env.ROTJE_ACCESS_CODE || 'CK-842';
-const ROTJE_RECEIPT_CODE = process.env.ROTJE_RECEIPT_CODE || 'RK-7318';
+const ROTJE_RECEIPT_CODE = 'RK-7318';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const INFILTRANT_FROM_EMAIL = process.env.INFILTRANT_FROM_EMAIL || 'De Zwarte Lotus <onboarding@resend.dev>';
 const KOOS_INBOUND_EMAIL = (process.env.KOOS_INBOUND_EMAIL || '').trim().toLowerCase();
@@ -198,8 +198,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Beperkt transportregister: inhoud pas vrijgeven nadat de code van Rotje is gevalideerd.
 app.post('/api/transport-system/access', (req,res)=>{
-  const code=String(req.body?.code||'').trim().toUpperCase();
-  if(code!==ROTJE_RECEIPT_CODE.toUpperCase()) return res.status(403).json({error:'Toegang geweigerd'});
+  const code=String(req.body?.code||'').trim().toUpperCase().replace(/[–—−]/g,'-').replace(/\s+/g,'');
+  if(code!==ROTJE_RECEIPT_CODE) return res.status(403).json({error:'Toegang geweigerd'});
   return res.json({ok:true, record:{
     originalContainer:'MBX-4717', modifiedAt:'20:34', initials:'J.J.',
     modifiedBy:'J.J.', role:'Transport / chauffeur',

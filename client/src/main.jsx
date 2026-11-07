@@ -117,9 +117,14 @@ function TransportSystemPage() {
     try {
       const r=await fetch(`${API}/api/transport-system/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error('Toegang geweigerd. Controleer de ontvangen toegangscode.');
+      if(!r.ok) {
+        if(r.status===403) throw new Error('Toegang geweigerd. Controleer de ontvangen toegangscode.');
+        throw new Error(`Het transportsysteem reageert niet goed (fout ${r.status}). Probeer opnieuw.`);
+      }
       setRecord(j.record);
-    }catch(err){setError(err.message);}finally{setLoading(false);}
+    }catch(err){
+      setError(err instanceof TypeError ? 'Verbinding met het transportsysteem mislukt. Controleer of de API op Render live is.' : err.message);
+    }finally{setLoading(false);}
   };
   return <main className="infiltrant-page transport-system-page"><section className="infiltrant-card transport-terminal">
     <div className="infiltrant-status"><span></span> HAVEN · TRANSPORTADMINISTRATIE</div>
@@ -683,8 +688,12 @@ function RotjeKnorPhase({loading,feedback,submitAnswer}) {
     <div className="section-label">FASE 4 · NIEUW SPOOR</div>
     <h2>Nieuw spoor</h2>
     <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',{event,who})}}>
-      <label>Wat is er met het oorspronkelijke transport gebeurd?<input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" placeholder="Jullie conclusie" /></label>
-      <label>Wie heeft de route gewijzigd?<input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Naam verdachte" /></label>
+      <label>Wat is er met het oorspronkelijke transport gebeurd?
+        <input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" placeholder="Jullie bevinding" />
+      </label>
+      <label>Wie heeft de route gewijzigd?
+        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Naam of initialen" />
+      </label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig conclusie'}</button>
     </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
