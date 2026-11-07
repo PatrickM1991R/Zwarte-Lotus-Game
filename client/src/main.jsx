@@ -88,7 +88,7 @@ function App() {
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
-  const [dossierPenalty, setDossierPenalty] = useState(false);
+  const [penaltyShown, setPenaltyShown] = useState(false);
 
   const loginTeam = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
@@ -153,7 +153,11 @@ function App() {
     try {
       const r = await fetch(`${API}/api/teams/${team.id}/opening`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(answers) });
       const j = await r.json();
-      if (!r.ok) { setFeedback(j.error || 'Nog niet alle antwoorden kloppen.'); return false; }
+      if (!r.ok) {
+        if (r.status===422 && j.penaltySeconds===60) {setTeam(j.team);setPenaltyShown(true);}
+        else setFeedback(j.error || 'Controle mislukt.');
+        return false;
+      }
       setTeam(j.team); setFeedback(''); return true;
     } catch (err) { setFeedback('Verbinding met het spelsysteem mislukt.'); return false; }
     finally { setLoading(false); }
@@ -166,8 +170,8 @@ function App() {
       const j = await r.json();
       if (!r.ok) {
         if (j.team) setTeam(j.team);
-        if (phase === 'DOSSIER' && r.status === 422 && j.team) {
-          setDossierPenalty(true);
+        if (r.status === 422 && j.penaltySeconds===60 && j.team) {
+          setPenaltyShown(true);
           setFeedback('');
         } else {
           setFeedback(j.error || 'Dat antwoord klopt nog niet.');
@@ -177,6 +181,21 @@ function App() {
       setTeam(j.team); setFeedback(''); return true;
     } catch (err) { setFeedback('Verbinding met het spelsysteem mislukt.'); return false; }
     finally { setLoading(false); }
+  };
+
+  const checkStep = async (phase,step,value) => {
+    try {
+      const r=await fetch(`${API}/api/teams/${team.id}/check-step`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phase,step,value})
+      });
+      const j=await r.json();
+      if(!r.ok){
+        if(r.status===422 && j.penaltySeconds===60){setTeam(j.team);setPenaltyShown(true);setFeedback('');}
+        else setFeedback(j.error||'Controle mislukt.');
+        return false;
+      }
+      return true;
+    } catch {setFeedback('Verbinding met het spelsysteem mislukt.');return false;}
   };
 
   const requestHint = async (text) => {
@@ -215,14 +234,14 @@ function App() {
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
-          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal}/>}
-        {dossierPenalty && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
+          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} checkStep={checkStep}/>}
+        {penaltyShown && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
           <div className="penalty-screen">
             <div className="penalty-exclamation" aria-hidden="true">!</div>
-            <div className="penalty-eyebrow">ONJUISTE RECONSTRUCTIE</div>
+            <div className="penalty-eyebrow">ONJUIST ANTWOORD</div>
             <h2>+1 MINUUT</h2>
             <p>Strafminuut toegevoegd aan jullie speeltijd.</p>
-            <button className="primary" onClick={()=>setDossierPenalty(false)}>Terug naar het onderzoek</button>
+            <button className="primary" onClick={()=>setPenaltyShown(false)}>Terug naar het onderzoek</button>
           </div>
         </div>}
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
@@ -287,7 +306,7 @@ function GameCountdown({timerStartedAt}) {
   },[timerStartedAt]);
   if(!timerStartedAt) return <div className="game-countdown waiting"><span>SPEELTIJD</span><strong>00:00</strong><small>max. 90:00 · start na briefing</small></div>;
   const elapsed=Math.max(0,Math.floor((now-Number(timerStartedAt))/1000));
-  const shown=Math.min(5400,elapsed);
+  const shown=elapsed;
   const min=Math.floor(shown/60);
   const sec=shown%60;
   const urgent=elapsed>=4500 && elapsed<5400;
@@ -337,7 +356,7 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
   </section>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal }) {
+function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, checkStep }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -352,16 +371,16 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
 
   if (phase === 'DOSSIER') return <DossierPuzzle team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
 
-  if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'ROTJE_KNOR') return <RotjeKnorPhase loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_ONTMASKERD') return <JohnnyIdentifyPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
-  if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'NIEUWE_CONTAINER') return <JohnnyContainerPuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'KEUZE') return <JohnnyChoice loading={loading} feedback={feedback} chooseRoute={chooseRoute} />;
   if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
-  if (phase === 'KLUIS') return <SafePuzzle loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'KLUIS') return <SafePuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} chooseFinal={chooseFinal} />;
   if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
-  if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation checkStep={checkStep} team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
@@ -516,7 +535,7 @@ const containerRows = [
   {container:'MBX-4417',dock:'44',arrival:'20:17',status:'Vertraagd'}
 ];
 
-function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
+function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
   const [dock,setDock]=useState('');
   const [arrival,setArrival]=useState('');
   const [origin,setOrigin]=useState('');
@@ -526,9 +545,9 @@ function OriginalContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   const [localFeedback,setLocalFeedback]=useState('');
 
   const normal=(v)=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkDock=(e)=>{e.preventDefault(); if(normal(dock)==='17'){setDockOk(true);setLocalFeedback('Dock bevestigd. De vrachtlijst is versmald.');}else{setDockOk(false);setArrivalOk(false);setOriginOk(false);setLocalFeedback('Dat dock past niet bij de oorspronkelijke route. Controleer de fysieke routegegevens opnieuw.');}};
-  const checkArrival=(e)=>{e.preventDefault(); const v=normal(arrival).replace(':',''); if(v==='2015'){setArrivalOk(true);setLocalFeedback('Aankomsttijd bevestigd. Er blijven nog drie mogelijke containers over.');}else{setArrivalOk(false);setOriginOk(false);setLocalFeedback('Die aankomsttijd klopt niet met de gereconstrueerde tijdlijn.');}};
-  const checkOrigin=(e)=>{e.preventDefault(); const v=normal(origin); if(['zwitserland','switzerland','ch'].includes(v)){setOriginOk(true);setLocalFeedback('Herkomst bevestigd. Er blijft nog één container over.');}else{setOriginOk(false);setLocalFeedback('Dit herkomstgegeven is niet bevestigd. Raadpleeg de juiste bron.');}};
+  const checkDock=async(e)=>{e.preventDefault();if(await checkStep('ORIGINELE_CONTAINER','dock',normal(dock))){setDockOk(true);setLocalFeedback('Dock bevestigd. De vrachtlijst is versmald.');}else{setDockOk(false);setArrivalOk(false);setOriginOk(false);setLocalFeedback('');}};
+  const checkArrival=async(e)=>{e.preventDefault();if(await checkStep('ORIGINELE_CONTAINER','arrival',normal(arrival))){setArrivalOk(true);setLocalFeedback('Aankomsttijd bevestigd. Er blijven nog drie mogelijke containers over.');}else{setArrivalOk(false);setOriginOk(false);setLocalFeedback('');}};
+  const checkOrigin=async(e)=>{e.preventDefault();if(await checkStep('ORIGINELE_CONTAINER','origin',normal(origin))){setOriginOk(true);setLocalFeedback('Herkomst bevestigd. Er blijft nog één container over.');}else{setOriginOk(false);setLocalFeedback('');}};
 
   const visibleRows=containerRows.filter(r=>{
     if(!dockOk) return true;
@@ -626,12 +645,12 @@ const johnnyRows = [
   {container:'MBX-2034',series:'MBX',time:'20:34',route:'Oude route',status:'Geannuleerd'}
 ];
 
-function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
+function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
   const [step,setStep]=useState(1); const [series,setSeries]=useState(''); const [time,setTime]=useState(''); const [route,setRoute]=useState(''); const [culprit,setCulprit]=useState(''); const [container,setContainer]=useState(''); const [localFeedback,setLocalFeedback]=useState('');
   const norm=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkSeries=e=>{e.preventDefault(); if(norm(series)==='jjx'){setStep(2);setLocalFeedback('JJX-reeks bevestigd. Zes containers blijven over.');}else setLocalFeedback('Die reeks is niet gekoppeld aan de laatste wijziging. Bekijk het transportlog opnieuw.');};
-  const checkTime=e=>{e.preventDefault(); if(norm(time).replace(':','')==='2034'){setStep(3);setLocalFeedback('20:34 bevestigd. Drie containers blijven over.');}else setLocalFeedback('Dat tijdstip klopt niet met Rotje Knor en het transportlog.');};
-  const checkRoute=e=>{e.preventDefault(); if(norm(route)==='stille route'){setStep(4);setLocalFeedback('Routekenmerk bevestigd. Er blijft één container over.');}else setLocalFeedback('Dat routekenmerk hoort niet bij Johnny’s nieuwe rit.');};
+  const checkSeries=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','series',norm(series))){setStep(2);setLocalFeedback('JJX-reeks bevestigd. Zes containers blijven over.');}else setLocalFeedback('');};
+  const checkTime=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','time',norm(time))){setStep(3);setLocalFeedback('20:34 bevestigd. Drie containers blijven over.');}else setLocalFeedback('');};
+  const checkRoute=async e=>{e.preventDefault();if(await checkStep('NIEUWE_CONTAINER','route',norm(route))){setStep(4);setLocalFeedback('Routekenmerk bevestigd. Er blijft één container over.');}else setLocalFeedback('');};
   const rows=johnnyRows.filter(r=>step===1?true:step===2?r.series==='JJX':step===3?r.series==='JJX'&&r.time==='20:34':r.series==='JJX'&&r.time==='20:34'&&r.route==='Stille route');
   const finalSubmit=e=>{e.preventDefault(); submitAnswer('NIEUWE_CONTAINER', {culprit,container});};
   return <section className="panel container-puzzle">
@@ -684,7 +703,7 @@ function JohnnyRouteIntro({loading,feedback,submitAnswer}) {
   </section>;
 }
 
-function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
+function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
   const [step,setStep]=useState(1);
   const [a,setA]=useState(''); const [b,setB]=useState(''); const [c,setC]=useState('');
   const [safeCode,setSafeCode]=useState('');
@@ -693,11 +712,10 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
   const [unlocking,setUnlocking]=useState(false);
   const digits=[step>1?'20':'••',step>2?'34':'••',step>3?'09':'••'];
 
-  const check=(which,e)=>{
+  const check=async(which,e)=>{
     e.preventDefault();
     const v=(which===1?a:which===2?b:c).trim().replace(/\D/g,'').padStart(2,'0');
-    const correct=which===1?'20':which===2?'34':'09';
-    if(v!==correct){setLocal('Dat deel van de code klopt nog niet. Gebruik alleen informatie die jullie al in het dossier hebben bewezen.');return;}
+    if(!(await checkStep('KLUIS',`riddle${which}`,v))){setLocal('');return;}
     setLocal(which===3?'Alle drie de codeparen zijn gevonden. Combineer ze nu van links naar rechts en open de kluis.':`Codepaar ${which} bevestigd.`);
     setStep(which+1);
   };
@@ -705,9 +723,9 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint}) {
   const unlockSafe = async (e) => {
     e.preventDefault();
     const normalized = safeCode.replace(/\D/g,'').slice(0,6);
-    if(normalized !== '203409') {
+    if(!(await checkStep('KLUIS','code',normalized))) {
       setSafeState('error');
-      setLocal('Code geweigerd. De kluis blijft vergrendeld. Controleer het moment en de poort nogmaals.');
+      setLocal('');
       return;
     }
     setSafeState('opening');
@@ -811,7 +829,7 @@ function LotusFound({loading,feedback,chooseFinal}) {
   </section>;
 }
 
-function JohnnyFinalOperation({team,loading,feedback,submitAnswer,requestHint}) {
+function JohnnyFinalOperation({team,loading,feedback,submitAnswer,requestHint,checkStep}) {
   const double=team.finalChoice==='DUBBELSPEL';
   const [step,setStep]=useState(1);
   const [verification,setVerification]=useState('');
@@ -820,21 +838,20 @@ function JohnnyFinalOperation({team,loading,feedback,submitAnswer,requestHint}) 
   const [local,setLocal]=useState('');
 
   const normalize=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkVerification=e=>{
+  const checkVerification=async e=>{
     e.preventDefault();
-    if(!['niet meer','nietmeer'].includes(normalize(verification))){setLocal('Victor verbreekt bijna het contact. Het antwoord op zijn verificatievraag klopt niet.');return;}
-    setStep(2); setLocal('Identiteit geaccepteerd. Victor blijft aan de lijn.');
+    if(!(await checkStep('EINDOPERATIE','verification',normalize(verification)))){setLocal('');return;}
+    setStep(2);setLocal('Identiteit geaccepteerd. Victor blijft aan de lijn.');
   };
-  const checkCodeword=e=>{
+  const checkCodeword=async e=>{
     e.preventDefault();
-    if(normalize(codeword)!=='nachtglas'){setLocal('Codewoord geweigerd. Controleer het koperdossier uit de kluis.');return;}
-    setStep(3); setLocal('Tweede codewoord bevestigd. De afspraak kan nu worden vastgezet.');
+    if(!(await checkStep('EINDOPERATIE','codeword',normalize(codeword)))){setLocal('');return;}
+    setStep(3);setLocal('Tweede codewoord bevestigd. De afspraak kan nu worden vastgezet.');
   };
-  const checkTime=e=>{
+  const checkTime=async e=>{
     e.preventDefault();
-    const v=normalize(time).replace('.',':');
-    if(!['23:10','2310'].includes(v)){setLocal('Victor accepteert dit tijdstip niet. Gebruik het afgesproken overdrachtsmoment uit het dossier.');return;}
-    setStep(4); setLocal('Afspraak bevestigd voor 23:10. De operatie staat klaar.');
+    if(!(await checkStep('EINDOPERATIE','time',normalize(time).replace('.',':')))){setLocal('');return;}
+    setStep(4);setLocal('Afspraak bevestigd voor 23:10. De operatie staat klaar.');
   };
   const launch=()=>submitAnswer('EINDOPERATIE',{answer1:'Niet meer',answer2:'Nachtglas',answer3:'23:10'});
 

@@ -152,6 +152,39 @@ const phaseNext = {
 
 const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: db.event.name });
 
+// Eén centrale strafregel voor alle onjuiste spelantwoorden.
+function addPenaltyMinute(team) {
+  const base = team.timerStartedAt == null ? Date.now() : Number(team.timerStartedAt);
+  team.timerStartedAt = base - 60_000;
+  team.penaltyMinutes = (team.penaltyMinutes || 0) + 1;
+  return team;
+}
+function wrongGameAnswer(res, team) {
+  addPenaltyMinute(team);
+  return res.status(422).json({ correct:false, penaltySeconds:60, team:enrich(team), error:'Onjuist antwoord.' });
+}
+const localStepAnswers = {
+  ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
+  NIEUWE_CONTAINER:{series:['jjx'],time:['2034','20:34'],route:['stille route']},
+  KLUIS:{riddle1:['20'],riddle2:['34'],riddle3:['09','9'],code:['203409']},
+  EINDOPERATIE:{verification:['niet meer','nietmeer'],codeword:['nachtglas'],time:['23:10','2310']}
+};
+
+// Ook lokale tussenstappen worden door de server gevalideerd en bestraft.
+app.post('/api/teams/:id/check-step', (req,res)=>{
+  const team = db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team) return res.status(404).json({error:'Team niet gevonden'});
+  const phase=String(req.body.phase||'').toUpperCase();
+  const step=String(req.body.step||'');
+  if(team.currentPhase!==phase || !Object.hasOwn(localStepAnswers[phase]||{},step))
+    return res.status(409).json({error:'Deze puzzelstap is niet actief.'});
+  const value=String(req.body.value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
+  const valid=localStepAnswers[phase][step].includes(value);
+  if(!valid) return wrongGameAnswer(res,team);
+  return res.json({correct:true});
+});
+
+
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.get('/api/infiltrant/verify', (req,res)=>{
@@ -249,7 +282,7 @@ app.post('/api/teams/:id/opening', (req, res) => {
   const camera = String(req.body.camera || '').trim().toLowerCase().replace(/\s+/g,' ');
   const alarmOk = ['14','20:14','2014'].includes(alarm);
   const cameraOk = ['03','3','camera 03','camera3'].includes(camera);
-  if (!alarmOk || !cameraOk) return res.status(422).json({ correct:false, error:'Nog niet alle conclusies kloppen. Controleer het bewijsmateriaal opnieuw.' });
+  if (!alarmOk || !cameraOk) return wrongGameAnswer(res,team);
   team.currentPhase = 'DOSSIER';
   res.json({ correct:true, team: enrich(team) });
 });
@@ -279,9 +312,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
       return expected.get(name)===skill;
     });
     if (!isCorrect) {
-      const base = team.timerStartedAt ? Number(team.timerStartedAt) : Date.now();
-      team.timerStartedAt = base - 60*1000;
-      return res.status(422).json({ correct:false, team:enrich(team), error:'De conclusie klopt niet. Er is 1 minuut straftijd toegevoegd.' });
+      return wrongGameAnswer(res,team);
     }
   } else if (phase === 'NIEUWE_CONTAINER') {
     const raw = req.body.answer || {};
@@ -289,7 +320,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const container = String(raw.container || '').trim().toLowerCase().replace(/\s+/g,'');
     const culpritOk = ['j.j.','jj','johnny','johnny jatwerk'].includes(culprit);
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
-    if (!culpritOk || !containerOk) return res.status(422).json({ correct:false, error:'De combinatie klopt nog niet. Bevestig zowel wie de wijziging uitvoerde als de nieuwe container.' });
+    if (!culpritOk || !containerOk) return wrongGameAnswer(res,team);
   } else if (phase === 'EINDOPERATIE') {
     const raw = req.body.answer || {};
     const a1 = String(raw.answer1 || '').trim().toLowerCase().replace(/\s+/g,' ');
@@ -298,11 +329,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const ok1 = ['niet meer','nietmeer'].includes(a1);
     const ok2 = a2 === 'nachtglas';
     const ok3 = ['23:10','2310'].includes(a3);
-    if (!ok1 || !ok2 || !ok3) return res.status(422).json({ correct:false, error:'De operatiegegevens kloppen nog niet. Controleer verificatie, tweede codewoord en tijdstip.' });
+    if (!ok1 || !ok2 || !ok3) return wrongGameAnswer(res,team);
   } else {
     const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
-    if (!accepted.includes(answer)) return res.status(422).json({ correct: false, error: 'Dat antwoord klopt nog niet.' });
+    if (!accepted.includes(answer)) return wrongGameAnswer(res,team);
   }
 
   team.currentPhase = phaseNext[phase] || team.currentPhase;
@@ -366,6 +397,7 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.status = 'bezig';
   team.startedAt = Date.now();
   team.timerStartedAt = null;
+  team.penaltyMinutes = 0;
   team.dossierLockedUntil = null;
   team.charactersConfigured = false;
   team.participants = [];

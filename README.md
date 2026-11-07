@@ -93,3 +93,7 @@ Fase 2 gebruikt alleen fysieke dossiers. Online worden geen verdachteportretten 
 - Koos Toms is expliciet de geheime bron van rechercheur Rob Berie.
 - Koos spreekt Rob persoonlijk aan in de automatische antwoordmail, ook wanneer die vanaf een willekeurig extern e-mailadres wordt verzonden.
 - Beide PDF-bijlagen blijven gelijk.
+
+
+## v3.8 – universele strafminuut
+Iedere onjuiste inzending (openingscontrole, verdachtenreconstructie, containernummers en lokale filters, kluisraadsels en eindoperatie) leidt tot een servergeregistreerde strafminuut. Een groot waarschuwingsscherm met `!` en `+1 MINUUT` wordt getoond. Voor lokale vragen is een nieuwe serverroute `/api/teams/:id/check-step` toegevoegd, zodat de straf niet kan worden omzeild door te verversen. De oplopende tijd toont eventuele overschrijding van 90 minuten; maximaal 90 minuten blijft als limiet vermeld. Niet-puzzelacties zoals navigeren, afspelen van audio en keuzes veroorzaken geen straf.
