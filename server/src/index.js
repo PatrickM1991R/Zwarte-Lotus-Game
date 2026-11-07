@@ -133,7 +133,6 @@ const phaseAnswers = {
   KIST_OPEN: ['1403'],
   ORIGINELE_CONTAINER: ['verder'],
   ORIGINELE_CONTAINER_BEVESTIGEN: ['mbx-4717', 'mbx4717'],
-  ROTJE_KNOR: [ROTJE_RECEIPT_CODE.toLowerCase()],
   JOHNNY_ONTMASKERD: ['johnny', 'j.j.', 'jj', 'johnny jatwerk'],
   JOHNNY_ROUTE: ['locatie bereikt'],
   KLUIS: ['203409']
@@ -147,7 +146,7 @@ const phaseNext = {
   DOSSIER: 'ORIGINELE_CONTAINER',
   ORIGINELE_CONTAINER: 'ORIGINELE_CONTAINER_BEVESTIGEN',
   ORIGINELE_CONTAINER_BEVESTIGEN: 'ROTJE_KNOR',
-  ROTJE_KNOR: 'JOHNNY_ONTMASKERD',
+  ROTJE_KNOR: 'NIEUWE_CONTAINER',
   JOHNNY_ONTMASKERD: 'NIEUWE_CONTAINER',
   NIEUWE_CONTAINER: 'KEUZE',
   JOHNNY_ROUTE: 'KLUIS',
@@ -196,6 +195,17 @@ app.post('/api/teams/:id/check-step', (req,res)=>{
 
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+// Beperkt transportregister: inhoud pas vrijgeven nadat de code van Rotje is gevalideerd.
+app.post('/api/transport-system/access', (req,res)=>{
+  const code=String(req.body?.code||'').trim().toUpperCase();
+  if(code!==ROTJE_RECEIPT_CODE.toUpperCase()) return res.status(403).json({error:'Toegang geweigerd'});
+  return res.json({ok:true, record:{
+    originalContainer:'MBX-4717', modifiedAt:'20:34', initials:'J.J.',
+    modifiedBy:'J.J.', role:'Transport / chauffeur',
+    originalStatus:'Lege huls', action:'Oorspronkelijke zending omgeleid; vervangende route afgeschermd'
+  }});
+});
 
 app.get('/api/rotje/verify', (req,res)=>{
   const code=String(req.query.code||'').trim();
@@ -333,6 +343,13 @@ app.post('/api/teams/:id/answer', (req, res) => {
     if (!isCorrect) {
       return wrongGameAnswer(res,team);
     }
+  } else if (phase === 'ROTJE_KNOR') {
+    const raw = req.body.answer || {};
+    const event = String(raw.event || '').trim().toLowerCase();
+    const who = String(raw.who || '').trim().toLowerCase().replace(/\s+/g,' ');
+    const eventOk = ['lege huls','leeg','lege container','leeg gemaakt','omgeleid','route gewijzigd','verplaatst','andere route','container leeg'].some(fragment => event.includes(fragment));
+    const whoOk = ['johnny jatwerk','johnny','j.j.','jj'].includes(who);
+    if(!eventOk || !whoOk) return wrongGameAnswer(res,team);
   } else if (phase === 'NIEUWE_CONTAINER') {
     const raw = req.body.answer || {};
     const culprit = String(raw.culprit || '').trim().toLowerCase().replace(/\s+/g,' ');

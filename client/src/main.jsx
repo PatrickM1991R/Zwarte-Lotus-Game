@@ -24,7 +24,7 @@ const phaseLabels = {
 
 function Root() {
   const hash = window.location.hash || '';
-  return hash.startsWith('#/infiltrant') ? <InfiltrantPage /> : hash.startsWith('#/rotje') ? <RotjeSecretPage /> : <App />;
+  return hash.startsWith('#/infiltrant') ? <InfiltrantPage /> : hash.startsWith('#/rotje') ? <RotjeSecretPage /> : hash.startsWith('#/transport-systeem') ? <TransportSystemPage /> : <App />;
 }
 
 function InfiltrantPage() {
@@ -103,7 +103,45 @@ function RotjeSecretPage() {
     <p className="infiltrant-copy">Luister de volledige opname af. Bespreek de informatie daarna met je team.</p>
     <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/rotje-knor.mp3" onEnded={()=>setCompleted(true)} />
     {!completed?<div className="infiltrant-locked"><span>VOLLEDIG AFSPELEN OM HET BERICHT TE BEVESTIGEN</span></div>:
-      <div className="rotje-proof"><span>ONTVANGSTBEVESTIGING</span><h2>Neem deze code mee naar het onderzoek</h2><strong>RK-7318</strong><p>Bewaar deze code. Voer hem in op de hoofdwebsite om het onderzoek te vervolgen.</p></div>}
+      <div className="rotje-proof"><span>VERTROUWELIJKE TOEGANGSCODE</span><h2>Toegang tot de transportadministratie</h2><strong>RK-7318</strong><p>Gebruik deze code in het aparte transportsysteem waarvan de inloggegevens in jullie fysieke dossier staan.</p></div>}
+  </section></main>;
+}
+
+function TransportSystemPage() {
+  const [code,setCode]=useState('');
+  const [record,setRecord]=useState(null);
+  const [error,setError]=useState('');
+  const [loading,setLoading]=useState(false);
+  const login=async(e)=>{
+    e.preventDefault();setError('');setLoading(true);
+    try {
+      const r=await fetch(`${API}/api/transport-system/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error('Toegang geweigerd. Controleer de ontvangen toegangscode.');
+      setRecord(j.record);
+    }catch(err){setError(err.message);}finally{setLoading(false);}
+  };
+  return <main className="infiltrant-page transport-system-page"><section className="infiltrant-card transport-terminal">
+    <div className="infiltrant-status"><span></span> HAVEN · TRANSPORTADMINISTRATIE</div>
+    <div className="section-label">AFGESCHERMD SYSTEEM</div>
+    <h1>Transport­systeem</h1>
+    {!record?<><p className="infiltrant-copy">Alleen toegankelijk met een geldige autorisatiecode.</p>
+      <form onSubmit={login} className="transport-login"><label>Autorisatiecode<input autoComplete="off" value={code} onChange={e=>setCode(e.target.value)} placeholder="Voer toegangscode in" required /></label>
+      <button className="primary" disabled={loading}>{loading?'Controleren...':'Inloggen'}</button></form>
+      {error&&<div className="feedback" role="alert">{error}</div>}
+    </>:<div className="transport-record">
+      <div className="transport-record-head"><span>INTERNE MUTATIE · TRANSPORT</span><strong>REGISTRATIE GEVONDEN</strong></div>
+      <h2>Laatste wijziging op zending</h2>
+      <table className="transport-system-table"><tbody>
+        <tr><th>Oorspronkelijke container</th><td>{record.originalContainer}</td></tr>
+        <tr><th>Wijzigingstijd</th><td>{record.modifiedAt}</td></tr>
+        <tr><th>Wijziging uitgevoerd door</th><td>{record.modifiedBy}</td></tr>
+        <tr><th>Functie</th><td>{record.role}</td></tr>
+        <tr><th>Nieuwe status oude container</th><td>{record.originalStatus}</td></tr>
+        <tr><th>Mutatie</th><td>{record.action}</td></tr>
+      </tbody></table>
+      <p className="transport-record-foot">Dit is een registratie uit het transportsysteem. Het vervangende containernummer is hier niet vrijgegeven.</p>
+    </div>}
   </section></main>;
 }
 
@@ -639,15 +677,15 @@ function OriginalContainerConfirmation({loading,feedback,submitAnswer,requestHin
 }
 
 function RotjeKnorPhase({loading,feedback,submitAnswer}) {
-  const [code,setCode] = useState('');
+  const [event,setEvent] = useState('');
+  const [who,setWho] = useState('');
   return <section className="panel cinematic informant-panel secret-followup">
     <div className="section-label">FASE 4 · NIEUW SPOOR</div>
-    <h2>Er ontbreekt nog informatie.</h2>
-    <p>Het oorspronkelijke transportplan is gevonden, maar het onderzoek is nog niet afgerond. Doorzoek jullie persoonlijke dossiers en volg het spoor dat daar is achtergelaten.</p>
-    <div className="mission-card"><span>VERTROUWELIJKE ONTVANGST</span><strong>Hebben jullie een bericht via een apart contactkanaal ontvangen? Voer de ontvangstcode hieronder in.</strong></div>
-    <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',code)}}>
-      <label>Ontvangstcode<input value={code} onChange={e=>setCode(e.target.value)} placeholder="Code uit het bericht" required autoComplete="off"/></label>
-      <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig ontvangst'}</button>
+    <h2>Nieuw spoor</h2>
+    <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',{event,who})}}>
+      <label>Wat is er met het oorspronkelijke transport gebeurd?<input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" placeholder="Jullie conclusie" /></label>
+      <label>Wie heeft de route gewijzigd?<input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Naam verdachte" /></label>
+      <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig conclusie'}</button>
     </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;

@@ -123,3 +123,7 @@ De telefoonknop van Rotje Knor is vervangen door een geïntegreerd audiobericht.
 - De server controleert de dossierlink via `GET /api/rotje/verify` en controleert de ontvangstcode op het gewone antwoordendpoint; foutieve codes krijgen de bestaande +1 minuut straf.
 - Optioneel voor Render backend Environment: `ROTJE_ACCESS_CODE=CK-842` en `ROTJE_RECEIPT_CODE=RK-7318`. Houd deze voorlopig gelijk aan de in de frontend getoonde ontvangstcode.
 - **Fysieke voorbereiding vereist:** print een contactstrook met de geheime URL/QR-code en stop deze in het dossier van Cold Case of anders Rob Berie. De website maakt fysieke boeken niet automatisch.
+
+
+## v4.6 – Transportregistratie
+Het beveiligde transportsysteem toont alleen de initialen **J.J.** bij 'Wijziging uitgevoerd door'. De volledige naam Johnny Jatwerk wordt hier niet meer weergegeven; spelers leiden de identiteit af uit fysieke verdachte-dossiers. Overige fases blijven intact.
