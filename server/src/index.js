@@ -56,6 +56,8 @@ app.post('/api/webhooks/koos-toms', express.text({type:'application/json',limit:
   try {
     const attachmentPath=path.resolve(__dirname,'../assets/transportregister-herkomst-koos-toms.pdf');
     const content=fs.readFileSync(attachmentPath).toString('base64');
+    const donNotesPath=path.resolve(__dirname,'../assets/aantekeningen-don-diamantini.pdf');
+    const donNotesContent=fs.readFileSync(donNotesPath).toString('base64');
     const result=await fetch('https://api.resend.com/emails',{
       method:'POST',
       headers:{Authorization:`Bearer ${RESEND_API_KEY}`,'Content-Type':'application/json'},
@@ -63,8 +65,8 @@ app.post('/api/webhooks/koos-toms', express.text({type:'application/json',limit:
         from:KOOS_FROM_EMAIL,
         to:[from],
         subject:'RE: Vertrouwelijk – transportregistratie',
-        text:'Ik ben Koos Toms van de Douane. Zoals gevraagd stuur ik hierbij een export uit het transportregister. De herkomstlanden staan in de bijlage. Ik heb niet lang toegang tot dit systeem, dus gebruik deze gegevens zorgvuldig.\n\nKoos Toms\nContaineradministratie',
-        attachments:[{filename:'Transportregister-herkomst-Koos-Toms.pdf',content}]
+        text:'Rob Berie,\n\nIk heb de transportregistraties voor je opgehaald. In de bijlage vind je de containerlijst met de geregistreerde herkomstlanden.\n\nTussen de containerpapieren vond ik ook nog een blad met aantekeningen van Don Diamantini. Geen idee waarom dat ertussen lag, maar ik stuur het je mee. Misschien kun jij er wat mee.\n\nIk kan niet te lang in dit systeem blijven. Hou dit tussen ons.\n\nKoos Toms\nDouane',
+        attachments:[{filename:'Transportregister-herkomst-Koos-Toms.pdf',content},{filename:'Aantekeningen-Don-Diamantini.pdf',content:donNotesContent}]
       })
     });
     const data=await result.json().catch(()=>({}));

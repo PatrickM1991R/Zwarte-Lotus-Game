@@ -80,3 +80,16 @@ Fase 2 gebruikt alleen fysieke dossiers. Online worden geen verdachteportretten 
 - Elke e-mail **van een geldig afzenderadres** aan Koos krijgt dezelfde geautomatiseerde tekst en de PDF `Transportregister-herkomst-Koos-Toms.pdf` als bijlage. Onderwerp/inhoud worden niet gecontroleerd.
 - Beveiliging: webhook-handtekening gevalideerd; alleen exact Koos-adres triggert antwoord; zelfmail-loop wordt geblokkeerd. In-memory event-deduplicatie is geschikt voor de demo, gebruik duurzame opslag/queue voor productie bij serverherstarts.
 - **Let op:** e-mailontvangst werkt pas wanneer Resend Receiving, afzenderverificatie en de genoemde Render-variabelen zijn ingesteld. Een bestaande API key op zichzelf is onvoldoende.
+
+## v3.6 – Koos Toms: tweede PDF-bijlage
+
+- Koos antwoordt op inkomende mails met **twee PDF-bijlagen**: de transportlijst inclusief herkomstlanden én de aangetroffen privé-aantekeningen van Don Diamantini.
+- De antwoordtekst vermeldt dat de aantekeningen tussen de containerpapieren zijn gevonden.
+- Het notitieblad bevat geen expliciete eindoplossing; spelers moeten zelf de aanwijzingen combineren met het transportregister.
+- Beide PDF's staan privé in `server/assets/` en worden niet op de openbare website geplaatst.
+- Vereist nog steeds een correct geverifieerd verzenddomein in Resend.
+
+## v3.7 – Persoonlijk antwoord aan Rob Berie
+- Koos Toms is expliciet de geheime bron van rechercheur Rob Berie.
+- Koos spreekt Rob persoonlijk aan in de automatische antwoordmail, ook wanneer die vanaf een willekeurig extern e-mailadres wordt verzonden.
+- Beide PDF-bijlagen blijven gelijk.
