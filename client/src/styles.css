@@ -234,3 +234,11 @@
 .phase-originele_container_bevestigen .scene-backdrop{filter:saturate(.84) contrast(1.04) brightness(.60)}
 .phase-originele_container_bevestigen .scene-vignette{background:linear-gradient(180deg,rgba(4,6,9,.58),rgba(5,6,10,.60))}
 @media(max-width:680px){.transport-next-screen button{width:100%}.transport-next-screen,.transport-confirmation-card{padding:18px}}
+
+/* v4.1 · digitale toegang en oproep van de inspecteur */
+.opening-puzzles .evidence-card{max-width:680px;margin-inline:auto;width:100%}
+.opening-puzzles .evidence-card input{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:.3em;text-align:center;font-variant-numeric:tabular-nums}
+.inspector-summons{margin:20px 0 24px;border-left:4px solid #d0a947;background:linear-gradient(105deg,rgba(208,169,71,.13),rgba(20,15,26,.87));padding:20px 22px}
+.inspector-summons>strong{font-size:clamp(17px,2.3vw,22px);line-height:1.55}
+.inspector-summons span strong{font-size:11px;letter-spacing:.13em;color:#e6c978}
+@media(max-width:640px){.inspector-summons{padding:17px}.opening-puzzles .evidence-card input{font-size:26px}}

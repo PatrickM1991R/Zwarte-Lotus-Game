@@ -97,3 +97,16 @@ Fase 2 gebruikt alleen fysieke dossiers. Online worden geen verdachteportretten 
 
 ## v3.8 – universele strafminuut
 Iedere onjuiste inzending (openingscontrole, verdachtenreconstructie, containernummers en lokale filters, kluisraadsels en eindoperatie) leidt tot een servergeregistreerde strafminuut. Een groot waarschuwingsscherm met `!` en `+1 MINUUT` wordt getoond. Voor lokale vragen is een nieuwe serverroute `/api/teams/:id/check-step` toegevoegd, zodat de straf niet kan worden omzeild door te verversen. De oplopende tijd toont eventuele overschrijding van 90 minuten; maximaal 90 minuten blijft als limiet vermeld. Niet-puzzelacties zoals navigeren, afspelen van audio en keuzes veroorzaken geen straf.
+
+
+## v4.0 – Automatische timerstart
+Na het volledig afluisteren van de inspecteursbriefing verschijnt de timer 2 seconden fullscreen en verdwijnt daarna automatisch. Geen klik nodig; daarna is de openingspuzzel beschikbaar.
+
+
+## v4.1 — opening zonder fysieke kist
+
+- De fysieke kist vervalt: na de inspecteursbriefing voeren spelers de viercijferige toegangscode in (spelbegeleidersoplossing 1403).
+- Correcte invoer leidt rechtstreeks naar fase 2, waarin de inspecteur het team expliciet oproept om de fysieke transportstukken op te halen.
+- De bestaande verdachtenreconstructie blijft in fase 2 beschikbaar.
+- Verkeerde toegangscode: dezelfde servergestuurde +1 minuut straftijd en waarschuwing.
+- De geheime infiltrantenlink en Koos Toms e-mailflow blijven ongemoeid.

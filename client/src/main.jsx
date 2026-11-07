@@ -18,7 +18,7 @@ const investigatorCharacters = [
 ];
 
 const phaseLabels = {
-  START: 'Introductie', ALARM: 'Open de kist', CAMERA: 'Open de kist', KIST_OPEN: 'Open de kist', DOSSIER: 'Dossier',
+  START: 'Introductie', ALARM: 'Toegangscode', CAMERA: 'Toegangscode', KIST_OPEN: 'Toegangscode', DOSSIER: 'Verdachtenonderzoek',
   ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
@@ -390,8 +390,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
 
 function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,requestHint,timerStartedAt}) {
   const [briefingDone,setBriefingDone]=useState(Boolean(timerStartedAt));
-  const [alarm,setAlarm]=useState('');
-  const [camera,setCamera]=useState('');
+  const [accessCode,setAccessCode]=useState('');
   const [local,setLocal]=useState('');
   const [timerLaunch,setTimerLaunch]=useState(false);
 
@@ -400,15 +399,16 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
     setBriefingDone(true);
     setTimerLaunch(true);
     setLocal('De speeltijd loopt. Jullie hebben maximaal 90 minuten.');
+    // De fullscreen timer verdwijnt automatisch na twee seconden, zonder klik.
+    setTimeout(()=>setTimerLaunch(false),2000);
     await startCountdown();
-    setTimeout(()=>setTimerLaunch(false),4000);
   };
 
   const submit = async (e) => {
     e.preventDefault();
     if(!briefingDone){setLocal('Luister eerst het volledige bericht van de inspecteur af.');return;}
-    const ok = await submitOpening({ alarm, camera });
-    if(!ok) setLocal('Minstens één conclusie klopt nog niet. Controleer de bewijsstukken opnieuw.');
+    const ok = await submitOpening({ code:accessCode });
+    if(!ok) setLocal('Toegang geweigerd. Controleer de aanwijzingen opnieuw.');
   };
 
   return <section className="panel opening-case-panel">
@@ -427,23 +427,18 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
       </div>
     </div>
 
-    <form className={`opening-puzzles evidence-board two-evidence ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
+    <form className={`opening-puzzles evidence-board ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
       <article className="opening-puzzle-card evidence-card">
-        <div className="puzzle-kicker">ALARMREGISTRATIE</div>
-        <h3>Wanneer werd het vitrinecontact verbroken?</h3>
-        <audio className="audio-player compact-audio" controls preload="metadata" src="/assets/alarmfragment.mp3" />
-        <label>Conclusie<input disabled={!briefingDone} value={alarm} onChange={e=>setAlarm(e.target.value)} placeholder="Jullie conclusie" maxLength={5} required/></label>
+        <div className="puzzle-kicker">ONDERZOEK · BEVEILIGDE TOEGANG</div>
+        <h3>Voer de toegangscode in.</h3>
+        <p>Gebruik jullie onderzoeksresultaten om toegang te krijgen tot het vervolg van de zaak.</p>
+        <label>Toegangscode
+          <input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" placeholder="••••" maxLength={4} required aria-label="Viercijferige toegangscode" />
+        </label>
       </article>
-
-      <article className="opening-puzzle-card evidence-card">
-        <div className="puzzle-kicker">VISUEEL SPOOR</div>
-        <h3>Wat valt op in het visuele spoor?</h3>
-        <label>Conclusie<input disabled={!briefingDone} value={camera} onChange={e=>setCamera(e.target.value)} placeholder="Jullie conclusie" maxLength={9} required/></label>
-      </article>
-
       <div className="opening-submit">
-        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: controleer de tijden en aanduidingen in het bewijsmateriaal nogmaals. Niet ieder zichtbaar moment is relevant.')}>Hint aanvragen</button>
-        <button className="primary open-chest-button" disabled={loading||!briefingDone}>{loading?'Controleren...':'Controleer conclusies'}</button>
+        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: vergelijk wat jullie via het alarmonderzoek en het visuele spoor hebben vastgesteld.')}>Hint aanvragen</button>
+        <button className="primary" disabled={loading||!briefingDone||accessCode.length!==4}>{loading?'Controleren...':'Ontgrendel het onderzoek'}</button>
       </div>
     </form>
     {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
@@ -490,10 +485,11 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
   const submit=async()=>{if(!complete)return;await submitAnswer('DOSSIER',{count,entries});};
 
   return <section className="panel dossier-ready evidence-reconstruction physical-dossier-phase">
-    <div className="success-seal">KIST ONTGRENDELD</div>
+    <div className="success-seal">TOEGANG VERLEEND</div>
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
+    <div className="mission-card inspector-summons" role="note"><span><strong>DRINGEND BERICHT VAN DE INSPECTEUR</strong></span><strong>Hé, nietsnutten!</strong><p>Schiet nou eens op! Ik heb eindelijk die verdomde transportgegevens van de Douane binnengekregen waar jullie om vroegen!</p><p>Wat staan jullie daar nog te kijken? Kom die papieren onmiddellijk bij me ophalen!</p><p>En zorg dat jullie er deze keer wél iets nuttigs mee doen!</p><strong>HUP! AAN HET WERK!</strong></div>
     <h2>Wie zijn verdacht van de roof?</h2>
-    <p>Gebruik uitsluitend de fysieke dossiers uit de kist. Leg jullie gezamenlijke conclusie hieronder vast.</p>
+    <p>Gebruik de fysieke verdachte- en bewijsdossiers. Leg jullie gezamenlijke conclusie hieronder vast.</p>
 
     <div className="dossier-count-card">
       <label>Hoeveel mensen zijn er verdacht?
