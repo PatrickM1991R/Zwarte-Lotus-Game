@@ -4,7 +4,7 @@ Werkende technische basis voor het dinerspel.
 
 ## Nieuw in v0.5
 
-- Rotje Knor-fase met configureerbaar telefoonnummer en reserve-audio voor testmodus
+- Rotje Knor-fase met onderschept audiobericht op de spelpagina
 - Transportlog in beeld
 - Johnny Jatwerk ontmaskeren via J.J. + signalement
 - Tweede containerpuzzel: JJX-reeks → 20:34 → stille route → JJX-2034
@@ -15,7 +15,6 @@ Werkende technische basis voor het dinerspel.
 ## Omgevingsvariabelen frontend
 
 - `VITE_API_URL` — URL van de Render API
-- `VITE_ROTJE_PHONE` — telefoonnummer van de douanelijn
 - `VITE_JOHNNY_COORDS` — locatie/coördinaten die Johnny aan spelers toont
 
 ## Demo
@@ -110,3 +109,17 @@ Na het volledig afluisteren van de inspecteursbriefing verschijnt de timer 2 sec
 - De bestaande verdachtenreconstructie blijft in fase 2 beschikbaar.
 - Verkeerde toegangscode: dezelfde servergestuurde +1 minuut straftijd en waarschuwing.
 - De geheime infiltrantenlink en Koos Toms e-mailflow blijven ongemoeid.
+
+## v4.3
+De telefoonknop van Rotje Knor is vervangen door een geïntegreerd audiobericht. Na volledig afluisteren kan het team verder met de bestaande Johnny-route.
+
+
+## v4.4 — Rotje Knor via het dossier (geen automatisch bandje op fase 4)
+
+- **Geheime dossierlink voor Cold Case:** `https://zwarte-lotus-game.onrender.com/#/rotje?code=CK-842`
+- **Als Cold Case niet actief is:** plaats die fysieke dossierpagina bij **Rob Berie**. Rob Berie is altijd actief. Dit is ook in `dossierPlan` vastgelegd via clue pack `rotje-contact`.
+- De hoofdwebsite toont het bandje **niet** en vermeldt het geheime adres niet. Fase 4 vraagt enkel om een ontvangstcode uit het persoonlijke contactkanaal.
+- De geheime pagina speelt het bestaande Rotje-bandje af en toont na volledig afluisteren de ontvangstcode `RK-7318`. Met die code gaat fase 4 door.
+- De server controleert de dossierlink via `GET /api/rotje/verify` en controleert de ontvangstcode op het gewone antwoordendpoint; foutieve codes krijgen de bestaande +1 minuut straf.
+- Optioneel voor Render backend Environment: `ROTJE_ACCESS_CODE=CK-842` en `ROTJE_RECEIPT_CODE=RK-7318`. Houd deze voorlopig gelijk aan de in de frontend getoonde ontvangstcode.
+- **Fysieke voorbereiding vereist:** print een contactstrook met de geheime URL/QR-code en stop deze in het dossier van Cold Case of anders Rob Berie. De website maakt fysieke boeken niet automatisch.

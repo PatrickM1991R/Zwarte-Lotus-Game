@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const ROTJE_PHONE = import.meta.env.VITE_ROTJE_PHONE || '';
 const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
 const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
@@ -19,13 +18,13 @@ const investigatorCharacters = [
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Toegangscode', CAMERA: 'Toegangscode', KIST_OPEN: 'Toegangscode', DOSSIER: 'Verdachtenonderzoek',
-  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Rotje Knor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
+  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
 };
 
 
 function Root() {
   const hash = window.location.hash || '';
-  return hash.startsWith('#/infiltrant') ? <InfiltrantPage /> : <App />;
+  return hash.startsWith('#/infiltrant') ? <InfiltrantPage /> : hash.startsWith('#/rotje') ? <RotjeSecretPage /> : <App />;
 }
 
 function InfiltrantPage() {
@@ -79,6 +78,33 @@ function InfiltrantPage() {
       {status&&status!=='VERZONDEN'&&<div className="feedback">{status}</div>}
     </section>
   </main>;
+}
+
+
+function RotjeSecretPage() {
+  const hash = window.location.hash || '';
+  const rawQuery = hash.includes('?') ? hash.split('?').slice(1).join('?') : '';
+  const accessCode = new URLSearchParams(rawQuery).get('code') || '';
+  const [verified,setVerified] = useState(null);
+  const [completed,setCompleted] = useState(false);
+  useEffect(()=>{
+    let active=true;
+    fetch(`${API}/api/rotje/verify?code=${encodeURIComponent(accessCode)}`)
+      .then(r=>{if(active)setVerified(r.ok);})
+      .catch(()=>{if(active)setVerified(false);});
+    return()=>{active=false};
+  },[accessCode]);
+  if(verified===null) return <main className="infiltrant-page"><section className="infiltrant-card"><h1>Verbinding controleren…</h1></section></main>;
+  if(!verified) return <main className="infiltrant-page denied"><section className="infiltrant-card"><div className="section-label">TOEGANG GEWEIGERD</div><h1>Onbekend contactkanaal</h1><p>De dossierverwijzing is niet geldig.</p></section></main>;
+  return <main className="infiltrant-page rotje-secret-page"><section className="infiltrant-card">
+    <div className="infiltrant-status"><span></span> VERTROUWELIJKE VERBINDING</div>
+    <div className="section-label">ALLEEN VOOR DE AANGEWEZEN RECHERCHEUR</div>
+    <h1>Een bericht van Rotje Knor</h1>
+    <p className="infiltrant-copy">Luister de volledige opname af. Bespreek de informatie daarna met je team.</p>
+    <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/rotje-knor.mp3" onEnded={()=>setCompleted(true)} />
+    {!completed?<div className="infiltrant-locked"><span>VOLLEDIG AFSPELEN OM HET BERICHT TE BEVESTIGEN</span></div>:
+      <div className="rotje-proof"><span>ONTVANGSTBEVESTIGING</span><h2>Neem deze code mee naar het onderzoek</h2><strong>RK-7318</strong><p>Bewaar deze code. Voer hem in op de hoofdwebsite om het onderzoek te vervolgen.</p></div>}
+  </section></main>;
 }
 
 function App() {
@@ -613,20 +639,16 @@ function OriginalContainerConfirmation({loading,feedback,submitAnswer,requestHin
 }
 
 function RotjeKnorPhase({loading,feedback,submitAnswer}) {
-  const callHref = ROTJE_PHONE ? `tel:${ROTJE_PHONE.replace(/\s+/g,'')}` : null;
-  return <section className="panel cinematic informant-panel">
-    <div className="section-label">FASE 4 · DOUANELIJN</div>
-    <h2>Het oude transportplan klopt. Maar iemand heeft het gewijzigd.</h2>
-    <p>Jullie hebben <strong>Dock 17</strong> en <strong>MBX-4717</strong> gereconstrueerd. Een infiltrant bij de douane heeft aanvullende informatie. Bel de lijn en luister het bericht volledig af.</p>
-    <div className="phone-card">
-      <span>CONTACTPERSOON</span>
-      <strong>Rotje Knor</strong>
-      <small>Douane-infiltrant · vertrouwelijk kanaal</small>
-      {ROTJE_PHONE ? <a className="primary call-button" href={callHref}>Bel {ROTJE_PHONE}</a> : <div className="phone-placeholder">Telefoonnummer nog niet ingesteld</div>}
-    </div>
-    {!ROTJE_PHONE && <details className="test-audio"><summary>Testmodus · reservebandje afspelen</summary><audio className="audio-player" controls preload="metadata" src="/assets/story/rotje-knor.mp3" /></details>}
-    <div className="mission-card"><span>OPDRACHT</span><strong>Luister naar de initialen, het tijdstip en de containerstatus.</strong></div>
-    <button className="primary" disabled={loading} onClick={()=>submitAnswer('ROTJE_KNOR','beluisterd')}>{loading?'Openen...':'Bandje beluisterd · bewijsmateriaal ontvangen'}</button>
+  const [code,setCode] = useState('');
+  return <section className="panel cinematic informant-panel secret-followup">
+    <div className="section-label">FASE 4 · NIEUW SPOOR</div>
+    <h2>Er ontbreekt nog informatie.</h2>
+    <p>Het oorspronkelijke transportplan is gevonden, maar het onderzoek is nog niet afgerond. Doorzoek jullie persoonlijke dossiers en volg het spoor dat daar is achtergelaten.</p>
+    <div className="mission-card"><span>VERTROUWELIJKE ONTVANGST</span><strong>Hebben jullie een bericht via een apart contactkanaal ontvangen? Voer de ontvangstcode hieronder in.</strong></div>
+    <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',code)}}>
+      <label>Ontvangstcode<input value={code} onChange={e=>setCode(e.target.value)} placeholder="Code uit het bericht" required autoComplete="off"/></label>
+      <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig ontvangst'}</button>
+    </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }

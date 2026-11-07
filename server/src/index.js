@@ -10,6 +10,8 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const INFILTRANT_ACCESS_CODE = process.env.INFILTRANT_ACCESS_CODE || 'KZ-731';
+const ROTJE_ACCESS_CODE = process.env.ROTJE_ACCESS_CODE || 'CK-842';
+const ROTJE_RECEIPT_CODE = process.env.ROTJE_RECEIPT_CODE || 'RK-7318';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const INFILTRANT_FROM_EMAIL = process.env.INFILTRANT_FROM_EMAIL || 'De Zwarte Lotus <onboarding@resend.dev>';
 const KOOS_INBOUND_EMAIL = (process.env.KOOS_INBOUND_EMAIL || '').trim().toLowerCase();
@@ -109,7 +111,8 @@ const cluePacks = [
   { id:'antecedenten', title:'Antecedenten en criminele contacten', preferred:'ben-de-bajes' },
   { id:'afwijkingen', title:'Afwijkingen en foutieve registraties', preferred:'ferry-fout' },
   { id:'don-notities', title:'Privé-aantekeningen Don Diamantini', preferred:'cold-case' },
-  { id:'transport', title:'Transport- en routebewijs', preferred:'kees-zoek' }
+  { id:'transport', title:'Transport- en routebewijs', preferred:'kees-zoek' },
+  { id:'rotje-contact', title:'Vertrouwelijk contact Rotje Knor – dossierlink en toegangscode', preferred:'cold-case' }
 ];
 
 function buildDossierPlan(participants) {
@@ -117,7 +120,7 @@ function buildDossierPlan(participants) {
   const load = Object.fromEntries(activeIds.map(id=>[id,0]));
   const plan = Object.fromEntries(activeIds.map(id=>[id,[]]));
   cluePacks.forEach(pack=>{
-    let target = activeIds.includes(pack.preferred) ? pack.preferred : [...activeIds].sort((a,b)=>(load[a]||0)-(load[b]||0))[0];
+    let target = pack.id==='rotje-contact' && !activeIds.includes('cold-case') ? 'rob-berie' : (activeIds.includes(pack.preferred) ? pack.preferred : [...activeIds].sort((a,b)=>(load[a]||0)-(load[b]||0))[0]);
     plan[target].push({id:pack.id,title:pack.title});
     load[target]=(load[target]||0)+1;
   });
@@ -130,7 +133,7 @@ const phaseAnswers = {
   KIST_OPEN: ['1403'],
   ORIGINELE_CONTAINER: ['verder'],
   ORIGINELE_CONTAINER_BEVESTIGEN: ['mbx-4717', 'mbx4717'],
-  ROTJE_KNOR: ['beluisterd'],
+  ROTJE_KNOR: [ROTJE_RECEIPT_CODE.toLowerCase()],
   JOHNNY_ONTMASKERD: ['johnny', 'j.j.', 'jj', 'johnny jatwerk'],
   JOHNNY_ROUTE: ['locatie bereikt'],
   KLUIS: ['203409']
@@ -193,6 +196,12 @@ app.post('/api/teams/:id/check-step', (req,res)=>{
 
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+app.get('/api/rotje/verify', (req,res)=>{
+  const code=String(req.query.code||'').trim();
+  if(code!==ROTJE_ACCESS_CODE) return res.status(403).json({ok:false});
+  res.json({ok:true});
+});
 
 app.get('/api/infiltrant/verify', (req,res)=>{
   const code=String(req.query.code||'').trim();
