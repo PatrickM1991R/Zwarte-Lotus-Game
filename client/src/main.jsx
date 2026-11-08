@@ -142,6 +142,7 @@ function TransportSystemPage() {
         <tr><th>Wijziging uitgevoerd door</th><td>{record.modifiedBy}</td></tr>
         <tr><th>Functie</th><td>{record.role}</td></tr>
         <tr><th>Nieuwe status oude container</th><td>{record.originalStatus}</td></tr>
+        <tr><th>Nieuwe containerregistratie</th><td>{record.newContainerSeries}</td></tr>
         <tr><th>Mutatie</th><td>{record.action}</td></tr>
       </tbody></table>
       <p className="transport-record-foot">Dit is een registratie uit het transportsysteem. Het vervangende containernummer is hier niet vrijgegeven.</p>
@@ -1018,7 +1019,6 @@ function LotusFound({loading,feedback,submitAnswer}) {
     <p>Bekijk de stukken nauwkeurig en noteer de gegevens die jullie nodig hebben. Na het verlaten van deze pagina komen jullie bij een afzonderlijk beveiligd politiekanaal.</p>
     <figure className="johnny-scribble-evidence"><img src="/assets/story/johnny-handgeschreven-kladje.png" alt="Johnnys handgeschreven kladje met koperskanaal en twee codewoorden"/><figcaption>Kladje over de koper · gevonden bij De Zwarte Lotus</figcaption></figure>
     <JohnnyPaper/>
-    <div className="mission-card"><span>BEWIJS VERZAMELD</span><strong>Controleer de stukken en leg jullie bevindingen vast.</strong></div>
     <button className="primary" disabled={loading} onClick={()=>submitAnswer('LOTUS_GEVONDEN','bewijs bekeken')}>{loading?'Verwerken...':'Ga naar het politiekanaal →'}</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
@@ -1185,34 +1185,68 @@ function JohnnyResult({team}) {
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),250);return()=>clearInterval(timer);},[]);
   const elapsed=Math.max(0,now-Number(team.arrestStartedAt||now));
-  const victorArrestSteps=[
-    {at:0,label:'Politie in positie',title:'Agenten wachten op Victor',text:`De teams houden de omgeving van ${team.buyerChat?.location||'de overdrachtslocatie'} in de gaten.`},
-    {at:3000,label:'Geen contact',title:'De koper is nog niet te zien',text:'De afgesproken plek blijft leeg. De inspecteur vraagt de eenheden hun posities te behouden.'},
+  const arrestSteps=[
+    {at:0,label:'Politie in positie',title:'Agenten wachten op Victor',text:`De teams houden ${team.buyerChat?.location||'de overdrachtslocatie'} in de gaten.`},
+    {at:3000,label:'Geen contact',title:'De koper is nog niet te zien',text:'De afgesproken plek blijft leeg. De inspecteur laat de eenheden wachten.'},
     {at:6500,label:'Verdachte in beeld',title:'Victor wordt gesignaleerd',text:'Een observant herkent de zwarte handschoen. Victor nadert de overdrachtslocatie.'},
-    {at:10300,label:'Aanhouding bevestigd',title:'Victor Valmont is aangehouden',text:'Politie-eenheden grijpen in. Victor wordt overgebracht naar het bureau en het geld wordt veiliggesteld.'}
+    {at:10300,label:'Aanhouding bevestigd',title:'Victor Valmont is aangehouden',text:'Politie-eenheden grijpen in en stellen het geld veilig.'}
   ];
-  const victorEscapeSteps=[
-    {at:0,label:'Geen politieactie',title:'De overdracht wordt voorbereid',text:'Het rechercheteam kiest ervoor Victor niet te laten oppakken.'},
-    {at:3000,label:'Victor gearriveerd',title:'De koper verschijnt',text:'De overdracht verloopt via het afgesproken kanaal.'},
-    {at:6500,label:'Afleiding',title:'Het geld wisselt van eigenaar',text:'Victor merkt niet dat het rechercheteam zijn eigen plan trekt.'},
-    {at:10300,label:'Niet aangehouden',title:'Victor Valmont ontkomt',text:'De koper verdwijnt. Het team houdt het geld voor zichzelf.'}
+  const escapeSteps=[
+    {at:0,label:'Geen politieactie',title:'De overdracht begint',text:'Het rechercheteam kiest ervoor Victor niet te laten oppakken.'},
+    {at:3000,label:'Victor gearriveerd',title:'De koper verschijnt',text:'De overdracht verloopt volgens het geheime plan.'},
+    {at:6500,label:'Geld overgedragen',title:'Het geld wisselt van eigenaar',text:'Victor merkt niet dat de rechercheurs het geld zelf willen houden.'},
+    {at:10300,label:'Uit beeld',title:'Victor lijkt ontsnapt',text:'De koper verdwijnt. Het team denkt dat het ermee wegkomt.'}
   ];
-  const complete=elapsed>=10300;
+  const betrayalSteps=[
+    {at:0,label:'Nieuwe melding',title:'De politie vindt Victor terug',text:'Een observatieteam volgt hem tot aan een andere uitgang van de haven.'},
+    {at:4000,label:'Arrestatie',title:'Victor wordt alsnog aangehouden',text:'Zwaailichten verlichten de uitvalsweg. Politiebusjes blokkeren de doorgang en Victor wordt aangehouden.'},
+    {at:8000,label:'Verhoor',title:'Victor verraadt het rechercheteam',text:'Victor vertelt de inspecteur dat de rechercheurs zelf het geld wilden houden.'},
+    {at:12000,label:'Aanhouding',title:'Het rechercheteam wordt opgepakt',text:'Met loeiende sirenes rijden politiewagens het terrein op. Agenten omsingelen het team en nemen het geld in beslag.'}
+  ];
+  const escapeDone=elapsed>=10300;
+  const betrayalElapsed=Math.max(0,elapsed-10300);
+  const victorCaught=elapsed>=14300;
+  const betrayalKnown=elapsed>=18300;
+  const done=keptMoney?elapsed>=22300:elapsed>=10300;
+  const headline=!keptMoney? (done?'Operatie geslaagd.':'De politie wacht op Victor…'):
+    !escapeDone?'Jullie denken dat het plan slaagt…':
+    !victorCaught?'Victor is toch nog in beeld…':
+    !betrayalKnown?'Victor is opgepakt.':'Victor heeft jullie verraden.';
   return <section className="panel cinematic case-result arrest-scene">
     <div className="section-label">DE ZWARTE LOTUS · EINDOPERATIE VICTOR</div>
-    <h2>{!complete?(keptMoney?'De overdracht wordt uitgevoerd…':'De politie wacht op Victor…'):(keptMoney?'Victor is ontsnapt.':'Operatie geslaagd.')}</h2>
-    <div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="Dezelfde inspecteur als bij de startbriefing"/><div><span>BERICHT VAN DE INSPECTEUR</span><strong>{complete?(keptMoney?'Johnny zit vast, maar Victor is niet aangehouden.':'Johnny zat al vast. Victor is nu ook aangehouden.'):'Johnny is al aangehouden. Deze operatie gaat uitsluitend over Victor Valmont.'}</strong></div></div>
-    <LiveOperationFeed title="OPERATIE KOPER · VICTOR" image={keptMoney?'/assets/zwarte-lotus-login-background.jpg':'/assets/story/victor-operatie.jpg'} alt="Operatie bij de overdrachtslocatie van Victor Valmont" steps={keptMoney?victorEscapeSteps:victorArrestSteps} elapsed={elapsed} person="Victor Valmont" outcome={keptMoney?'escaped':'arrest'} />
-    {complete&&<div className="arrest-result-reveal">
-      <div className="success-seal">{keptMoney?'DUBBELE AGENDA':'MISSIE VOLTOOID'}</div>
-      <p>{keptMoney?`Bij ${team.buyerChat?.location||'de overdracht'} hebben jullie het geld zelf gehouden en Victor laten gaan. Johnny zit vast, maar Victor niet.`:`Victor is bij ${team.buyerChat?.location||'de overdracht'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} aangehouden. Johnny zat al vast.`}</p>
+    <h2>{done&&keptMoney?'Ook het rechercheteam is aangehouden.':headline}</h2>
+    <div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="De inspecteur uit de openingsbriefing"/><div><span>BERICHT VAN DE INSPECTEUR</span><strong>{!keptMoney?(done?'Johnny zat al vast. Victor is nu ook aangehouden.':'Johnny zit al vast. De politie wacht op Victor.'):
+      done?'Victor heeft alles verklaard. Het rechercheteam is gearresteerd.':
+      betrayalKnown?'Victor heeft de betrokkenheid van het team onthuld.':
+      victorCaught?'Victor is alsnog aangehouden. De inspecteur ondervraagt hem.':
+      'Het team denkt dat het geld nu veilig is.'}</strong></div></div>
+    {!keptMoney&&<LiveOperationFeed title="OPERATIE KOPER · VICTOR" image="/assets/story/victor-operatie.jpg" alt="Politie bij de overdrachtslocatie van Victor" steps={arrestSteps} elapsed={elapsed} person="Victor Valmont" outcome="arrest"/>}
+    {keptMoney&&<>
+      <LiveOperationFeed title="OVERDRACHT · VICTOR" image="/assets/zwarte-lotus-login-background.jpg" alt="De nachtelijke overdrachtslocatie" steps={escapeSteps} elapsed={Math.min(elapsed,10000)} />
+      {escapeDone&&<div className="endgame-interruption" role="status"><span>! ONVERWACHTE MELDING</span><strong>Victor is toch niet verdwenen.</strong></div>}
+      {escapeDone&&<LiveOperationFeed title="NACHTVAL · NASLEEP" image="/assets/story/victor-operatie.jpg" alt="Politie haalt Victor later alsnog in" steps={betrayalSteps} elapsed={betrayalElapsed}/>}
+      {victorCaught&&<div className="capture-confirmation"><div className="capture-confirmation-symbol">✓</div><div><small>POLITIEKANAAL · STATUSBEVESTIGING</small><h3>Victor Valmont alsnog aangehouden</h3><p>Victor wordt overgebracht naar het bureau voor verhoor.</p></div></div>}
+      {betrayalKnown&&<section className="betrayal-card" aria-live="polite"><span>VERTROUWELIJK · VERHOORVERSLAG</span><h3>Victor verraadt jullie.</h3><p>“Die rechercheurs hebben de overdracht geregeld. Zij wilden het geld zelf houden.”</p><p>De inspecteur heeft de verklaring ontvangen.</p></section>}
+      {betrayalKnown&&<div className={`team-arrest-cinematic ${done?'complete':'approach'}`} role="region" aria-label="Camerabeelden aanhouding rechercheteam">
+        <img src="/assets/story/aanhouding-rechercheteam.png" alt="Politie-eenheden met zwaailichten omsingelen rechercheurs in de nachtelijke haven" />
+        <div className="team-arrest-strobes" aria-hidden="true"></div>
+        <div className="team-arrest-vignette" aria-hidden="true"></div>
+        <div className="team-arrest-camera-hud"><span className="live-dot" aria-hidden="true"></span> LIVE · CAMERA HAVEN WEST <span>OPERATIE NACHTVAL</span></div>
+        <div className="team-arrest-film-caption"><span>{done?'AANHOUDING BEVESTIGD':'POLITIE IN AANTOCHT'}</span><h3>{done?'Het rechercheteam is aangehouden.':'Politie-eenheden sluiten het terrein af.'}</h3><p>{done?'De inspecteur laat iedereen afvoeren. Het geld is in beslag genomen.':'Blauw-rode zwaailichten naderen. Eenheden komen van beide kanten het terrein op.'}</p></div>
+      </div>}
+      {done&&<section className="team-arrest-card" role="status"><div className="capture-confirmation-symbol">!</div><div><span>POLITIE · AANHOUDING BEVESTIGD</span><h3>Het rechercheteam is aangehouden.</h3><p>Het geld is door de politie in beslag genomen.</p></div></section>}
+    </>}
+    {done&&<div className="arrest-result-reveal">
+      <div className="success-seal">{keptMoney?'OPERATIE MISLUKT':'MISSIE VOLTOOID'}</div>
+      <p>{keptMoney?`Victor leek bij ${team.buyerChat?.location||'de overdracht'} te ontkomen, maar werd alsnog gearresteerd. Tijdens zijn verhoor verlinkte hij jullie. Het rechercheteam is aangehouden en het volledige geldbedrag is in beslag genomen.`:`Victor is bij ${team.buyerChat?.location||'de overdracht'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} aangehouden. Johnny zat al vast.`}</p>
       <div className="result-grid">
         <article><span>JOHNNY JATWERK</span><strong>Eerder aangehouden</strong></article>
-        <article><span>VICTOR VALMONT</span><strong>{keptMoney?'Ontkomen':'Aangehouden'}</strong></article>
+        <article><span>VICTOR VALMONT</span><strong>Aangehouden</strong></article>
         <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong></article>
-        <article><span>GELD</span><strong>{keptMoney?'Zelf gehouden':'Bewijs politie'}</strong></article>
+        <article><span>GELD</span><strong>{keptMoney?'In beslag genomen':'Bewijs politie'}</strong></article>
+        {keptMoney&&<article><span>RECHERCHEURS</span><strong>Zelf aangehouden</strong></article>}
       </div>
-      <div className="case-stamp">{keptMoney?'EINDE · VERTROUWELIJK':'ZAAK GESLOTEN'}</div>
+      <div className="case-stamp">{keptMoney?'ZAAK TEGEN RECHERCHEURS':'ZAAK GESLOTEN'}</div>
     </div>}
   </section>;
 }

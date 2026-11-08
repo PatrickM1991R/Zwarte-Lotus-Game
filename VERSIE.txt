@@ -1,2 +1,2 @@
-De Zwarte Lotus — v6.6
-Bugfix: bewijsstukken → politiekanaal zonder onterechte strafminuut.
+De Zwarte Lotus — v7.0
+Filmische geldroute: Victor verraadt het team, politie-inval met zwaailichten en aanhouding rechercheteam.

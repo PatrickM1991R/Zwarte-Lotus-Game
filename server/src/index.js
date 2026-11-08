@@ -262,7 +262,7 @@ app.post('/api/transport-system/access', (req,res)=>{
   return res.json({ok:true, record:{
     originalContainer:'MBX-4717', modifiedAt:'20:34', initials:'J.J.',
     modifiedBy:'J.J.', role:'Transport / chauffeur',
-    originalStatus:'Lege huls', action:'Ongeplande overslag geregistreerd; vervangende container afgeschermd'
+    originalStatus:'Lege huls', newContainerSeries:'JJX-reeks', action:'Ongeplande overslag geregistreerd; individueel containernummer afgeschermd'
   }});
 });
 

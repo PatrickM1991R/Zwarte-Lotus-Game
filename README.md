@@ -217,3 +217,20 @@ Fase 6 toont 12 containers, waaronder negen actieve zendingen. Verscheidene acti
 
 ## v6.6 – Bugfix overgang bewijsstukken
 De knop “Ga naar het politiekanaal” accepteert “bewijs bekeken” als navigatieactie, zet de teamfase op JOHNNY_MELDEN en kent geen strafminuut toe. Verkeerde antwoorden in het politiekanaal blijven 1 strafminuut kosten.
+
+
+## v6.7 — Herleidbare containerpuzzel
+Het geheime transportsysteem toont de nieuwe containerregistratie **JJX-reeks** naast tijdstip **20:34** en mutatie **Ongeplande overslag**. Het afzonderlijke containernummer blijft afgeschermd. In fase 6 moeten spelers die aanwijzingen combineren tot **JJX-2034**.
+
+## v6.8 - Bewijspagina
+- Het blok BEWIJS VERZAMELD onder Johnnys notities is verwijderd.
+- De knop naar het politiekanaal blijft aanwezig en werkt ongewijzigd.
+
+## v6.9 – geldroute met verraad
+Victor lijkt te ontsnappen, wordt later alsnog opgepakt en noemt de rechercheurs in zijn verhoor. De politie houdt het rechercheteam aan en neemt het geld in beslag. De reguliere politie-eindroute blijft ongewijzigd.
+
+## v7.0 – Visuele ontknoping geldroute
+- Bij het kiezen om het geld te houden wordt Victor later gearresteerd en verraadt hij de rechercheurs.
+- Na het verhoor verschijnt een filmische nachtelijke haven-scène met bewegend camerabeeld, blauw-rode zwaailichten en aanhoudingsbevestiging voor het rechercheteam.
+- De succesvolle politie-route blijft ongewijzigd; de geldroute eindigt met inbeslagname van het geld.
+- De scène is een geanimeerde afbeelding, geen vooraf gerenderde video.

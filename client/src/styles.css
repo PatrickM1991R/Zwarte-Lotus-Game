@@ -623,3 +623,23 @@
 .lotus-found .johnny-location-paper{margin-bottom:28px}.secure-chat-intro{max-width:720px}
 .johnny-scribble-evidence img{width:100%;height:auto;object-fit:contain}
 .final-inspector-dispatch img,.final-inspector-portrait img{object-fit:cover;object-position:center 28%}
+
+/* v6.9 — criminele geldroute: late aanhouding en verraad */
+.endgame-interruption{display:grid;gap:8px;margin:20px 0;padding:20px;border-radius:16px;background:linear-gradient(130deg,#402011,#1d1019);border:1px solid #ae6a3b;animation:end-alert .7s ease-out}.endgame-interruption span{font-size:11px;font-weight:900;letter-spacing:.14em;color:#f1b76e}.endgame-interruption strong{font-family:Georgia,serif;color:#fff0d1;font-size:clamp(22px,3vw,32px)}.betrayal-card{padding:24px;margin:22px 0;border-radius:16px;border:1px solid rgba(208,169,71,.45);background:linear-gradient(130deg,#29161d,#110e17);animation:end-alert .7s ease-out}.betrayal-card>span,.team-arrest-card span{font-size:11px;letter-spacing:.15em;font-weight:900;color:#c9a227}.betrayal-card h3,.team-arrest-card h3{font-family:Georgia,serif;font-size:clamp(22px,3vw,31px);color:#fff0cf;margin:9px 0}.betrayal-card p{color:#e5cbd0}.team-arrest-card{display:flex;align-items:center;gap:18px;padding:23px;margin:24px 0;border-radius:16px;border:2px solid #a74444;background:linear-gradient(120deg,#381416,#151017);animation:end-alert .7s ease-out}.team-arrest-card .capture-confirmation-symbol{background:#8d2828;color:#fff;flex-shrink:0}.team-arrest-card p{margin:6px 0;color:#dec6c7}@keyframes end-alert{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@media(max-width:600px){.team-arrest-card{align-items:flex-start;padding:16px}}
+
+/* v7.0 — filmische aanhouding rechercheteam in de geldroute */
+.team-arrest-cinematic{position:relative;isolation:isolate;overflow:hidden;aspect-ratio:16/9;margin:24px 0;border:1px solid rgba(201,162,39,.55);border-radius:20px;background:#05070b;box-shadow:0 30px 80px #000a;}
+.team-arrest-cinematic>img{width:100%;height:100%;object-fit:cover;display:block;animation:teamCinematicZoom 16s ease-in-out infinite alternate;filter:brightness(.85) contrast(1.07);}
+.team-arrest-strobes{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.67;background:linear-gradient(95deg,rgba(18,65,244,.5),transparent 58%,rgba(228,32,42,.35));animation:teamPoliceLights .9s step-end infinite;}
+.team-arrest-vignette{position:absolute;inset:0;background:linear-gradient(180deg,#04050b99,transparent 28%,transparent 48%,#04050be8);pointer-events:none;}
+.team-arrest-camera-hud{position:absolute;z-index:3;top:15px;left:18px;right:18px;display:flex;align-items:center;gap:10px;font-family:monospace;font-weight:800;font-size:clamp(10px,1.2vw,13px);letter-spacing:.08em;color:#fff;text-shadow:0 2px 4px #000;}
+.team-arrest-camera-hud>span:last-child{margin-left:auto;text-align:right;color:#ead28e;}
+.team-arrest-film-caption{position:absolute;z-index:3;bottom:22px;left:23px;right:23px;max-width:780px;text-shadow:0 2px 8px #000;}
+.team-arrest-film-caption>span{color:#f4c95d;font-size:11px;font-weight:900;letter-spacing:.17em;}
+.team-arrest-film-caption h3{color:#fff;margin:6px 0 8px;font-family:Georgia,serif;font-size:clamp(24px,4vw,42px);line-height:1.1;}
+.team-arrest-film-caption p{margin:0;color:#f4e9e7;font-size:clamp(12px,1.6vw,16px);line-height:1.45;}
+.team-arrest-cinematic.complete .team-arrest-film-caption>span{color:#ffd7ab;}
+@keyframes teamPoliceLights{0%,49%{background:linear-gradient(95deg,rgba(21,67,249,.58),transparent 58%,rgba(228,32,42,.12))}50%,100%{background:linear-gradient(95deg,rgba(21,67,249,.14),transparent 48%,rgba(228,32,42,.60))}}
+@keyframes teamCinematicZoom{0%{transform:scale(1.03) translateX(-.8%)}100%{transform:scale(1.12) translateX(.8%)}}
+@media(max-width:600px){.team-arrest-cinematic{aspect-ratio:4/5}.team-arrest-cinematic>img{object-position:center}.team-arrest-film-caption{left:14px;right:14px;bottom:16px}.team-arrest-camera-hud{left:12px;right:12px;top:12px}.team-arrest-camera-hud>span:last-child{display:none}}
+@media(prefers-reduced-motion:reduce){.team-arrest-cinematic>img,.team-arrest-strobes{animation:none!important}}
