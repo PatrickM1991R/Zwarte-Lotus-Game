@@ -152,3 +152,12 @@ Johnny’s bericht bij Laadperron 9 vermeldt dat hij de kluiscode wegens ondersc
 
 ### v5.5 — Realistisch metalen kluisfront
 Bij de digitale kluis zijn een realistische industriële metalen deur, klinkmechanisme, scharnieren, klinknagels, statuslampje en diepe kluisopening toegevoegd. Het bestaande numerieke toetsenbord, zes-cijferige code 203409, de correcte opening en de +1 minuut bij fouten zijn ongewijzigd.
+
+
+## v5.7: Johnny-finale
+- Drie minuten servergestuurde bedenktijd, vanaf het openen van de kluis. Verversen reset de tijd niet.
+- Verstrijkt de termijn zonder keuze, dan start automatisch noodplan 'Valstrik'.
+- Scriptmatige beveiligde chat met Victor Valmont (simulatie, geen echte externe chat), inclusief verificatie, tweede codewoord, eigen ontmoetingslocatie/tijd en politiecode.
+- Politiecodes komen fysiek van de spelbegeleider. Optioneel kan in Render `POLICE_OPERATION_CODE` worden ingesteld om exact te controleren; anders is het een niet-geverifieerde demo-invoer.
+- Chatvoortgang wordt op de server bijgehouden, zoals de overige spelvoortgang. Foute bekende codewoorden leveren een strafminuut op.
+- De resultatenpagina is nog gebaseerd op het oorspronkelijke verhaal; specifieke arrestatielocaties moeten nader op de gekozen afspraken worden afgestemd.

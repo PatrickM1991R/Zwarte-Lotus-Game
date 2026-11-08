@@ -292,6 +292,31 @@ function App() {
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
   };
 
+  const syncFinal = async () => {
+    if (!team || team.currentPhase!=='LOTUS_GEVONDEN') return;
+    try {
+      const r=await fetch(`${API}/api/teams/${team.id}/final-status`);
+      const j=await r.json();if(r.ok && j.team) setTeam(j.team);
+    } catch {}
+  };
+
+  const sendBuyerChat = async (action,value='',time='') => {
+    setLoading(true);setFeedback('');
+    try {
+      const r=await fetch(`${API}/api/teams/${team.id}/buyer-chat`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,value,time})
+      });
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) {
+        if(j.team) setTeam(j.team);
+        if(r.status===422 && j.penaltySeconds===60) {setPenaltyShown(true);return false;}
+        setFeedback(j.error||'Het bericht kon niet worden verzonden.');return false;
+      }
+      setTeam(j.team);return true;
+    }catch {setFeedback('De verbinding met het beveiligde kanaal is verbroken.');return false;}
+    finally {setLoading(false);}
+  };
+
   const chooseFinal = async (choice) => {
     setLoading(true); setFeedback('');
     try {
@@ -311,7 +336,7 @@ function App() {
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
-          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
+          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
         {penaltyShown && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
           <div className="penalty-screen">
             <div className="penalty-exclamation" aria-hidden="true">!</div>
@@ -433,7 +458,7 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
   </section>;
 }
 
-function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, checkStep, startJohnnyOffer }) {
+function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, syncFinal, sendBuyerChat, checkStep, startJohnnyOffer }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
@@ -456,9 +481,9 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
   if (phase === 'KEUZE') return <JohnnyChoice team={team} loading={loading} feedback={feedback} chooseRoute={chooseRoute} startJohnnyOffer={startJohnnyOffer} />;
   if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'KLUIS') return <SafePuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
-  if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} chooseFinal={chooseFinal} />;
+  if (phase === 'LOTUS_GEVONDEN') return <LotusFound team={team} loading={loading} feedback={feedback} chooseFinal={chooseFinal} syncFinal={syncFinal} />;
   if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
-  if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation checkStep={checkStep} team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} sendBuyerChat={sendBuyerChat} />;
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
 
   return <section className="panel"><div className="section-label">HUIDIGE FASE</div><h2>{phaseLabels[phase] || phase.replaceAll('_',' ')}</h2><p>Deze fase bouwen we in de volgende stap verder uit.</p></section>;
@@ -894,11 +919,16 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
       <div className="fullscreen-safe-content">
         <div className={`vault giant-vault ${safeState}`}>
           <div className="vault-frame">
-            <div className="vault-interior">
-              <div className="lotus-gem"></div>
-              <div className="vault-note-stack">
-                <div className="vault-note"><strong>DE ZWARTE LOTUS</strong><small>Zwarte diamant veiliggesteld</small></div>
-                <div className="vault-note"><strong>V.V.-37</strong><small>Koperkanaal · KARAAT</small></div>
+            <div className="vault-interior vault-interior-photo">
+              <img
+                className="vault-revealed-scene"
+                src="/assets/zwarte-lotus-kluis-binnenkant.jpg"
+                alt="Een levensechte diepzwarte diamant op fluwelen kussen in een verlichte, luxe stalen kluis."
+                draggable="false"
+              />
+              <div className="vault-reveal-caption" aria-live="polite">
+                <strong>DE ZWARTE LOTUS</strong>
+                <span>OBJECT GELOKALISEERD</span>
               </div>
             </div>
             <div className="vault-door">
@@ -937,90 +967,89 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
   </>;
 }
 
-function LotusFound({loading,feedback,chooseFinal}) {
+function LotusFound({team,loading,feedback,chooseFinal,syncFinal}) {
   const [choice,setChoice]=useState('');
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{
+    const t=setInterval(()=>setNow(Date.now()),250);
+    return ()=>clearInterval(t);
+  },[]);
+  const started=Number(team.finalDecisionStartedAt||Date.now());
+  const remaining=Math.max(0,180-Math.floor((now-started)/1000));
+  useEffect(()=>{
+    if(remaining===0) syncFinal();
+  },[remaining===0]);
   return <section className="panel cinematic lotus-found">
     <div className="success-seal">KLUIS OPEN</div>
     <div className="section-label">DE ZWARTE LOTUS IS GEVONDEN</div>
     <h2>Jullie hebben de steen.</h2>
-    <p>In de digitale kluis vinden jullie De Zwarte Lotus en beveiligde gegevens over de koper en Johnny’s route. Vanaf dit moment hebben jullie meer informatie dan Johnny denkt.</p>
-
+    <p>Johnny denkt nog steeds dat jullie voor hem werken. In de kluis vinden jullie een afgeschermd koperskanaal. Bepaal nu hoe jullie dit willen uitspelen.</p>
     <div className="vault-contents">
-      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Zwarte diamant · digitaal veiliggesteld</small></article>
+      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Digitale kluis · veiliggesteld</small></article>
       <article><span>KOPER</span><strong>Victor Valmont</strong><small>Alias: De Verzamelaar · kanaal V.V.-37</small></article>
-      <article><span>CODEWOORD</span><strong>KARAAT</strong><small>Verificatie: “Is de kluis nog gesloten?” → “Niet meer.”</small></article>
-      <article><span>AFSPRAAK</span><strong>Perron 3 · Oude goederenloods</strong><small>23:10 · herkenningsteken: zwarte handschoen · tweede codewoord: Nachtglas</small></article>
-      <article><span>JOHNNY</span><strong>Chauffeurskeet · Laadzone West</strong><small>Gele deur · zwarte routepijl · dienstpad achter Poort 9</small></article>
+      <article><span>VERIFICATIE</span><strong>KARAAT</strong><small>“Is de kluis nog gesloten?” · antwoord in jullie onderzoeksstukken</small></article>
+      <article><span>AANWIJZING</span><strong>Nachtglas</strong><small>Een tweede woord dat toegang geeft tot de koper.</small></article>
     </div>
-
-    <div className="mission-card"><span>LAATSTE KEUZE</span><strong>Johnny denkt dat jullie nog steeds voor hem werken. De koper weet niet dat jullie de steen hebben. Wat doen jullie?</strong></div>
+    <div className="final-decision-clock" role="timer" aria-label="Resterende beslissingsduur">
+      <span>TIJD OM EEN PLAN TE KIEZEN</span>
+      <strong>{String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</strong>
+      <small>Na 3 minuten wordt automatisch het noodplan (valstrik) gestart.</small>
+    </div>
     <div className="choice-grid final-choice-grid">
-      <button className={`choice-card police ${choice==='VAL'?'selected':''}`} onClick={()=>setChoice('VAL')}><span>OPTIE 1</span><strong>Lok ze samen in de val</strong><small>Bevestig de afspraak met de koper en geef de overdrachtsplek door aan de politie. Laat Johnny en de koper daar samen binnenlopen.</small></button>
-      <button className={`choice-card criminal ${choice==='DUBBELSPEL'?'selected':''}`} onClick={()=>setChoice('DUBBELSPEL')}><span>OPTIE 2</span><strong>Speel de deal uit</strong><small>Maak de afspraak met de koper, laat Johnny naar een andere plek gaan en bereid twee gelijktijdige arrestaties voor.</small></button>
+      <button type="button" className={`choice-card police ${choice==='VAL'?'selected':''}`} onClick={()=>setChoice('VAL')} disabled={!remaining}>
+        <span>OPTIE 1</span><strong>Lok de koper in de val</strong><small>Regel via het beveiligde kanaal zelf een afspraak op een geschikte locatie.</small>
+      </button>
+      <button type="button" className={`choice-card criminal ${choice==='DUBBELSPEL'?'selected':''}`} onClick={()=>setChoice('DUBBELSPEL')} disabled={!remaining}>
+        <span>OPTIE 2</span><strong>Speel dubbel spel</strong><small>Houd Johnny buiten de afspraak en gebruik de codes van de politie om het plan uit te voeren.</small>
+      </button>
     </div>
-    <button className="primary" disabled={loading||!choice} onClick={()=>chooseFinal(choice)}>{loading?'Keuze vastleggen...':'Bevestig eindplan'}</button>
-    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+    <button className="primary" disabled={loading||!choice||!remaining} onClick={()=>chooseFinal(choice)}>{loading?'Plan vastleggen...':'Bevestig plan en open koperskanaal'}</button>
+    {feedback&&<div className="feedback">{feedback}</div>}
   </section>;
 }
 
-function JohnnyFinalOperation({team,loading,feedback,submitAnswer,requestHint,checkStep}) {
+function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
+  const chat=team.buyerChat || {stage:'verify',messages:[{from:'Victor Valmont',text:'Is de kluis nog gesloten?'}]};
+  const [value,setValue]=useState('');
+  const [time,setTime]=useState('23:10');
+  useEffect(()=>{setValue('');},[chat.stage]);
+  const submit=async(e)=>{
+    e.preventDefault();
+    if(await sendBuyerChat(chat.stage,value,time))setValue('');
+  };
   const double=team.finalChoice==='DUBBELSPEL';
-  const [step,setStep]=useState(1);
-  const [verification,setVerification]=useState('');
-  const [codeword,setCodeword]=useState('');
-  const [time,setTime]=useState('');
-  const [local,setLocal]=useState('');
-
-  const normalize=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-  const checkVerification=async e=>{
-    e.preventDefault();
-    if(!(await checkStep('EINDOPERATIE','verification',normalize(verification)))){setLocal('');return;}
-    setStep(2);setLocal('Identiteit geaccepteerd. Victor blijft aan de lijn.');
-  };
-  const checkCodeword=async e=>{
-    e.preventDefault();
-    if(!(await checkStep('EINDOPERATIE','codeword',normalize(codeword)))){setLocal('');return;}
-    setStep(3);setLocal('Tweede codewoord bevestigd. De afspraak kan nu worden vastgezet.');
-  };
-  const checkTime=async e=>{
-    e.preventDefault();
-    if(!(await checkStep('EINDOPERATIE','time',normalize(time).replace('.',':')))){setLocal('');return;}
-    setStep(4);setLocal('Afspraak bevestigd voor 23:10. De operatie staat klaar.');
-  };
-  const launch=()=>submitAnswer('EINDOPERATIE',{answer1:'Niet meer',answer2:'Nachtglas',answer3:'23:10'});
-
   return <section className="panel cinematic final-operation">
-    <div className="section-label">EINDOPERATIE · {double?'DUBBEL SPEL':'VALSTRIK'}</div>
-    <h2>{double?'Twee doelwitten. Twee locaties. Eén moment.':'Zet de overdracht in scène.'}</h2>
-    <p>{double?'Johnny denkt dat jullie de koper voor hem warmhouden. Victor denkt dat de overdracht doorgaat. Jullie moeten beide mannen tegelijk in beweging krijgen zonder dat ze elkaar waarschuwen.':'Johnny denkt dat jullie nog aan zijn kant staan. Victor verwacht de diamant. Laat de afspraak echt lijken en geef de politie pas groen licht wanneer beide mannen op de juiste plek zijn.'}</p>
-
+    <div className="section-label">BEVEILIGD KOPERSKANAAL · V.V.-37</div>
+    <h2>Contact met Victor Valmont</h2>
+    <p>Dit is een gesimuleerd, afgeschermd spelkanaal. Jullie berichten bepalen hoe de afspraak wordt vastgelegd.</p>
+    {team.finalChoiceTimedOut&&<div className="mission-card"><span>TIJD VERSTREKEN</span><strong>Het noodplan is geactiveerd. Lok de koper in de val.</strong></div>}
     <div className="operation-grid">
-      <article><span>KOPER</span><strong>Victor Valmont</strong><small>Perron 3 · Oude goederenloods · zwarte handschoen op tafel</small></article>
-      <article><span>JOHNNY</span><strong>{double?'Laadzone West':'Naar Perron 3'}</strong><small>{double?'Lok hem terug naar de chauffeurskeet.':'Laat hem geloven dat hij de overdracht zelf moet controleren.'}</small></article>
+      <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Jullie keuze is vastgelegd.</small></article>
+      <article><span>CONTACT</span><strong>Victor Valmont</strong><small>Vertrouwelijk kanaal V.V.-37</small></article>
     </div>
-
-    <div className="secure-chat">
-      <div className="chat-head"><span>VERSLEUTELD KANAAL</span><strong>V.V.-37</strong><small>verbinding actief</small></div>
-      <div className="chat-log">
-        <div className="chat-row incoming"><span>Victor Valmont</span><p>Is de kluis nog gesloten?</p></div>
-        {step>1&&<div className="chat-row outgoing"><span>Jullie</span><p>Niet meer.</p></div>}
-        {step>1&&<div className="chat-row incoming"><span>Victor Valmont</span><p>Dan wil ik het tweede woord horen.</p></div>}
-        {step>2&&<div className="chat-row outgoing"><span>Jullie</span><p>Nachtglas.</p></div>}
-        {step>2&&<div className="chat-row incoming"><span>Victor Valmont</span><p>Goed. Wanneer?</p></div>}
-        {step>3&&<div className="chat-row outgoing"><span>Jullie</span><p>23:10.</p></div>}
-        {step>3&&<div className="chat-row incoming"><span>Victor Valmont</span><p>Perron 3. Ik kom alleen.</p></div>}
+    <div className="secure-chat new-buyer-chat">
+      <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding actief · simulatie</small></div>
+      <div className="chat-log" aria-live="polite">
+        {(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}>
+          <span>{m.from}</span><p>{m.text}</p>
+        </div>)}
       </div>
     </div>
-
-    <div className="operation-progress"><span className={step>=1?'active':''}>1 · Verificatie</span><span className={step>=2?'active':''}>2 · Codewoord</span><span className={step>=3?'active':''}>3 · Tijd</span><span className={step>=4?'active':''}>4 · Inval</span></div>
-
-    {step===1&&<form className="operation-step" onSubmit={checkVerification}><span>STAP 1</span><h3>Beantwoord Victor zonder zijn argwaan te wekken.</h3><label>“Is de kluis nog gesloten?”<input value={verification} onChange={e=>setVerification(e.target.value)} placeholder="Jullie antwoord" required/></label><button className="primary">Verstuur antwoord</button></form>}
-    {step===2&&<form className="operation-step" onSubmit={checkCodeword}><span>STAP 2</span><h3>Victor vraagt om de tweede beveiliging.</h3><label>Tweede codewoord<input value={codeword} onChange={e=>setCodeword(e.target.value)} placeholder="Codewoord" required/></label><button className="primary">Verstuur codewoord</button></form>}
-    {step===3&&<form className="operation-step" onSubmit={checkTime}><span>STAP 3</span><h3>Zet het overdrachtsmoment vast.</h3><label>Tijdstip<input value={time} onChange={e=>setTime(e.target.value)} placeholder="UU:MM" required/></label><button className="primary">Bevestig afspraak</button></form>}
-    {step===4&&<div className="raid-ready"><span>OPERATIE GEREED</span><h3>{double?'Beide arrestatieteams staan klaar.':'Johnny en Victor bewegen richting Perron 3.'}</h3><p>{double?'Victor wordt om 23:10 op Perron 3 opgepakt. Johnny wordt op exact hetzelfde moment bij Laadzone West aangehouden.':'De politie sluit beide uitgangen zodra de verificatie is afgerond en beide doelwitten binnen zijn.'}</p><button className="primary" disabled={loading} onClick={launch}>{loading?'Operatie loopt...':double?'Geef groen licht voor beide invallen':'Geef groen licht voor de valstrik'}</button></div>}
-
-    {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
-    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: Victor verwacht het antwoord “Niet meer”.':step===2?'Hint: het tweede codewoord uit het dossier is Nachtglas.':step===3?'Hint: de afspraak is om 23:10.':'Hint: alles staat goed. Geef nu groen licht.')}>Hint aanvragen</button>
+    {chat.stage!=='ready'?<form className="operation-step buyer-chat-compose" onSubmit={submit}>
+      <span>{chat.stage==='verify'?'IDENTITEIT':chat.stage==='codeword'?'CODEWOORD':chat.stage==='location'?'AFSPRAAK':'POLITIECODE'}</span>
+      {chat.stage==='location'?<>
+        <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required placeholder="Kies zelf een locatie" /></label>
+        <label>Tijdstip<input type="time" value={time} onChange={e=>setTime(e.target.value)} required /></label>
+      </>:<label>{chat.stage==='verify'?'Antwoord op de verificatievraag':chat.stage==='codeword'?'Tweede codewoord':'Code ontvangen van de politie'}
+        <input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required placeholder="Typ jullie bericht" />
+      </label>}
+      <button className="primary" disabled={loading}>{loading?'Bericht verzenden...':'Verstuur beveiligd bericht'}</button>
+      {chat.stage==='police_code'&&<small>De politiecode komt van de spelbegeleider. In de demo is nog geen vaste controlecode ingesteld.</small>}
+    </form>:<div className="raid-ready"><span>AFSPRAAK VASTGELEGD</span>
+      <h3>Victor verwacht jullie bij {chat.location} om {chat.meetingTime}.</h3>
+      <p>{double?'Jullie kunnen Johnny nu afzonderlijk laten onderscheppen.':'De politie kan nu de valstrik uitvoeren.'}</p>
+      <button className="primary" disabled={loading} onClick={()=>sendBuyerChat('launch')}>{loading?'Operatie wordt afgerond...':'Geef groen licht voor de operatie'}</button>
+    </div>}
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -1031,7 +1060,7 @@ function JohnnyResult({team}) {
     <div className="success-seal">OPERATIE GESLAAGD</div>
     <div className="section-label">MAISON BEAUMONT · ZAAK AFGESLOTEN</div>
     <h2>De Zwarte Lotus is veiliggesteld.</h2>
-    <p>{double?'Om 23:10 vielen twee arrestatieteams tegelijk binnen. Victor Valmont werd op Perron 3 aangehouden terwijl Johnny Jatwerk bij Laadzone West werd onderschept. Geen van beiden kreeg de kans de ander te waarschuwen.':'Om 23:10 arriveerden Victor Valmont en Johnny Jatwerk bij de goederenloods. Na de verificatie sloot de politie beide uitgangen. De diamant bleef buiten hun bereik.'}</p>
+    <p>{double?`Op ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} werd Victor Valmont bij ${team.buyerChat?.location||'de afgesproken locatie'} onderschept. Johnny Jatwerk werd afzonderlijk aangehouden. De Zwarte Lotus bleef veiliggesteld.`:`Op ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} ging Victor Valmont naar ${team.buyerChat?.location||'de afgesproken locatie'}. De politie sloot de valstrik en hield ook Johnny Jatwerk aan. De Zwarte Lotus bleef veiliggesteld.`}</p>
     <div className="result-grid">
       <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong><small>De diamant blijft in bewaring van Maison Beaumont.</small></article>
       <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong><small>Ontmaskerd als verrader en uitvoerder van de routewijziging.</small></article>

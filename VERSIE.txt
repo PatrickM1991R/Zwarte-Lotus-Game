@@ -1,4 +1,1 @@
-De Zwarte Lotus v5.0
-Nieuwe container: één onderzoeksopdracht, geen tussenfilters.
-Route/registratie: Ongeplande overslag. Eindantwoord JJX-2034.
-Fout antwoord: +1 minuut op de server.
+v5.6 – digitale kluis: realistische binnenkant en zwarte diamant bij ontgrendeling. Code en penalty niet aangepast.

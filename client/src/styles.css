@@ -457,3 +457,79 @@
   .fullscreen-safe-screen .giant-vault .vault-keypad{bottom:7%;font-size:8px}
 }
 @media(prefers-reduced-motion:reduce){.fullscreen-safe-screen .giant-vault .vault-door,.fullscreen-safe-screen .giant-vault .vault-wheel{transition-duration:.01ms}}
+
+
+/* v5.6 – Realistische kluisbinnenkant met de goedgekeurde Zwarte Lotus-foto */
+.fullscreen-safe-screen .giant-vault .vault-interior-photo {
+  inset: 16px;
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #07080b;
+  box-shadow: inset 0 0 0 9px #0c0f14, inset 0 0 0 13px #414b57, inset 0 0 55px #000;
+  isolation: isolate;
+}
+.fullscreen-safe-screen .vault-revealed-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  user-select: none;
+  pointer-events: none;
+  filter: brightness(.7) saturate(.84);
+  transform: scale(1.025);
+  transition: filter 1.1s ease .25s, transform 2s ease .1s;
+}
+.fullscreen-safe-screen .vault.open .vault-revealed-scene,
+.fullscreen-safe-screen .vault.opening .vault-revealed-scene {
+  filter: brightness(1) saturate(1.07);
+  transform: scale(1);
+}
+.fullscreen-safe-screen .vault.open .vault-interior-photo,
+.fullscreen-safe-screen .vault.opening .vault-interior-photo {
+  filter: none;
+}
+.vault-reveal-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translate(-50%, 10px);
+  display: grid;
+  text-align: center;
+  gap: 4px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 12px 22px;
+  border: 1px solid rgba(218,181,89,.45);
+  border-radius: 9px;
+  background: rgba(7,9,13,.76);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity .6s ease 1s,transform .6s ease 1s;
+  pointer-events: none;
+}
+.vault.open .vault-reveal-caption {opacity:1;transform:translate(-50%,0)}
+.vault-reveal-caption strong{font-size:clamp(12px,1.8vw,19px);letter-spacing:.16em;color:#e7c878}
+.vault-reveal-caption span{font-size:clamp(8px,1vw,11px);letter-spacing:.14em;color:#e4e0d5}
+@media(max-width:800px) {
+  .fullscreen-safe-screen .giant-vault .vault-interior-photo {inset:12px;border-radius:9px}
+  .fullscreen-safe-screen .vault-revealed-scene {object-position:center 55%}
+  .vault-reveal-caption{bottom:8px;padding:7px 12px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .fullscreen-safe-screen .vault-revealed-scene,.vault-reveal-caption{transition-duration:.01ms}
+}
+
+
+/* v5.7: drie minuten planvorming en beschermde chat */
+.final-decision-clock{display:flex;flex-direction:column;align-items:center;gap:5px;margin:20px 0;padding:19px;border:1px solid rgba(201,162,39,.55);border-radius:17px;background:rgba(18,10,28,.85)}
+.final-decision-clock span{font-size:11px;letter-spacing:.15em;color:#d5b86d;font-weight:800}
+.final-decision-clock strong{font-size:clamp(44px,8vw,78px);line-height:1.03;color:#f2d89e;font-variant-numeric:tabular-nums}
+.final-decision-clock small{font-size:12px;color:#c9bbcf;text-align:center}
+.new-buyer-chat .chat-log{max-height:min(55vh,450px);overflow:auto;min-height:170px}
+.buyer-chat-compose{margin-top:20px}
+.buyer-chat-compose label{display:block}
+.buyer-chat-compose input{width:100%;min-width:0}
+@media(max-width:600px){.final-choice-grid{grid-template-columns:1fr}.new-buyer-chat .chat-log{max-height:48vh}.buyer-chat-compose{padding:14px}}

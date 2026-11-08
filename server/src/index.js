@@ -154,7 +154,27 @@ const phaseNext = {
   EINDOPERATIE: 'RESULTAAT'
 };
 
-const enrich = (team) => ({ ...team, locationName: db.location.name, eventName: db.event.name });
+const FINAL_DECISION_MS = 3 * 60 * 1000;
+function initialBuyerChat() {
+  return {stage: 'verify', location: '', policeCode: '', messages: [
+    {from:'Victor Valmont', text:'V.V.-37. Wie heeft dit kanaal geopend? Is de kluis nog gesloten?'}
+  ]};
+}
+function enforceFinalDeadline(team) {
+  if (team.currentPhase === 'LOTUS_GEVONDEN' && !team.finalDecisionStartedAt) team.finalDecisionStartedAt = Date.now();
+  if (team.currentPhase === 'LOTUS_GEVONDEN' && team.finalDecisionStartedAt && !team.finalChoice &&
+      Date.now() >= team.finalDecisionStartedAt + FINAL_DECISION_MS) {
+    // Een ontbrekende keuze schakelt over naar het noodplan: de koper in de val lokken.
+    team.finalChoice = 'VAL';
+    team.finalChoiceTimedOut = true;
+    team.currentPhase = 'EINDOPERATIE';
+    team.buyerChat = initialBuyerChat();
+  }
+}
+const enrich = (team) => {
+  enforceFinalDeadline(team);
+  return { ...team, locationName: db.location.name, eventName: db.event.name };
+};
 
 // Eén centrale strafregel voor alle onjuiste spelantwoorden.
 function addPenaltyMinute(team) {
@@ -355,14 +375,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
     if (!containerOk) return wrongGameAnswer(res,team);
   } else if (phase === 'EINDOPERATIE') {
-    const raw = req.body.answer || {};
-    const a1 = String(raw.answer1 || '').trim().toLowerCase().replace(/\s+/g,' ');
-    const a2 = String(raw.answer2 || '').trim().toLowerCase().replace(/\s+/g,' ');
-    const a3 = String(raw.answer3 || '').trim().toLowerCase().replace(/\s+/g,' ').replace('.',':');
-    const ok1 = ['niet meer','nietmeer'].includes(a1);
-    const ok2 = a2 === 'nachtglas';
-    const ok3 = ['23:10','2310'].includes(a3);
-    if (!ok1 || !ok2 || !ok3) return wrongGameAnswer(res,team);
+    return res.status(409).json({error:'Rond eerst de beveiligde chat en het eindplan af.'});
   } else {
     const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
@@ -370,6 +383,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
   }
 
   team.currentPhase = phaseNext[phase] || team.currentPhase;
+  if (phase === 'KLUIS') {
+    team.finalDecisionStartedAt ??= Date.now();
+    team.finalChoice = null;
+    team.buyerChat = null;
+  }
   if (phase === 'EINDOPERATIE') team.status = 'klaar';
   res.json({ correct: true, team: enrich(team) });
 });
@@ -411,15 +429,69 @@ app.post('/api/teams/:id/route', (req, res) => {
   res.json({ team: enrich(team) });
 });
 
+app.get('/api/teams/:id/final-status', (req,res)=>{
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team)return res.status(404).json({error:'Team niet gevonden'});
+  res.json({team:enrich(team)});
+});
+
 app.post('/api/teams/:id/final-choice', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  if (team.currentPhase !== 'LOTUS_GEVONDEN' || team.chosenRoute !== 'Johnny') return res.status(409).json({ error: 'Deze eindkeuze is nu niet actief.' });
+  enforceFinalDeadline(team);
+  if (team.currentPhase !== 'LOTUS_GEVONDEN' || team.chosenRoute !== 'Johnny')
+    return res.status(409).json({ error: 'Deze eindkeuze is niet meer actief.', team:enrich(team) });
   const choice = String(req.body.choice || '');
   if (!['VAL','DUBBELSPEL'].includes(choice)) return res.status(422).json({ error: 'Ongeldige eindkeuze.' });
   team.finalChoice = choice;
+  team.finalChoiceTimedOut = false;
   team.currentPhase = 'EINDOPERATIE';
+  team.buyerChat = initialBuyerChat();
   res.json({ team: enrich(team) });
+});
+
+// Een rollenspel-chat met Victor; geen externe chatdienst en geen echt account bij Victor.
+// Alle stappen en berichten staan op de server zodat verversen de voortgang bewaart.
+app.post('/api/teams/:id/buyer-chat', (req,res) => {
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team) return res.status(404).json({error:'Team niet gevonden'});
+  if(team.currentPhase!=='EINDOPERATIE' || team.chosenRoute!=='Johnny')
+    return res.status(409).json({error:'Het beveiligde kanaal is nog niet beschikbaar.'});
+  team.buyerChat ??= initialBuyerChat();
+  const chat=team.buyerChat;
+  const action=String(req.body.action||'');
+  const value=String(req.body.value||'').trim().slice(0,180);
+  const norm=value.toLowerCase().replace(/\s+/g,' ');
+  const add=(from,text)=>chat.messages.push({from,text});
+  if(action==='verify' && chat.stage==='verify') {
+    if(!['niet meer','nietmeer'].includes(norm)) return wrongGameAnswer(res,team);
+    add('Team',value);add('Victor Valmont','Dan wil ik het tweede codewoord.');chat.stage='codeword';
+  } else if(action==='codeword' && chat.stage==='codeword') {
+    if(norm!=='nachtglas') return wrongGameAnswer(res,team);
+    add('Team',value);add('Victor Valmont','Akkoord. Waar en wanneer spreken we af? Stel een locatie en tijdstip voor.');chat.stage='location';
+  } else if(action==='location' && chat.stage==='location') {
+    const time=String(req.body.time||'').trim();
+    if(value.length<4 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return wrongGameAnswer(res,team);
+    chat.location=value;chat.meetingTime=time;
+    add('Team',`${value} · ${time}`);
+    add('Victor Valmont',`Ik noteer ${value}, ${time}. Stuur nu de politie-authenticatiecode uit jullie dossier, dan kan ik de overdracht voorbereiden.`);
+    chat.stage='police_code';
+  } else if(action==='police_code' && chat.stage==='police_code') {
+    // De politiecode wordt door de spelbegeleider verstrekt. Geen ongevraagde vaste code verzinnen.
+    // Optioneel kan een exacte controle worden ingesteld via POLICE_OPERATION_CODE.
+    if(value.length<3) return wrongGameAnswer(res,team);
+    const configured=String(process.env.POLICE_OPERATION_CODE||'').trim();
+    if(configured && value.toLowerCase()!==configured.toLowerCase()) return wrongGameAnswer(res,team);
+    chat.policeCode=value;
+    add('Team',value);
+    add('Victor Valmont',`Ontvangen. Ik verwacht jullie bij ${chat.location} om ${chat.meetingTime}. Ik kom alleen; geen verrassingen.`);
+    chat.stage='ready';
+  } else if(action==='launch' && chat.stage==='ready') {
+    team.currentPhase='RESULTAAT';team.status='klaar';
+  } else {
+    return res.status(409).json({error:'Dit bericht past niet bij de huidige chatstap.',team:enrich(team)});
+  }
+  res.json({ok:true,team:enrich(team)});
 });
 
 app.post('/api/teams/:id/progress', (req, res) => {
@@ -439,6 +511,9 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.hintCount = 0;
   team.chosenRoute = null;
   team.finalChoice = null;
+  team.finalDecisionStartedAt = null;
+  team.finalChoiceTimedOut = false;
+  team.buyerChat = null;
   team.johnnyOfferStartedAt = null;
   team.status = 'bezig';
   team.startedAt = Date.now();
