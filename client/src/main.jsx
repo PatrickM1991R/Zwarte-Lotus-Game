@@ -779,14 +779,18 @@ function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
 }
 
 const johnnyRows = [
-  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere afvoer',status:'Afgerond'},
+  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere afvoer',status:'Actief'},
   {container:'JJX-2034',series:'JJX',time:'20:34',route:'Ongeplande overslag',status:'Actief'},
-  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wacht op vrijgave',status:'Vertraagd'},
-  {container:'JJX-2047',series:'JJX',time:'20:34',route:'Chauffeurswissel',status:'Controle'},
-  {container:'JJX-7334',series:'JJX',time:'20:34',route:'Verplaatsing opslagvak',status:'Wacht'},
+  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wacht op vrijgave',status:'Actief'},
+  {container:'JJX-2047',series:'JJX',time:'20:34',route:'Chauffeurswissel',status:'Actief'},
+  {container:'JJX-7334',series:'JJX',time:'20:34',route:'Verplaatsing opslagvak',status:'Actief'},
   {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retourzending',status:'Afgerond'},
-  {container:'RDX-2034',series:'RDX',time:'20:34',route:'Reguliere overslag',status:'Controle'},
-  {container:'MBX-2034',series:'MBX',time:'20:34',route:'Oude route',status:'Geannuleerd'}
+  {container:'RDX-2034',series:'RDX',time:'20:34',route:'Reguliere overslag',status:'Actief'},
+  {container:'MBX-2034',series:'MBX',time:'20:34',route:'Oude route',status:'Geannuleerd'},
+  {container:'JJX-2088',series:'JJX',time:'20:34',route:'Extra transportorder',status:'Actief'},
+  {container:'JJX-2147',series:'JJX',time:'21:47',route:'Ongeplande overslag',status:'Actief'},
+  {container:'RDX-2041',series:'RDX',time:'20:34',route:'Ongeplande overslag',status:'Actief'},
+  {container:'JJX-2234',series:'JJX',time:'22:34',route:'Spoedmutatie',status:'Actief'}
 ];
 
 function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
@@ -797,7 +801,7 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
     <h2>Waar is De Zwarte Lotus naartoe verplaatst?</h2>
     <p>Onderzoek het containerregister en vergelijk de registraties met jullie bevindingen. Bepaal welke container bij de gewijzigde zending hoort.</p>
     <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Registratie</th><th>Status</th></tr></thead><tbody>{johnnyRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
-    <div className="manifest-count">8 containers in het register</div>
+    <div className="manifest-count">{johnnyRows.length} containers in het register</div>
     <form className="final-confirm" onSubmit={finalSubmit}>
       <span>CONCLUSIE</span><h3>Welk containernummer hoort bij de gewijzigde zending?</h3>
       <label>Containernummer<input value={container} onChange={e=>setContainer(e.target.value)} autoComplete="off" placeholder="Containernummer" required/></label>

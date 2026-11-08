@@ -1,3 +1,2 @@
-De Zwarte Lotus — v6.4
-Bewijs, inspecteur, Johnny-arrestatie en Victor-chat elk op een eigen pagina.
-Johnny wordt slechts één keer visueel gearresteerd. Victor heeft zijn eigen eindoperatie.
+De Zwarte Lotus — v6.6
+Bugfix: bewijsstukken → politiekanaal zonder onterechte strafminuut.

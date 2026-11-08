@@ -414,6 +414,14 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const container = String(raw.container || '').trim().toLowerCase().replace(/\s+/g,'');
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
     if (!containerOk) return wrongGameAnswer(res,team);
+  } else if (phase === 'LOTUS_GEVONDEN') {
+    // Deze actie is navigatie vanaf de bewijsstukken, geen puzzelantwoord.
+    // Niet door de algemene antwoordcontrole laten lopen: dat gaf onterecht +1 minuut.
+    if (String(req.body.answer || '').trim().toLowerCase() !== 'bewijs bekeken') {
+      return res.status(409).json({ error:'Bekijk eerst de stukken uit de kluis.' });
+    }
+    team.currentPhase = 'JOHNNY_MELDEN';
+    return res.json({ correct:true, team:enrich(team) });
   } else if (phase === 'JOHNNY_MELDEN') {
     const data=req.body.answer || {};
     const location=String(data.location||'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -438,7 +446,6 @@ app.post('/api/teams/:id/answer', (req, res) => {
     if (!accepted.includes(answer)) return wrongGameAnswer(res,team);
   }
 
-  if(phase==='LOTUS_GEVONDEN' && req.body.answer!=='bewijs bekeken')return res.status(409).json({error:'Bekijk eerst de stukken uit de kluis.'});
   team.currentPhase = phaseNext[phase] || team.currentPhase;
   if (phase === 'KLUIS') {
     team.finalDecisionStartedAt = null;

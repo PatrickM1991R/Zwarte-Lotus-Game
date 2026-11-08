@@ -210,3 +210,10 @@ De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV
 - **Victor-finale:** toont alleen de actie rond Victor en het gekozen einde. Johnny's arrestatie wordt niet opnieuw afgespeeld.
 - **Inspecteur:** dezelfde portretbron als in de openingsbriefing (`inspector-kist.jpg`) wordt gebruikt op de beide politierapporten.
 - **Terugkijken:** de bestaande terugknop blijft beschikbaar met bevestiging en +2 minuten straftijd.
+
+## v6.5 — Moeilijker containerregister
+Fase 6 toont 12 containers, waaronder negen actieve zendingen. Verscheidene actieve zendingen delen de JJX-reeks, het wijzigingstijdstip 20:34 of de registratie Ongeplande overslag. Alleen JJX-2034 combineert de drie relevante eigenschappen. Het juiste antwoord en de strafminuut blijven ongewijzigd.
+
+
+## v6.6 – Bugfix overgang bewijsstukken
+De knop “Ga naar het politiekanaal” accepteert “bewijs bekeken” als navigatieactie, zet de teamfase op JOHNNY_MELDEN en kent geen strafminuut toe. Verkeerde antwoorden in het politiekanaal blijven 1 strafminuut kosten.
