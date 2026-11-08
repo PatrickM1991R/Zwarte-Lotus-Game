@@ -140,3 +140,11 @@ Het beveiligde transportsysteem toont alleen de initialen **J.J.** bij 'Wijzigin
 
 ## v5.3 — Johnny kluisbericht
 Johnny’s bericht bij Laadperron 9 vermeldt dat hij de kluiscode wegens onderscheppingsgevaar niet digitaal doorstuurt en dat het team die zelf moet afleiden. De digitale kluis, code en overgang blijven ongewijzigd.
+
+## v5.4 – Digitale kluis op ware grootte
+- De drie raadsels staan gelijktijdig zichtbaar op de onderzoekspagina, zonder afzonderlijke antwoordcontrole.
+- Via de pijl 'Bekijk de kluis' opent een apart schermvullend kluisscherm.
+- Op de kluis is een aanraakbaar 0–9-toetsenbord aanwezig, plus C, terugwissen en ENTER.
+- Alleen zes cijfers kunnen worden bevestigd. De server controleert de code; bij een fout antwoord komt er +1 minuut straftijd en het grote uitroepteken.
+- Bij de juiste code opent de kluisdeur zichtbaar en wordt de inhoud getoond.
+- Mobile-first weergave van kluis en toetsenbord.

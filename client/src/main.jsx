@@ -827,103 +827,109 @@ function JohnnyRouteIntro({loading,feedback,submitAnswer}) {
 }
 
 function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
-  const [step,setStep]=useState(1);
-  const [a,setA]=useState(''); const [b,setB]=useState(''); const [c,setC]=useState('');
+  const [showVault,setShowVault]=useState(false);
   const [safeCode,setSafeCode]=useState('');
-  const [local,setLocal]=useState('');
   const [safeState,setSafeState]=useState('closed');
   const [unlocking,setUnlocking]=useState(false);
-  const digits=[step>1?'20':'••',step>2?'34':'••',step>3?'09':'••'];
-
-  const check=async(which,e)=>{
-    e.preventDefault();
-    const v=(which===1?a:which===2?b:c).trim().replace(/\D/g,'').padStart(2,'0');
-    if(!(await checkStep('KLUIS',`riddle${which}`,v))){setLocal('');return;}
-    setLocal(which===3?'Alle drie de codeparen zijn gevonden. Combineer ze nu van links naar rechts en open de kluis.':`Codepaar ${which} bevestigd.`);
-    setStep(which+1);
+  const [local,setLocal]=useState('');
+  const keypad = ['1','2','3','4','5','6','7','8','9','C','0','⌫'];
+  const addKey=(key)=>{
+    if (unlocking || safeState==='open') return;
+    if (key==='C') setSafeCode('');
+    else if (key==='⌫') setSafeCode(v=>v.slice(0,-1));
+    else setSafeCode(v=>(v+key).slice(0,6));
+    if (safeState==='error') setSafeState('closed');
+    setLocal('');
   };
-
-  const unlockSafe = async (e) => {
-    e.preventDefault();
-    const normalized = safeCode.replace(/\D/g,'').slice(0,6);
-    if(!(await checkStep('KLUIS','code',normalized))) {
+  const unlockSafe=async(e)=>{
+    if(e) e.preventDefault();
+    if(unlocking || safeState==='open' || safeCode.length!==6) return;
+    setUnlocking(true);
+    const correct=await checkStep('KLUIS','code',safeCode);
+    if(!correct){
       setSafeState('error');
-      setLocal('');
+      setSafeCode('');
+      setUnlocking(false);
       return;
     }
     setSafeState('opening');
-    setLocal('Code geaccepteerd. Kluis wordt ontgrendeld...');
-    setUnlocking(true);
-    setTimeout(() => {
-      setSafeState('open');
-      setUnlocking(false);
-      setLocal('Klik. De kluis springt open. Binnenin ligt De Zwarte Lotus.');
-    }, 1100);
+    setLocal('TOEGANG VERLEEND');
+    window.setTimeout(()=>{setSafeState('open');setUnlocking(false);},1150);
   };
-
-  const continueAfterOpen = async () => {
-    await submitAnswer('KLUIS','203409');
-  };
-
-  return <section className="panel safe-panel cinematic">
-    <div className="section-label">FASE 8 · DE KLUIS</div>
-    <h2>Drie raadsels. Zes cijfers.</h2>
-    <p>De kluis gebruikt drie codeparen. Los ieder raadsel afzonderlijk op. Zet de drie antwoorden daarna direct achter elkaar — en gebruik ze om de kluis op het scherm te openen.</p>
-    <div className="safe-display"><span>{digits[0]}</span><i>·</i><span>{digits[1]}</span><i>·</i><span>{digits[2]}</span></div>
-
-    <div className="riddle-stack">
-      <article className={`riddle-card ${step>1?'solved':''}`}>
-        <span>RAADSEL 1 · TWEE CIJFERS</span>
-        <h3>Wat delen de twee beslissende tijdstippen?</h3>
-        <p>Het hoofdalarm en Johnny’s routewijziging liggen zeventien minuten uit elkaar. Toch beginnen beide tijdstippen met exact dezelfde twee cijfers. Welke?</p>
-        {step===1&&<form onSubmit={e=>check(1,e)} className="riddle-form"><input value={a} onChange={e=>setA(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
-        {step>1&&<strong className="riddle-answer">20</strong>}
-      </article>
-
-      <article className={`riddle-card ${step>2?'solved':''} ${step<2?'locked':''}`}>
-        <span>RAADSEL 2 · TWEE CIJFERS</span>
-        <h3>Wanneer stierf het oude plan?</h3>
-        <p>Het hoofdalarm klonk om 20:17. Het nummer van het oorspronkelijke dock was 17. Tel dat aantal minuten bij het alarm op. Neem alleen de minuten van de nieuwe tijd.</p>
-        {step===2&&<form onSubmit={e=>check(2,e)} className="riddle-form"><input value={b} onChange={e=>setB(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
-        {step>2&&<strong className="riddle-answer">34</strong>}
-      </article>
-
-      <article className={`riddle-card ${step>3?'solved':''} ${step<3?'locked':''}`}>
-        <span>RAADSEL 3 · TWEE CIJFERS</span>
-        <h3>Waar eindigt het transport?</h3>
-        <p>Niet bij de pier. Niet bij de terminal. Zoek het nummer van het laadperron waar Johnny jullie naartoe stuurt en schrijf het als twee cijfers.</p>
-        {step===3&&<form onSubmit={e=>check(3,e)} className="riddle-form"><input value={c} onChange={e=>setC(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
-        {step>3&&<strong className="riddle-answer">09</strong>}
-      </article>
-    </div>
-
-    {step===4&&<div className="safe-stage">
-      <div className={`vault ${safeState}`}>
-        <div className="vault-frame">
-          <div className="vault-door">
-            <div className="vault-wheel"><span></span><span></span><span></span><span></span></div>
-            <div className="vault-keypad">203409</div>
-            <div className="vault-bars"><i></i><i></i><i></i></div>
-          </div>
-          <div className="vault-interior">
-            <div className="lotus-gem"></div>
-            <div className="vault-note-stack">
-              <div className="vault-note"><strong>DE ZWARTE LOTUS</strong><small>Zwarte diamant veiliggesteld</small></div>
-              <div className="vault-note"><strong>V.V.-37</strong><small>Koperkanaal · KARAAT</small></div>
+  const continueAfterOpen=()=>submitAnswer('KLUIS','203409');
+  return <>
+    <section className="panel safe-panel cinematic safe-riddle-home">
+      <div className="section-label">JOHNNY-ROUTE · LAADPERRON 9</div>
+      <h2>Drie vragen. Eén kluis.</h2>
+      <p>Johnny heeft de kluiscode niet verstuurd. Gebruik jullie onderzoeksgegevens om de zes cijfers te achterhalen.</p>
+      <div className="safe-riddle-list">
+        <article className="safe-riddle-question">
+          <span>VRAAG A</span>
+          <h3>Wat delen de twee beslissende tijdstippen?</h3>
+          <p>Het hoofdalarm en Johnny’s routewijziging liggen zeventien minuten uit elkaar. Toch beginnen beide tijdstippen met dezelfde twee cijfers. Welke?</p>
+        </article>
+        <article className="safe-riddle-question">
+          <span>VRAAG B</span>
+          <h3>Wanneer stierf het oude plan?</h3>
+          <p>Het hoofdalarm klonk om 20:17. Het oorspronkelijke dock was 17. Tel dat aantal minuten bij het alarm op. Neem alleen de minuten van de nieuwe tijd.</p>
+        </article>
+        <article className="safe-riddle-question">
+          <span>VRAAG C</span>
+          <h3>Waar eindigt het transport?</h3>
+          <p>Niet bij de pier. Niet bij de terminal. Gebruik het nummer van het laadperron dat Johnny jullie doorgaf, geschreven als twee cijfers.</p>
+        </article>
+      </div>
+      <button className="safe-enter-arrow" type="button" onClick={()=>setShowVault(true)}>
+        <span className="safe-enter-symbol" aria-hidden="true">→</span>
+        <span><strong>Bekijk de kluis</strong><small>Ga naar het digitale kluissysteem</small></span>
+      </button>
+      <button className="hint-link" onClick={()=>requestHint('Hint: de drie vragen leveren elk een paar cijfers op. Gebruik je bevindingen uit het onderzoek.')}>Hint aanvragen</button>
+      {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
+    </section>
+    {showVault&&<div className="fullscreen-safe-screen" role="dialog" aria-modal="true" aria-label="Digitale kluis Laadperron 9">
+      <div className="fullscreen-safe-head">
+        {safeState!=='open'&&<button className="safe-back-button" type="button" onClick={()=>setShowVault(false)}>← Terug naar de vragen</button>}
+        <span>LAADPERRON 9 · BEVEILIGDE KLUIS</span>
+      </div>
+      <div className="fullscreen-safe-content">
+        <div className={`vault giant-vault ${safeState}`}>
+          <div className="vault-frame">
+            <div className="vault-interior">
+              <div className="lotus-gem"></div>
+              <div className="vault-note-stack">
+                <div className="vault-note"><strong>DE ZWARTE LOTUS</strong><small>Zwarte diamant veiliggesteld</small></div>
+                <div className="vault-note"><strong>V.V.-37</strong><small>Koperkanaal · KARAAT</small></div>
+              </div>
+            </div>
+            <div className="vault-door">
+              <div className="vault-door-edge"></div>
+              <div className="vault-wheel"><span></span><span></span><span></span><span></span></div>
+              <div className="vault-bars"><i></i><i></i><i></i></div>
+              <div className="vault-keypad">BEAUMONT · SECURE</div>
             </div>
           </div>
         </div>
+        {safeState!=='open'?<div className="vault-entry-console">
+          <span className="vault-console-label">TOEGANGSCODE · 6 CIJFERS</span>
+          <div className="vault-code-screen" aria-label={`${safeCode.length} van 6 cijfers ingevoerd`}>
+            {Array.from({length:6},(_,i)=><span key={i} className={safeCode[i]?'filled':''}>{safeCode[i] || '–'}</span>)}
+          </div>
+          <div className="vault-dial-pad">
+            {keypad.map(k=><button key={k} type="button" aria-label={k==='⌫'?'Wis laatste cijfer':k==='C'?'Wis code':`Cijfer ${k}`} disabled={unlocking} onClick={()=>addKey(k)}>{k}</button>)}
+          </div>
+          <button className="vault-enter-key" type="button" disabled={unlocking || safeCode.length!==6} onClick={unlockSafe}>{unlocking?'ONTGRENDELEN...':'ENTER ↵'}</button>
+          {safeState==='error'&&<span className="vault-code-error">TOEGANG GEWEIGERD · +1 MINUUT</span>}
+          {local&&<span className="vault-code-success">{local}</span>}
+        </div>:<div className="vault-entry-console vault-unlocked-console">
+          <span className="vault-code-success">TOEGANG VERLEEND</span>
+          <h2>De kluis is open.</h2>
+          <p>De Zwarte Lotus en de vertrouwelijke stukken zijn gevonden.</p>
+          <button className="vault-enter-key" type="button" disabled={loading} onClick={continueAfterOpen}>{loading?'Laden...':'Bekijk de inhoud →'}</button>
+        </div>}
       </div>
-
-      {safeState !== 'open' && <div className="safe-final screen-safe-final"><span>KLUISCODE GERECONSTRUEERD</span><h3>Voer de zes cijfers in en open de kluis.</h3><form className="screen-safe-form" onSubmit={unlockSafe}><input value={safeCode} onChange={e=>setSafeCode(e.target.value)} placeholder="203409" inputMode="numeric" maxLength={6} required/><button className="primary" disabled={unlocking}>{unlocking?'Ontgrendelen...':'Open de kluis'}</button></form><small>Bij de juiste code draait de kluis open en wordt de inhoud zichtbaar.</small></div>}
-
-      {safeState === 'open' && <div className="safe-open-actions"><div className="safe-final success"><span>KLUIS GEOPEND</span><h3>De Zwarte Lotus ligt in de kluis.</h3><p>Jullie hebben het object én de begeleidende informatie gevonden. Ga verder naar de inhoud van de kluis.</p><button className="primary" disabled={loading} onClick={continueAfterOpen}>{loading?'Laden...':'Bekijk inhoud van de kluis'}</button></div></div>}
+      {feedback&&<div className="vault-screen-feedback" aria-live="polite">{feedback}</div>}
     </div>}
-
-    {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
-    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: vergelijk 20:17 met 20:34.':step===2?'Hint: 20:17 plus 17 minuten is 20:34.':step===3?'Hint: Johnny noemde Laadperron 9. Schrijf 9 als twee cijfers.':'Hint: zet 20, 34 en 09 direct achter elkaar.')}>Hint aanvragen</button>
-    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
-  </section>;
+  </>;
 }
 
 function LotusFound({loading,feedback,chooseFinal}) {
