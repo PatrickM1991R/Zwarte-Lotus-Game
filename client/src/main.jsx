@@ -902,9 +902,14 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
               </div>
             </div>
             <div className="vault-door">
-              <div className="vault-door-edge"></div>
-              <div className="vault-wheel"><span></span><span></span><span></span><span></span></div>
-              <div className="vault-bars"><i></i><i></i><i></i></div>
+              <div className="vault-door-edge" aria-hidden="true"></div>
+              <div className="vault-door-inner-groove" aria-hidden="true"></div>
+              <div className="vault-hinges" aria-hidden="true"><span></span><span></span><span></span></div>
+              <div className="vault-steel-rivets" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div className="vault-engraving"><span>BEAUMONT</span><small>VAULT SYSTEMS · PORT 09</small></div>
+              <div className="vault-wheel" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+              <div className="vault-bars" aria-hidden="true"><i></i><i></i><i></i></div>
+              <div className="vault-status-panel"><span className="vault-status-led" aria-hidden="true"></span><span className="vault-status-word">{safeState==='opening'?'ONTGRENDELEN':safeState==='error'?'TOEGANG GEWEIGERD':'VERGRENDELD'}</span></div>
               <div className="vault-keypad">BEAUMONT · SECURE</div>
             </div>
           </div>

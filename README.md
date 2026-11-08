@@ -148,3 +148,7 @@ Johnny’s bericht bij Laadperron 9 vermeldt dat hij de kluiscode wegens ondersc
 - Alleen zes cijfers kunnen worden bevestigd. De server controleert de code; bij een fout antwoord komt er +1 minuut straftijd en het grote uitroepteken.
 - Bij de juiste code opent de kluisdeur zichtbaar en wordt de inhoud getoond.
 - Mobile-first weergave van kluis en toetsenbord.
+
+
+### v5.5 — Realistisch metalen kluisfront
+Bij de digitale kluis zijn een realistische industriële metalen deur, klinkmechanisme, scharnieren, klinknagels, statuslampje en diepe kluisopening toegevoegd. Het bestaande numerieke toetsenbord, zes-cijferige code 203409, de correcte opening en de +1 minuut bij fouten zijn ongewijzigd.
