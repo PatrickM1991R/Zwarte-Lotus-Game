@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const JOHNNY_COORDS = import.meta.env.VITE_JOHNNY_COORDS || 'Wordt door de spelbegeleider ingesteld';
 const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
 
 
@@ -810,16 +809,19 @@ function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
 function JohnnyRouteIntro({loading,feedback,submitAnswer}) {
   return <section className="panel cinematic johnny-route-panel">
     <div className="success-seal">SAMENWERKING ACTIEF</div>
-    <div className="section-label">JOHNNY-ROUTE · LOCATIE</div>
-    <h2>Ga naar de kluis.</h2>
+    <div className="section-label">VERSLEUTELD BERICHT · J.J.</div>
+    <h2>Laadperron 9.</h2>
     <div className="johnny-message">
-      <p>“Jullie hebben gekozen. Dan krijgen jullie ook wat ik beloofd heb.”</p>
-      <p>De Zwarte Lotus ligt niet meer in een container. Hij ligt in een <strong>fysieke kluis</strong>.</p>
-      <p>Ga naar de locatie hieronder. Zoek daar naar de markering van de chauffeur.</p>
+      <p>“Luister goed, stelletje amateurs.</p>
+      <p>De kluis staat bij <strong>Laadperron 9</strong>.</p>
+      <p>En voordat jullie het vragen: nee, ik ga jullie die kluiscode niet geven. Denken jullie dat ik gek ben? Als ik die code via dit kanaal verstuur, kan iedere idioot hem onderscheppen.</p>
+      <p>Maar goed… jullie hebben me tot nu toe weten te vinden. Dus zó dom zijn jullie blijkbaar ook weer niet.</p>
+      <p>Alle informatie die jullie nodig hebben, hebben jullie al in handen.</p>
+      <p>Als jullie echt zulke geweldige rechercheurs zijn, moet het openen van één lullige kluis toch geen probleem zijn?</p>
+      <p><strong>Succes, slimmeriken. En laat me niet wachten.</strong>”</p>
     </div>
-    <div className="coordinate-card"><span>LOCATIE</span><strong>{JOHNNY_COORDS}</strong><small>Markering: zwarte routepijl · Poort 9</small></div>
-    <div className="mission-card"><span>OPDRACHT</span><strong>Vind de fysieke kluis. Open hem nog niet voordat jullie de zescijferige code hebben opgelost.</strong></div>
-    <button className="primary" disabled={loading} onClick={()=>submitAnswer('JOHNNY_ROUTE','locatie bereikt')}>{loading?'Bevestigen...':'Wij staan bij de kluis'}</button>
+    <div className="coordinate-card"><span>BESTEMMING</span><strong>LAADPERRON 9</strong><small>Beveiligde digitale kluis</small></div>
+    <button className="primary" disabled={loading} onClick={()=>submitAnswer('JOHNNY_ROUTE','locatie bereikt')}>{loading?'Verbinding maken...':'Open het kluissysteem'}</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -889,7 +891,7 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
       <article className={`riddle-card ${step>3?'solved':''} ${step<3?'locked':''}`}>
         <span>RAADSEL 3 · TWEE CIJFERS</span>
         <h3>Waar eindigt het transport?</h3>
-        <p>Niet bij de pier. Niet bij de terminal. Zoek het nummer van de poort bij de kluis en schrijf het als twee cijfers.</p>
+        <p>Niet bij de pier. Niet bij de terminal. Zoek het nummer van het laadperron waar Johnny jullie naartoe stuurt en schrijf het als twee cijfers.</p>
         {step===3&&<form onSubmit={e=>check(3,e)} className="riddle-form"><input value={c} onChange={e=>setC(e.target.value)} inputMode="numeric" maxLength={2} placeholder="••" required/><button className="primary">Controleer</button></form>}
         {step>3&&<strong className="riddle-answer">09</strong>}
       </article>
@@ -919,7 +921,7 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
     </div>}
 
     {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
-    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: vergelijk 20:17 met 20:34.':step===2?'Hint: 20:17 plus 17 minuten is 20:34.':step===3?'Hint: de markering bij de kluis noemt Poort 9. Schrijf 9 als twee cijfers.':'Hint: zet 20, 34 en 09 direct achter elkaar.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint(step===1?'Hint: vergelijk 20:17 met 20:34.':step===2?'Hint: 20:17 plus 17 minuten is 20:34.':step===3?'Hint: Johnny noemde Laadperron 9. Schrijf 9 als twee cijfers.':'Hint: zet 20, 34 en 09 direct achter elkaar.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -930,10 +932,10 @@ function LotusFound({loading,feedback,chooseFinal}) {
     <div className="success-seal">KLUIS OPEN</div>
     <div className="section-label">DE ZWARTE LOTUS IS GEVONDEN</div>
     <h2>Jullie hebben de steen.</h2>
-    <p>In de kluis ligt de fysieke Zwarte Lotus. Daarnaast vinden jullie het koperdossier en Johnny’s routebon. Vanaf dit moment hebben jullie meer informatie dan Johnny denkt.</p>
+    <p>In de digitale kluis vinden jullie De Zwarte Lotus en beveiligde gegevens over de koper en Johnny’s route. Vanaf dit moment hebben jullie meer informatie dan Johnny denkt.</p>
 
     <div className="vault-contents">
-      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Zwarte diamant · fysiek in jullie bezit</small></article>
+      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Zwarte diamant · digitaal veiliggesteld</small></article>
       <article><span>KOPER</span><strong>Victor Valmont</strong><small>Alias: De Verzamelaar · kanaal V.V.-37</small></article>
       <article><span>CODEWOORD</span><strong>KARAAT</strong><small>Verificatie: “Is de kluis nog gesloten?” → “Niet meer.”</small></article>
       <article><span>AFSPRAAK</span><strong>Perron 3 · Oude goederenloods</strong><small>23:10 · herkenningsteken: zwarte handschoen · tweede codewoord: Nachtglas</small></article>

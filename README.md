@@ -136,3 +136,7 @@ Het beveiligde transportsysteem toont alleen de initialen **J.J.** bij 'Wijzigin
 - Na het audio-einde: gesproken tekst onder portret en 30 seconden om te kiezen.
 - Server start de keuzeperiode slechts eenmaal, bewaakt de deadline en laat herladen niet resetten.
 - Het serverdemogeheugen is niet permanent: bij een volledige backend-restart resetten demo-teams. Voor productie is een persistente database vereist.
+
+
+## v5.3 — Johnny kluisbericht
+Johnny’s bericht bij Laadperron 9 vermeldt dat hij de kluiscode wegens onderscheppingsgevaar niet digitaal doorstuurt en dat het team die zelf moet afleiden. De digitale kluis, code en overgang blijven ongewijzigd.
