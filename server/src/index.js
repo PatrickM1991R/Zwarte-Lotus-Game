@@ -155,6 +155,9 @@ const phaseNext = {
 };
 
 const FINAL_DECISION_MS = 3 * 60 * 1000;
+// Operatiedossier B wordt door de spelbegeleider/inspecteur uitgereikt.
+// Alleen het politiekanaal mag deze code ontvangen, nooit de koper.
+const POLICE_CODE_B = process.env.POLICE_OPERATION_CODE || 'NV-07419';
 function initialBuyerChat() {
   return {stage: 'verify', location: '', policeCode: '', messages: [
     {from:'Victor Valmont', text:'V.V.-37. Wie heeft dit kanaal geopend? Is de kluis nog gesloten?'}
@@ -474,20 +477,15 @@ app.post('/api/teams/:id/buyer-chat', (req,res) => {
     if(value.length<4 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return wrongGameAnswer(res,team);
     chat.location=value;chat.meetingTime=time;
     add('Team',`${value} · ${time}`);
-    add('Victor Valmont',`Ik noteer ${value}, ${time}. Stuur nu de politie-authenticatiecode uit jullie dossier, dan kan ik de overdracht voorbereiden.`);
+    add('Victor Valmont',`Afgesproken. ${value}, ${time}. Ik verwacht dat de steen daar klaarstaat. Geen verrassingen.`);
     chat.stage='police_code';
   } else if(action==='police_code' && chat.stage==='police_code') {
-    // De politiecode wordt door de spelbegeleider verstrekt. Geen ongevraagde vaste code verzinnen.
-    // Optioneel kan een exacte controle worden ingesteld via POLICE_OPERATION_CODE.
-    if(value.length<3) return wrongGameAnswer(res,team);
-    const configured=String(process.env.POLICE_OPERATION_CODE||'').trim();
-    if(configured && value.toLowerCase()!==configured.toLowerCase()) return wrongGameAnswer(res,team);
-    chat.policeCode=value;
-    add('Team',value);
-    add('Victor Valmont',`Ontvangen. Ik verwacht jullie bij ${chat.location} om ${chat.meetingTime}. Ik kom alleen; geen verrassingen.`);
+    // Beveiligd politiekanaal. De code wordt niet aan Victor doorgestuurd.
+    if(value.toUpperCase().replace(/\s+/g,'')!==POLICE_CODE_B.toUpperCase().replace(/\s+/g,'')) return wrongGameAnswer(res,team);
+    chat.policeCodeAccepted=true;
     chat.stage='ready';
   } else if(action==='launch' && chat.stage==='ready') {
-    team.currentPhase='RESULTAAT';team.status='klaar';
+    team.currentPhase='RESULTAAT';team.status='klaar';team.arrestStartedAt=Date.now();
   } else {
     return res.status(409).json({error:'Dit bericht past niet bij de huidige chatstap.',team:enrich(team)});
   }
@@ -514,6 +512,7 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.finalDecisionStartedAt = null;
   team.finalChoiceTimedOut = false;
   team.buyerChat = null;
+  team.arrestStartedAt = null;
   team.johnnyOfferStartedAt = null;
   team.status = 'bezig';
   team.startedAt = Date.now();

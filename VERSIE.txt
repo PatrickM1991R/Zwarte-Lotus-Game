@@ -1,1 +1,2 @@
-v5.6 – digitale kluis: realistische binnenkant en zwarte diamant bij ontgrendeling. Code en penalty niet aangepast.
+De Zwarte Lotus — v5.9
+Eindoperatie: politiecode B via spelbegeleider, beveiligd politiekanaal en visuele arrestatie.

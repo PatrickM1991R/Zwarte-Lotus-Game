@@ -533,3 +533,48 @@
 .buyer-chat-compose label{display:block}
 .buyer-chat-compose input{width:100%;min-width:0}
 @media(max-width:600px){.final-choice-grid{grid-template-columns:1fr}.new-buyer-chat .chat-log{max-height:48vh}.buyer-chat-compose{padding:14px}}
+
+/* Johnny's handgeschreven vondst uit de kluis — leesbaar op telefoon en desktop */
+.johnny-scribble-evidence{margin:22px auto 24px;max-width:820px;display:grid;gap:8px}
+.johnny-scribble-evidence img{display:block;width:100%;height:auto;object-fit:contain;border-radius:7px;border:1px solid rgba(209,170,88,.31);box-shadow:0 15px 48px rgba(0,0,0,.52);background:#b9a17c}
+.johnny-scribble-evidence figcaption{font-size:11px;letter-spacing:.07em;text-align:center;color:#a99aaa}
+@media(max-width:600px){.lotus-found{padding:17px}.johnny-scribble-evidence{width:calc(100% + 10px);margin-left:-5px;margin-right:-5px}.johnny-scribble-evidence figcaption{font-size:10px;letter-spacing:0}}
+
+/* v5.9: Operatiedossier B en filmische politiearrestatie */
+.inspector-code-intro{margin:22px 0 10px;padding:22px;border:1px solid rgba(201,162,39,.65);border-radius:15px;background:linear-gradient(135deg,rgba(46,32,17,.92),rgba(18,13,27,.96))}
+.inspector-code-intro span{color:#dfc47d;font-size:11px;font-weight:800;letter-spacing:.13em}
+.inspector-code-intro h3{margin:12px 0 6px;font-size:clamp(21px,4vw,29px);color:#fff}
+.inspector-code-intro p{color:#e2d9de;line-height:1.6}
+.inspector-code-intro small{color:#cdb978}
+.arrest-scene{max-width:1100px;margin:auto}
+.arrest-photo-wrap{position:relative;overflow:hidden;border-radius:18px;border:2px solid rgba(201,162,39,.42);aspect-ratio:16/9;background:#070b12;box-shadow:0 25px 70px rgba(0,0,0,.5)}
+.arrest-photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;animation:arrest-camera 9s ease-out both}
+.arrest-screen-shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(2,5,12,.88),transparent 52%)}
+.arrest-scene-caption{position:absolute;bottom:16px;left:16px;right:16px;text-align:center;color:#ffe5a0;letter-spacing:.14em;font-size:clamp(13px,2.5vw,24px);font-weight:900;text-shadow:0 2px 14px #000;animation:arrest-flash .4s ease-out both}
+.arrest-scene-caption.final{color:#fff2bd}
+.arrest-pulse{display:inline-block;width:10px;height:10px;border-radius:50%;background:#f75d59;box-shadow:0 0 16px #f75d59;animation:arrest-pulse 1s infinite}
+.arrest-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.arrest-progress div{text-align:center;padding:11px 6px;background:#1e1924;border:1px solid #403247;border-radius:9px;color:#8b828b;font-size:clamp(10px,1.6vw,13px);font-weight:800}
+.arrest-progress .done{border-color:#b99a51;color:#e9d09b;background:#302517}
+.arrest-result-reveal{animation:arrest-flash .8s ease both}
+@keyframes arrest-camera{from{transform:scale(1.12)}to{transform:scale(1)}}
+@keyframes arrest-flash{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes arrest-pulse{50%{opacity:.28}}
+@media(max-width:620px){.arrest-photo-wrap{aspect-ratio:4/5}.arrest-photo-wrap img{object-position:center}.arrest-progress{gap:5px}.arrest-scene-caption{bottom:20px;letter-spacing:.08em}}
+@media(prefers-reduced-motion:reduce){.arrest-photo-wrap img,.arrest-result-reveal,.arrest-scene-caption{animation:none}}
+
+/* v6.0: dezelfde inspecteur keert terug en goedgekeurde visuele finale */
+.inspector-final-briefing{display:grid;grid-template-columns:minmax(145px,230px) minmax(0,1fr);gap:22px;align-items:stretch}
+.final-inspector-portrait{overflow:hidden;border-radius:12px;border:1px solid rgba(201,162,39,.32);background:#0c0c12}
+.final-inspector-portrait img{display:block;width:100%;height:100%;min-height:250px;object-fit:cover;object-position:48% center}
+.final-inspector-message{align-self:center;min-width:0}
+.final-inspector-message p{margin:8px 0 12px}
+.final-inspector-message p strong{color:#f1dba0}
+.final-inspector-dispatch{display:flex;gap:15px;align-items:center;margin:20px 0 16px;padding:13px;border:1px solid rgba(201,162,39,.4);border-radius:14px;background:linear-gradient(95deg,#1f1623,#111017)}
+.final-inspector-dispatch img{width:104px;height:100px;object-fit:cover;object-position:center;flex-shrink:0;border-radius:9px}
+.final-inspector-dispatch div{display:grid;gap:7px}
+.final-inspector-dispatch span{font-size:10px;letter-spacing:.14em;font-weight:800;color:#c9a227}
+.final-inspector-dispatch strong{font-family:Georgia,serif;font-size:clamp(17px,2.5vw,25px);line-height:1.3;color:#f7e7bc}
+.approved-endgame-art{margin:18px 0 24px;border:1px solid rgba(201,162,39,.48);border-radius:15px;overflow:hidden;background:#08090e}
+.approved-endgame-art img{display:block;width:100%;height:auto}
+@media(max-width:650px){.inspector-final-briefing{grid-template-columns:1fr;gap:12px}.final-inspector-portrait img{height:190px;min-height:0;object-position:center 34%}.final-inspector-dispatch img{width:76px;height:88px}.final-inspector-dispatch{gap:11px}.final-inspector-dispatch strong{font-size:17px}}

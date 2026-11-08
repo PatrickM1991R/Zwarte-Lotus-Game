@@ -984,12 +984,10 @@ function LotusFound({team,loading,feedback,chooseFinal,syncFinal}) {
     <div className="section-label">DE ZWARTE LOTUS IS GEVONDEN</div>
     <h2>Jullie hebben de steen.</h2>
     <p>Johnny denkt nog steeds dat jullie voor hem werken. In de kluis vinden jullie een afgeschermd koperskanaal. Bepaal nu hoe jullie dit willen uitspelen.</p>
-    <div className="vault-contents">
-      <article><span>OBJECT</span><strong>De Zwarte Lotus</strong><small>Digitale kluis · veiliggesteld</small></article>
-      <article><span>KOPER</span><strong>Victor Valmont</strong><small>Alias: De Verzamelaar · kanaal V.V.-37</small></article>
-      <article><span>VERIFICATIE</span><strong>KARAAT</strong><small>“Is de kluis nog gesloten?” · antwoord in jullie onderzoeksstukken</small></article>
-      <article><span>AANWIJZING</span><strong>Nachtglas</strong><small>Een tweede woord dat toegang geeft tot de koper.</small></article>
-    </div>
+    <figure className="johnny-scribble-evidence">
+      <img src="/assets/story/johnny-handgeschreven-kladje.png" alt="Handgeschreven kladje van Johnny Jatwerk met aantekeningen over Victor Valmont, de koper, codewoorden en het beveiligde contactkanaal" />
+      <figcaption>Gevonden tussen Johnny's spullen · onderzoek het handgeschreven kladje</figcaption>
+    </figure>
     <div className="final-decision-clock" role="timer" aria-label="Resterende beslissingsduur">
       <span>TIJD OM EEN PLAN TE KIEZEN</span>
       <strong>{String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</strong>
@@ -1021,34 +1019,45 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
   return <section className="panel cinematic final-operation">
     <div className="section-label">BEVEILIGD KOPERSKANAAL · V.V.-37</div>
     <h2>Contact met Victor Valmont</h2>
-    <p>Dit is een gesimuleerd, afgeschermd spelkanaal. Jullie berichten bepalen hoe de afspraak wordt vastgelegd.</p>
+    <p>Verifieer jullie identiteit en leg de overdracht vast zonder argwaan te wekken.</p>
     {team.finalChoiceTimedOut&&<div className="mission-card"><span>TIJD VERSTREKEN</span><strong>Het noodplan is geactiveerd. Lok de koper in de val.</strong></div>}
     <div className="operation-grid">
       <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Jullie keuze is vastgelegd.</small></article>
       <article><span>CONTACT</span><strong>Victor Valmont</strong><small>Vertrouwelijk kanaal V.V.-37</small></article>
     </div>
     <div className="secure-chat new-buyer-chat">
-      <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding actief · simulatie</small></div>
+      <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding beveiligd</small></div>
       <div className="chat-log" aria-live="polite">
         {(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}>
           <span>{m.from}</span><p>{m.text}</p>
         </div>)}
       </div>
     </div>
+    {chat.stage==='police_code'&&<div className="inspector-code-intro inspector-final-briefing">
+      <div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="Dezelfde inspecteur als aan het begin van het onderzoek"/></div>
+      <div className="final-inspector-message">
+        <span>AFGESLOTEN POLITIEKANAAL · OPERATIE NACHTVAL</span>
+        <h3>Bericht van jullie inspecteur</h3>
+        <p><strong>Rechercheteam, luister goed!</strong> Jullie hebben de steen terug en de koper aan de lijn. Nu gaan we die Jatwerk eindelijk inrekenen.</p>
+        <p>Houd de koper aan het lijntje, laat Johnny denken dat de overdracht doorgaat en haal <strong>Operatiedossier B</strong> bij mij op. Daarin staat jullie politiecode.</p>
+        <p>Voer die code <strong>hier bij de politie</strong> in. Niet in de chat met Victor, stelletje nietsnutten!</p>
+        <small>De spelbegeleider is de inspecteur. Alleen dit afgeschermde politiekanaal ontvangt Code B.</small>
+      </div>
+    </div>}
     {chat.stage!=='ready'?<form className="operation-step buyer-chat-compose" onSubmit={submit}>
-      <span>{chat.stage==='verify'?'IDENTITEIT':chat.stage==='codeword'?'CODEWOORD':chat.stage==='location'?'AFSPRAAK':'POLITIECODE'}</span>
+      <span>{chat.stage==='verify'?'IDENTITEIT':chat.stage==='codeword'?'CODEWOORD':chat.stage==='location'?'AFSPRAAK':'CODE B · POLITIE'}</span>
       {chat.stage==='location'?<>
         <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required placeholder="Kies zelf een locatie" /></label>
         <label>Tijdstip<input type="time" value={time} onChange={e=>setTime(e.target.value)} required /></label>
-      </>:<label>{chat.stage==='verify'?'Antwoord op de verificatievraag':chat.stage==='codeword'?'Tweede codewoord':'Code ontvangen van de politie'}
+      </>:<label>{chat.stage==='verify'?'Antwoord op de verificatievraag':chat.stage==='codeword'?'Tweede codewoord':'Code B van de inspecteur'}
         <input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required placeholder="Typ jullie bericht" />
       </label>}
-      <button className="primary" disabled={loading}>{loading?'Bericht verzenden...':'Verstuur beveiligd bericht'}</button>
-      {chat.stage==='police_code'&&<small>De politiecode komt van de spelbegeleider. In de demo is nog geen vaste controlecode ingesteld.</small>}
-    </form>:<div className="raid-ready"><span>AFSPRAAK VASTGELEGD</span>
+      <button className="primary" disabled={loading}>{loading?'Verwerken...':chat.stage==='police_code'?'Bevestig Code B bij de politie':'Verstuur beveiligd bericht'}</button>
+
+    </form>:<div className="raid-ready"><span>ARRESTATIETEAM GEREED · CODE B GEACCEPTEERD</span>
       <h3>Victor verwacht jullie bij {chat.location} om {chat.meetingTime}.</h3>
       <p>{double?'Jullie kunnen Johnny nu afzonderlijk laten onderscheppen.':'De politie kan nu de valstrik uitvoeren.'}</p>
-      <button className="primary" disabled={loading} onClick={()=>sendBuyerChat('launch')}>{loading?'Operatie wordt afgerond...':'Geef groen licht voor de operatie'}</button>
+      <button className="primary" disabled={loading} onClick={()=>sendBuyerChat('launch')}>{loading?'Eenheden worden ingezet...':'Start arrestatieactie'}</button>
     </div>}
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
@@ -1056,19 +1065,43 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
 
 function JohnnyResult({team}) {
   const double=team.finalChoice==='DUBBELSPEL';
-  return <section className="panel cinematic case-result">
-    <div className="success-seal">OPERATIE GESLAAGD</div>
-    <div className="section-label">MAISON BEAUMONT · ZAAK AFGESLOTEN</div>
-    <h2>De Zwarte Lotus is veiliggesteld.</h2>
-    <p>{double?`Op ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} werd Victor Valmont bij ${team.buyerChat?.location||'de afgesproken locatie'} onderschept. Johnny Jatwerk werd afzonderlijk aangehouden. De Zwarte Lotus bleef veiliggesteld.`:`Op ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} ging Victor Valmont naar ${team.buyerChat?.location||'de afgesproken locatie'}. De politie sloot de valstrik en hield ook Johnny Jatwerk aan. De Zwarte Lotus bleef veiliggesteld.`}</p>
-    <div className="result-grid">
-      <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong><small>De diamant blijft in bewaring van Maison Beaumont.</small></article>
-      <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong><small>Ontmaskerd als verrader en uitvoerder van de routewijziging.</small></article>
-      <article><span>VICTOR VALMONT</span><strong>Aangehouden</strong><small>De koper werd tijdens de overdracht geïdentificeerd en onderschept.</small></article>
-      <article><span>JULLIE ROUTE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>{team.hintCount} hint{team.hintCount===1?'':'s'} gebruikt tijdens het onderzoek.</small></article>
+  const [elapsed,setElapsed]=useState(()=>Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now())));
+  useEffect(()=>{
+    const timer=setInterval(()=>setElapsed(Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now()))),250);
+    return()=>clearInterval(timer);
+  },[team.arrestStartedAt]);
+  const stage=elapsed<2600?0:elapsed<5900?1:2;
+  return <section className="panel cinematic case-result arrest-scene">
+    <div className="section-label">OPERATIE NACHTVAL · LAATSTE ACTIE</div>
+    <h2>{stage===0?'Politie-eenheden onderweg...':stage===1?'JOHNNY JATWERK WORDT AANGEHOUDEN':'De Zwarte Lotus is veiliggesteld.'}</h2>
+    <div className="final-inspector-dispatch">
+      <img src="/assets/inspector-kist.jpg" alt="De inspecteur die het onderzoek vanaf het begin leidt"/>
+      <div><span>BERICHT VAN DE INSPECTEUR</span><strong>{stage===0?'Alle eenheden, posities innemen.':stage===1?'Nu! Ingrijpen! Jatwerk gaat nergens heen.':'Net werk, rechercheteam. Jullie hebben die ellendige steen terug.'}</strong></div>
     </div>
-    <div className="case-stamp">ZAAK GESLOTEN</div>
-    <div className="mission-card"><span>EINDE JOHNNY-ROUTE</span><strong>Meld jullie bij de spelbegeleider. De Johnny-route is volledig afgerond.</strong></div>
+    <div className={`arrest-photo-wrap arrest-stage-${stage}`}>
+      <img src="/assets/story/johnny-arrestatie.jpg" alt="Politie houdt Johnny Jatwerk aan op het donkere haventerrein" />
+      <div className="arrest-screen-shade"></div>
+      {stage===0&&<div className="arrest-scene-caption"><span className="arrest-pulse"></span> EENHEDEN NADEREN DE OVERDRACHT</div>}
+      {stage===1&&<div className="arrest-scene-caption">JOHNNY JATWERK · AANHOUDING BEVESTIGD</div>}
+      {stage===2&&<div className="arrest-scene-caption final">OPERATIE GESLAAGD · ZAAK GESLOTEN</div>}
+    </div>
+    <div className="arrest-progress" aria-label="Status operatie">
+      <div className={stage>=0?'done':''}>01 · Inzet</div>
+      <div className={stage>=1?'done':''}>02 · Aanhouding</div>
+      <div className={stage>=2?'done':''}>03 · Veiliggesteld</div>
+    </div>
+    {stage===2&&<div className="arrest-result-reveal">
+      <div className="approved-endgame-art"><img src="/assets/story/eindoperatie-goedgekeurd.webp" alt="Operatie Nachtval: de inspecteur leidt de arrestatie van Johnny Jatwerk aan de haven"/></div>
+      <div className="success-seal">MISSIE VOLTOOID</div>
+      <p>{double?`Victor Valmont werd om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} bij ${team.buyerChat?.location||'de gekozen locatie'} aangehouden. Johnny Jatwerk liep op een tweede locatie rechtstreeks in de armen van de politie.`:`De politie omsingelde ${team.buyerChat?.location||'de afgesproken overdrachtslocatie'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'}. Victor Valmont en Johnny Jatwerk werden beiden aangehouden.`}</p>
+      <div className="result-grid">
+        <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong><small>De verrader is ingerekend.</small></article>
+        <article><span>VICTOR VALMONT</span><strong>Aangehouden</strong><small>De koper zit vast.</small></article>
+        <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong><small>De diamant is terug.</small></article>
+        <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Code B bevestigd door de inspecteur.</small></article>
+      </div>
+      <div className="case-stamp">ZAAK GESLOTEN</div>
+    </div>}
   </section>;
 }
 

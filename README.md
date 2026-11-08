@@ -161,3 +161,14 @@ Bij de digitale kluis zijn een realistische industriële metalen deur, klinkmech
 - Politiecodes komen fysiek van de spelbegeleider. Optioneel kan in Render `POLICE_OPERATION_CODE` worden ingesteld om exact te controleren; anders is het een niet-geverifieerde demo-invoer.
 - Chatvoortgang wordt op de server bijgehouden, zoals de overige spelvoortgang. Foute bekende codewoorden leveren een strafminuut op.
 - De resultatenpagina is nog gebaseerd op het oorspronkelijke verhaal; specifieke arrestatielocaties moeten nader op de gekozen afspraken worden afgestemd.
+
+
+## v5.9 – Politiecode B & arrestatiescène
+De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV-07419` (eenmalig vast voor demo, wijzig via backend-omgeving `POLICE_OPERATION_CODE` indien gewenst). Deze code gaat alléén naar het afgeschermde politiekanaal, niet naar Victor. Bij een onjuiste code volgt +1 minuut straftijd. Daarna kan het team de arrestatie starten. De eindscène toont visueel de aanhouding van Johnny Jatwerk en bevestigt de arrestatie van Victor Valmont en het veiligstellen van de diamant.
+
+
+## v6.0 — Dezelfde inspecteur en visuele eindscène
+- De Code-B-briefing gebruikt nu expliciet dezelfde inspecteursfoto als de openingsbriefing (`inspector-kist.jpg`).
+- Na een bevestigde afspraak met Victor geeft de spelbegeleider in zijn rol als inspecteur Operatiedossier B. De politiecode gaat niet via de koperschat.
+- Tijdens de finale verschijnt de inspecteur met drie opeenvolgende arrestatiebevelen en als laatste de goedgekeurde cinematische eindvisual.
+- De bestaande chat, servercontrole, code B, tijdsregistratie en arrestatiefases zijn behouden.
