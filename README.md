@@ -201,3 +201,12 @@ De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV
 - Afzonderlijk groot statuspaneel per verdachte: Johnny aangehouden; Victor aangehouden of ontkomen afhankelijk van de laatste keuze.
 - De politie-inval is een geanimeerde spelsimulatie op basis van stilstaand beeld en tijdlijn, **geen echte video of lip-sync**.
 - Bestaande codewoorden, keuzes en strafminuten blijven ongewijzigd.
+
+## v6.4 — Afzonderlijke finale-pagina's en geen dubbele aanhouding
+- **Bewijspagina:** de twee kluisbriefjes staan op een eigen pagina, zonder de vragen van de inspecteur.
+- **Politiekanaal:** een afzonderlijke volgende pagina vraagt Johnny's locatie en Operatiedossier Code B. Een fout antwoord kost één strafminuut.
+- **Johnny:** na de correcte gegevens start een afzonderlijke operatie met spanningsopbouw. Pas na de aanhouding kan het team door.
+- **Victor-chat:** een afzonderlijke pagina zonder zichtbaar kluisbewijs of Johnny-arrestatie.
+- **Victor-finale:** toont alleen de actie rond Victor en het gekozen einde. Johnny's arrestatie wordt niet opnieuw afgespeeld.
+- **Inspecteur:** dezelfde portretbron als in de openingsbriefing (`inspector-kist.jpg`) wordt gebruikt op de beide politierapporten.
+- **Terugkijken:** de bestaande terugknop blijft beschikbaar met bevestiging en +2 minuten straftijd.
