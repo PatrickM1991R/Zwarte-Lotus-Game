@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','RESULTAAT'];
+const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
 
 
 const investigatorCharacters = [
@@ -17,7 +17,7 @@ const investigatorCharacters = [
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Toegangscode', CAMERA: 'Toegangscode', KIST_OPEN: 'Toegangscode', DOSSIER: 'Verdachtenonderzoek',
-  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Eindoperatie', RESULTAAT: 'Zaak afgerond'
+  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Lotus gevonden', EINDOPERATIE: 'Koperskanaal', KOPER_KEUZE:'Laatste keuze', RESULTAAT: 'Zaak afgerond'
 };
 
 
@@ -293,7 +293,7 @@ function App() {
   };
 
   const syncFinal = async () => {
-    if (!team || team.currentPhase!=='LOTUS_GEVONDEN') return;
+    if (!team || team.currentPhase!=='KOPER_KEUZE') return;
     try {
       const r=await fetch(`${API}/api/teams/${team.id}/final-status`);
       const j=await r.json();if(r.ok && j.team) setTeam(j.team);
@@ -481,8 +481,9 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
   if (phase === 'KEUZE') return <JohnnyChoice team={team} loading={loading} feedback={feedback} chooseRoute={chooseRoute} startJohnnyOffer={startJohnnyOffer} />;
   if (phase === 'JOHNNY_ROUTE') return <JohnnyRouteIntro loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'KLUIS') return <SafePuzzle checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
-  if (phase === 'LOTUS_GEVONDEN') return <LotusFound team={team} loading={loading} feedback={feedback} chooseFinal={chooseFinal} syncFinal={syncFinal} />;
+  if (phase === 'LOTUS_GEVONDEN') return <LotusFound team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
+  if (phase === 'KOPER_KEUZE' && team.chosenRoute === 'Johnny') return <BuyerFinalChoice team={team} loading={loading} feedback={feedback} chooseFinal={chooseFinal} syncFinal={syncFinal} />;
   if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} sendBuyerChat={sendBuyerChat} />;
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
 
@@ -967,140 +968,109 @@ function SafePuzzle({loading,feedback,submitAnswer,requestHint,checkStep}) {
   </>;
 }
 
-function LotusFound({team,loading,feedback,chooseFinal,syncFinal}) {
-  const [choice,setChoice]=useState('');
-  const [now,setNow]=useState(Date.now());
-  useEffect(()=>{
-    const t=setInterval(()=>setNow(Date.now()),250);
-    return ()=>clearInterval(t);
-  },[]);
-  const started=Number(team.finalDecisionStartedAt||Date.now());
-  const remaining=Math.max(0,180-Math.floor((now-started)/1000));
-  useEffect(()=>{
-    if(remaining===0) syncFinal();
-  },[remaining===0]);
+function JohnnyPaper() {
+  return <div className="johnny-location-paper">
+    <div className="paper-redline">J.J. · privé / NIET VERZENDEN</div>
+    <p>Na de overslag blijf ik bij de <u>chauffeurskeet achter Laadperron 9</u>.</p>
+    <p>Gele deur. Niet via de voorkant van de loods.</p>
+    <div className="paper-signature">— Johnny</div>
+  </div>;
+}
+function LotusFound({team,loading,feedback,submitAnswer}) {
+  const [location,setLocation]=useState('');
+  const [policeCode,setPoliceCode]=useState('');
   return <section className="panel cinematic lotus-found">
     <div className="success-seal">KLUIS OPEN</div>
     <div className="section-label">DE ZWARTE LOTUS IS GEVONDEN</div>
-    <h2>Jullie hebben de steen.</h2>
-    <p>Johnny denkt nog steeds dat jullie voor hem werken. In de kluis vinden jullie een afgeschermd koperskanaal. Bepaal nu hoe jullie dit willen uitspelen.</p>
-    <figure className="johnny-scribble-evidence">
-      <img src="/assets/story/johnny-handgeschreven-kladje.png" alt="Handgeschreven kladje van Johnny Jatwerk met aantekeningen over Victor Valmont, de koper, codewoorden en het beveiligde contactkanaal" />
-      <figcaption>Gevonden tussen Johnny's spullen · onderzoek het handgeschreven kladje</figcaption>
-    </figure>
-    <div className="final-decision-clock" role="timer" aria-label="Resterende beslissingsduur">
-      <span>TIJD OM EEN PLAN TE KIEZEN</span>
-      <strong>{String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</strong>
-      <small>Na 3 minuten wordt automatisch het noodplan (valstrik) gestart.</small>
+    <h2>Er liggen twee stukken in de kluis.</h2>
+    <p>Johnny denkt dat jullie hem helpen. Bekijk zijn aantekeningen en achterhaal waar hij zich bevindt. Geef die informatie uitsluitend aan jullie inspecteur.</p>
+    <figure className="johnny-scribble-evidence"><img src="/assets/story/johnny-handgeschreven-kladje.png" alt="Johnnys handgeschreven kladje met koperskanaal en twee codewoorden"/><figcaption>Kladje over de koper · gevonden bij De Zwarte Lotus</figcaption></figure>
+    <JohnnyPaper/>
+    <div className="inspector-code-intro inspector-final-briefing">
+      <div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="De inspecteur van de openingsbriefing"/></div>
+      <div className="final-inspector-message"><span>VERTROUWELIJK POLITIEKANAAL</span><h3>Waar zit Johnny?</h3>
+        <p>“Niets naar die koper sturen over Johnny. Zoek die chauffeur eerst. Geef mij zijn locatie en haal <strong>Operatiedossier B</strong> bij me op. Dan kunnen mijn mensen hem aanhouden!”</p>
+      </div>
     </div>
-    <div className="choice-grid final-choice-grid">
-      <button type="button" className={`choice-card police ${choice==='VAL'?'selected':''}`} onClick={()=>setChoice('VAL')} disabled={!remaining}>
-        <span>OPTIE 1</span><strong>Lok de koper in de val</strong><small>Regel via het beveiligde kanaal zelf een afspraak op een geschikte locatie.</small>
-      </button>
-      <button type="button" className={`choice-card criminal ${choice==='DUBBELSPEL'?'selected':''}`} onClick={()=>setChoice('DUBBELSPEL')} disabled={!remaining}>
-        <span>OPTIE 2</span><strong>Speel dubbel spel</strong><small>Houd Johnny buiten de afspraak en gebruik de codes van de politie om het plan uit te voeren.</small>
-      </button>
-    </div>
-    <button className="primary" disabled={loading||!choice||!remaining} onClick={()=>chooseFinal(choice)}>{loading?'Plan vastleggen...':'Bevestig plan en open koperskanaal'}</button>
+    <form className="operation-step" onSubmit={e=>{e.preventDefault();submitAnswer('LOTUS_GEVONDEN',{location,policeCode})}}>
+      <label>Waar bevindt Johnny Jatwerk zich?<input value={location} onChange={e=>setLocation(e.target.value)} required placeholder="Locatie uit het briefje" autoComplete="off"/></label>
+      <label>Code B van de inspecteur<input value={policeCode} onChange={e=>setPoliceCode(e.target.value)} required placeholder="Code uit Operatiedossier B" autoComplete="off"/></label>
+      <button className="primary" disabled={loading}>{loading?'Controleren...':'Stuur locatie naar de inspecteur'}</button>
+    </form>
     {feedback&&<div className="feedback">{feedback}</div>}
   </section>;
 }
 
 function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
-  const chat=team.buyerChat || {stage:'verify',messages:[{from:'Victor Valmont',text:'Is de kluis nog gesloten?'}]};
+  const chat=team.buyerChat || {stage:'codeword1',messages:[{from:'Victor Valmont',text:'V.V.-37. Codewoord 1?'}]};
   const [value,setValue]=useState('');
   const [time,setTime]=useState('23:10');
   useEffect(()=>{setValue('');},[chat.stage]);
-  const submit=async(e)=>{
-    e.preventDefault();
-    if(await sendBuyerChat(chat.stage,value,time))setValue('');
-  };
-  const double=team.finalChoice==='DUBBELSPEL';
+  const submit=async(e)=>{e.preventDefault();if(await sendBuyerChat(chat.stage,value,time))setValue('');};
   return <section className="panel cinematic final-operation">
     <div className="section-label">BEVEILIGD KOPERSKANAAL · V.V.-37</div>
     <h2>Contact met Victor Valmont</h2>
-    <p>Verifieer jullie identiteit en leg de overdracht vast zonder argwaan te wekken.</p>
-    {team.finalChoiceTimedOut&&<div className="mission-card"><span>TIJD VERSTREKEN</span><strong>Het noodplan is geactiveerd. Lok de koper in de val.</strong></div>}
-    <div className="operation-grid">
-      <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Jullie keuze is vastgelegd.</small></article>
-      <article><span>CONTACT</span><strong>Victor Valmont</strong><small>Vertrouwelijk kanaal V.V.-37</small></article>
+    <div className="johnny-caught-brief">
+      <img src="/assets/story/johnny-arrestatie.jpg" alt="Johnny Jatwerk wordt door de politie aangehouden"/>
+      <div><span>POLITIEBERICHT · INSPECTEUR</span><strong>Johnny Jatwerk is aangehouden.</strong><p>Zijn schuilplaats is bevestigd. De volgende stap is de afspraak met de koper. Victor mag niet weten dat Johnny vastzit.</p></div>
     </div>
     <div className="secure-chat new-buyer-chat">
       <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding beveiligd</small></div>
-      <div className="chat-log" aria-live="polite">
-        {(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}>
-          <span>{m.from}</span><p>{m.text}</p>
-        </div>)}
-      </div>
+      <div className="chat-log" aria-live="polite">{(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}><span>{m.from}</span><p>{m.text}</p></div>)}</div>
     </div>
-    {chat.stage==='police_code'&&<div className="inspector-code-intro inspector-final-briefing">
-      <div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="Dezelfde inspecteur als aan het begin van het onderzoek"/></div>
-      <div className="final-inspector-message">
-        <span>AFGESLOTEN POLITIEKANAAL · OPERATIE NACHTVAL</span>
-        <h3>Bericht van jullie inspecteur</h3>
-        <p><strong>Rechercheteam, luister goed!</strong> Jullie hebben de steen terug en de koper aan de lijn. Nu gaan we die Jatwerk eindelijk inrekenen.</p>
-        <p>Houd de koper aan het lijntje, laat Johnny denken dat de overdracht doorgaat en haal <strong>Operatiedossier B</strong> bij mij op. Daarin staat jullie politiecode.</p>
-        <p>Voer die code <strong>hier bij de politie</strong> in. Niet in de chat met Victor, stelletje nietsnutten!</p>
-        <small>De spelbegeleider is de inspecteur. Alleen dit afgeschermde politiekanaal ontvangt Code B.</small>
-      </div>
-    </div>}
-    {chat.stage!=='ready'?<form className="operation-step buyer-chat-compose" onSubmit={submit}>
-      <span>{chat.stage==='verify'?'IDENTITEIT':chat.stage==='codeword'?'CODEWOORD':chat.stage==='location'?'AFSPRAAK':'CODE B · POLITIE'}</span>
+    <form className="operation-step buyer-chat-compose" onSubmit={submit}>
+      <span>{chat.stage==='codeword1'?'CODEWOORD 1':chat.stage==='codeword2'?'CODEWOORD 2':'AFSPRAAK'}</span>
       {chat.stage==='location'?<>
-        <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required placeholder="Kies zelf een locatie" /></label>
-        <label>Tijdstip<input type="time" value={time} onChange={e=>setTime(e.target.value)} required /></label>
-      </>:<label>{chat.stage==='verify'?'Antwoord op de verificatievraag':chat.stage==='codeword'?'Tweede codewoord':'Code B van de inspecteur'}
-        <input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required placeholder="Typ jullie bericht" />
-      </label>}
-      <button className="primary" disabled={loading}>{loading?'Verwerken...':chat.stage==='police_code'?'Bevestig Code B bij de politie':'Verstuur beveiligd bericht'}</button>
-
-    </form>:<div className="raid-ready"><span>ARRESTATIETEAM GEREED · CODE B GEACCEPTEERD</span>
-      <h3>Victor verwacht jullie bij {chat.location} om {chat.meetingTime}.</h3>
-      <p>{double?'Jullie kunnen Johnny nu afzonderlijk laten onderscheppen.':'De politie kan nu de valstrik uitvoeren.'}</p>
-      <button className="primary" disabled={loading} onClick={()=>sendBuyerChat('launch')}>{loading?'Eenheden worden ingezet...':'Start arrestatieactie'}</button>
-    </div>}
+        <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required placeholder="Kies een ontmoetingsplek"/></label>
+        <label>Tijdstip<input type="time" value={time} onChange={e=>setTime(e.target.value)} required/></label>
+      </>:<label>Geheim codewoord<input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required placeholder="Voer het codewoord in"/></label>}
+      <button className="primary" disabled={loading}>{loading?'Verwerken...':'Verstuur beveiligd bericht'}</button>
+    </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
 
+function BuyerFinalChoice({team,loading,feedback,chooseFinal,syncFinal}) {
+  const [choice,setChoice]=useState('');
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),250);return()=>clearInterval(t);},[]);
+  const remaining=Math.max(0,180-Math.floor((now-Number(team.finalDecisionStartedAt||now))/1000));
+  useEffect(()=>{if(remaining===0)syncFinal();},[remaining===0]);
+  return <section className="panel cinematic lotus-found">
+    <div className="section-label">LAATSTE KEUZE · VICTOR VALMONT</div>
+    <h2>De koper heeft jullie afspraak bevestigd.</h2>
+    <p>Johnny zit vast. Victor komt naar <strong>{team.buyerChat?.location}</strong> om <strong>{team.buyerChat?.meetingTime}</strong> met het geld. Wat doen jullie met Victor?</p>
+    <div className="final-decision-clock" role="timer"><span>TIJD OM TE KIEZEN</span><strong>{String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</strong><small>Na drie minuten kiest het systeem automatisch voor arrestatie.</small></div>
+    <div className="choice-grid final-choice-grid">
+      <button className={`choice-card police ${choice==='VAL'?'selected':''}`} onClick={()=>setChoice('VAL')} disabled={!remaining}><span>OPTIE 1</span><strong>Laat Victor arresteren</strong><small>Waarschuw de inspecteur. De koper loopt de val in; het geld wordt als bewijs veiliggesteld.</small></button>
+      <button className={`choice-card criminal ${choice==='GELD'?'selected':''}`} onClick={()=>setChoice('GELD')} disabled={!remaining}><span>OPTIE 2</span><strong>Hou het geld zelf</strong><small>Laat Victor ontkomen en neem het geld. Het team kiest voor een criminele afloop.</small></button>
+    </div>
+    <button className="primary" disabled={loading||!choice||!remaining} onClick={()=>chooseFinal(choice)}>{loading?'Verwerken...':'Bevestig definitieve keuze'}</button>
+    {feedback&&<div className="feedback">{feedback}</div>}
+  </section>;
+}
+
 function JohnnyResult({team}) {
-  const double=team.finalChoice==='DUBBELSPEL';
+  const keptMoney=team.finalChoice==='GELD';
   const [elapsed,setElapsed]=useState(()=>Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now())));
-  useEffect(()=>{
-    const timer=setInterval(()=>setElapsed(Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now()))),250);
-    return()=>clearInterval(timer);
-  },[team.arrestStartedAt]);
-  const stage=elapsed<2600?0:elapsed<5900?1:2;
+  useEffect(()=>{const timer=setInterval(()=>setElapsed(Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now()))),250);return()=>clearInterval(timer);},[team.arrestStartedAt]);
+  const stage=elapsed<2500?0:elapsed<5700?1:2;
   return <section className="panel cinematic case-result arrest-scene">
-    <div className="section-label">OPERATIE NACHTVAL · LAATSTE ACTIE</div>
-    <h2>{stage===0?'Politie-eenheden onderweg...':stage===1?'JOHNNY JATWERK WORDT AANGEHOUDEN':'De Zwarte Lotus is veiliggesteld.'}</h2>
-    <div className="final-inspector-dispatch">
-      <img src="/assets/inspector-kist.jpg" alt="De inspecteur die het onderzoek vanaf het begin leidt"/>
-      <div><span>BERICHT VAN DE INSPECTEUR</span><strong>{stage===0?'Alle eenheden, posities innemen.':stage===1?'Nu! Ingrijpen! Jatwerk gaat nergens heen.':'Net werk, rechercheteam. Jullie hebben die ellendige steen terug.'}</strong></div>
-    </div>
-    <div className={`arrest-photo-wrap arrest-stage-${stage}`}>
-      <img src="/assets/story/johnny-arrestatie.jpg" alt="Politie houdt Johnny Jatwerk aan op het donkere haventerrein" />
-      <div className="arrest-screen-shade"></div>
-      {stage===0&&<div className="arrest-scene-caption"><span className="arrest-pulse"></span> EENHEDEN NADEREN DE OVERDRACHT</div>}
-      {stage===1&&<div className="arrest-scene-caption">JOHNNY JATWERK · AANHOUDING BEVESTIGD</div>}
-      {stage===2&&<div className="arrest-scene-caption final">OPERATIE GESLAAGD · ZAAK GESLOTEN</div>}
-    </div>
-    <div className="arrest-progress" aria-label="Status operatie">
-      <div className={stage>=0?'done':''}>01 · Inzet</div>
-      <div className={stage>=1?'done':''}>02 · Aanhouding</div>
-      <div className={stage>=2?'done':''}>03 · Veiliggesteld</div>
-    </div>
+    <div className="section-label">DE ZWARTE LOTUS · EINDOPERATIE</div>
+    <h2>{stage<2?'De overdracht loopt...':keptMoney?'Jullie hebben voor het geld gekozen.':'Operatie geslaagd.'}</h2>
+    <div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="De inspecteur uit het begin"/><div><span>BERICHT VAN DE INSPECTEUR</span><strong>{keptMoney?'Johnny is aangehouden. Maar wat hebben jullie met Victor afgesproken?':stage<2?'Eenheden gereed. Victor wordt op de afgesproken plek opgewacht.':'Johnny en Victor zijn aangehouden. De diamant is veilig.'}</strong></div></div>
+    <div className={`arrest-photo-wrap arrest-stage-${stage}`}><img src="/assets/story/johnny-arrestatie.jpg" alt="De arrestatie van Johnny Jatwerk"/><div className="arrest-screen-shade"></div><div className="arrest-scene-caption final">JOHNNY JATWERK · AANGEHOUDEN</div></div>
     {stage===2&&<div className="arrest-result-reveal">
-      <div className="approved-endgame-art"><img src="/assets/story/eindoperatie-goedgekeurd.webp" alt="Operatie Nachtval: de inspecteur leidt de arrestatie van Johnny Jatwerk aan de haven"/></div>
-      <div className="success-seal">MISSIE VOLTOOID</div>
-      <p>{double?`Victor Valmont werd om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} bij ${team.buyerChat?.location||'de gekozen locatie'} aangehouden. Johnny Jatwerk liep op een tweede locatie rechtstreeks in de armen van de politie.`:`De politie omsingelde ${team.buyerChat?.location||'de afgesproken overdrachtslocatie'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'}. Victor Valmont en Johnny Jatwerk werden beiden aangehouden.`}</p>
+      {!keptMoney&&<div className="approved-endgame-art"><img src="/assets/story/eindoperatie-goedgekeurd.webp" alt="De succesvolle politieoperatie"/></div>}
+      <div className="success-seal">{keptMoney?'DUBBELE AGENDA':'MISSIE VOLTOOID'}</div>
+      <p>{keptMoney?`Bij ${team.buyerChat?.location||'de overdracht'} hebben jullie het geld voor jezelf gehouden en Victor laten gaan. Johnny zit vast, maar jullie keuze heeft een gevaarlijk nieuw geheim gecreëerd.`:`Victor is bij ${team.buyerChat?.location||'de overdracht'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} aangehouden. Johnny zat al vast. De Zwarte Lotus en het geld zijn veiliggesteld.`}</p>
       <div className="result-grid">
-        <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong><small>De verrader is ingerekend.</small></article>
-        <article><span>VICTOR VALMONT</span><strong>Aangehouden</strong><small>De koper zit vast.</small></article>
-        <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong><small>De diamant is terug.</small></article>
-        <article><span>OPERATIE</span><strong>{double?'Dubbel spel':'Valstrik'}</strong><small>Code B bevestigd door de inspecteur.</small></article>
+        <article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong></article>
+        <article><span>VICTOR VALMONT</span><strong>{keptMoney?'Ontkomen':'Aangehouden'}</strong></article>
+        <article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong></article>
+        <article><span>GELD</span><strong>{keptMoney?'Zelf gehouden':'Bewijs politie'}</strong></article>
       </div>
-      <div className="case-stamp">ZAAK GESLOTEN</div>
+      <div className="case-stamp">{keptMoney?'EINDE · VERTROUWELIJK':'ZAAK GESLOTEN'}</div>
     </div>}
   </section>;
 }

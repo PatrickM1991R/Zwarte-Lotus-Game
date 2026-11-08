@@ -158,20 +158,21 @@ const FINAL_DECISION_MS = 3 * 60 * 1000;
 // Operatiedossier B wordt door de spelbegeleider/inspecteur uitgereikt.
 // Alleen het politiekanaal mag deze code ontvangen, nooit de koper.
 const POLICE_CODE_B = process.env.POLICE_OPERATION_CODE || 'NV-07419';
+const JOHNNY_HIDEOUT = 'Chauffeurskeet achter Laadperron 9';
 function initialBuyerChat() {
-  return {stage: 'verify', location: '', policeCode: '', messages: [
-    {from:'Victor Valmont', text:'V.V.-37. Wie heeft dit kanaal geopend? Is de kluis nog gesloten?'}
+  return {stage:'codeword1', location:'', meetingTime:'', messages:[
+    {from:'Victor Valmont',text:'V.V.-37. Codewoord 1?'}
   ]};
 }
 function enforceFinalDeadline(team) {
-  if (team.currentPhase === 'LOTUS_GEVONDEN' && !team.finalDecisionStartedAt) team.finalDecisionStartedAt = Date.now();
-  if (team.currentPhase === 'LOTUS_GEVONDEN' && team.finalDecisionStartedAt && !team.finalChoice &&
+  if (team.currentPhase === 'KOPER_KEUZE' && !team.finalDecisionStartedAt) team.finalDecisionStartedAt=Date.now();
+  if (team.currentPhase === 'KOPER_KEUZE' && !team.finalChoice &&
       Date.now() >= team.finalDecisionStartedAt + FINAL_DECISION_MS) {
-    // Een ontbrekende keuze schakelt over naar het noodplan: de koper in de val lokken.
-    team.finalChoice = 'VAL';
-    team.finalChoiceTimedOut = true;
-    team.currentPhase = 'EINDOPERATIE';
-    team.buyerChat = initialBuyerChat();
+    team.finalChoice='VAL';
+    team.finalChoiceTimedOut=true;
+    team.currentPhase='RESULTAAT';
+    team.status='klaar';
+    team.arrestStartedAt=Date.now();
   }
 }
 const enrich = (team) => {
@@ -193,7 +194,7 @@ function wrongGameAnswer(res, team) {
 const localStepAnswers = {
   ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
   KLUIS:{riddle1:['20'],riddle2:['34'],riddle3:['09','9'],code:['203409']},
-  EINDOPERATIE:{verification:['niet meer','nietmeer'],codeword:['nachtglas'],time:['23:10','2310']}
+  EINDOPERATIE:{codeword1:['karaat'],codeword2:['nachtglas']}
 };
 
 // Ook lokale tussenstappen worden door de server gevalideerd en bestraft.
@@ -377,8 +378,19 @@ app.post('/api/teams/:id/answer', (req, res) => {
     const container = String(raw.container || '').trim().toLowerCase().replace(/\s+/g,'');
     const containerOk = ['jjx-2034','jjx2034'].includes(container);
     if (!containerOk) return wrongGameAnswer(res,team);
+  } else if (phase === 'LOTUS_GEVONDEN') {
+    const data=req.body.answer || {};
+    const location=String(data.location||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const code=String(data.policeCode||'').toUpperCase().replace(/\s+/g,'');
+    if(!location.includes('chauffeurskeet') || !location.includes('laadperron9') ||
+       code!==POLICE_CODE_B.toUpperCase().replace(/\s+/g,'')) return wrongGameAnswer(res,team);
+    team.johnnyLocation=JOHNNY_HIDEOUT;
+    team.johnnyArrestStartedAt=Date.now();
+    team.buyerChat=initialBuyerChat();
+    team.currentPhase='EINDOPERATIE';
+    return res.json({correct:true,team:enrich(team)});
   } else if (phase === 'EINDOPERATIE') {
-    return res.status(409).json({error:'Rond eerst de beveiligde chat en het eindplan af.'});
+    return res.status(409).json({error:'Gebruik het beveiligde koperskanaal.'});
   } else {
     const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
@@ -387,9 +399,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
 
   team.currentPhase = phaseNext[phase] || team.currentPhase;
   if (phase === 'KLUIS') {
-    team.finalDecisionStartedAt ??= Date.now();
+    team.finalDecisionStartedAt = null;
     team.finalChoice = null;
     team.buyerChat = null;
+    team.johnnyLocation = null;
+    team.johnnyArrestStartedAt = null;
   }
   if (phase === 'EINDOPERATIE') team.status = 'klaar';
   res.json({ correct: true, team: enrich(team) });
@@ -438,19 +452,20 @@ app.get('/api/teams/:id/final-status', (req,res)=>{
   res.json({team:enrich(team)});
 });
 
-app.post('/api/teams/:id/final-choice', (req, res) => {
-  const team = db.teams.find((t) => t.id === Number(req.params.id));
-  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+app.post('/api/teams/:id/final-choice', (req,res)=>{
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team)return res.status(404).json({error:'Team niet gevonden'});
   enforceFinalDeadline(team);
-  if (team.currentPhase !== 'LOTUS_GEVONDEN' || team.chosenRoute !== 'Johnny')
-    return res.status(409).json({ error: 'Deze eindkeuze is niet meer actief.', team:enrich(team) });
-  const choice = String(req.body.choice || '');
-  if (!['VAL','DUBBELSPEL'].includes(choice)) return res.status(422).json({ error: 'Ongeldige eindkeuze.' });
-  team.finalChoice = choice;
-  team.finalChoiceTimedOut = false;
-  team.currentPhase = 'EINDOPERATIE';
-  team.buyerChat = initialBuyerChat();
-  res.json({ team: enrich(team) });
+  if(team.currentPhase!=='KOPER_KEUZE' || team.chosenRoute!=='Johnny')
+    return res.status(409).json({error:'De keuzeperiode is niet actief.',team:enrich(team)});
+  const choice=String(req.body.choice||'');
+  if(!['VAL','GELD'].includes(choice))return res.status(422).json({error:'Ongeldige keuze.'});
+  team.finalChoice=choice;
+  team.finalChoiceTimedOut=false;
+  team.currentPhase='RESULTAAT';
+  team.status='klaar';
+  team.arrestStartedAt=Date.now();
+  res.json({team:enrich(team)});
 });
 
 // Een rollenspel-chat met Victor; geen externe chatdienst en geen echt account bij Victor.
@@ -466,26 +481,23 @@ app.post('/api/teams/:id/buyer-chat', (req,res) => {
   const value=String(req.body.value||'').trim().slice(0,180);
   const norm=value.toLowerCase().replace(/\s+/g,' ');
   const add=(from,text)=>chat.messages.push({from,text});
-  if(action==='verify' && chat.stage==='verify') {
-    if(!['niet meer','nietmeer'].includes(norm)) return wrongGameAnswer(res,team);
-    add('Team',value);add('Victor Valmont','Dan wil ik het tweede codewoord.');chat.stage='codeword';
-  } else if(action==='codeword' && chat.stage==='codeword') {
-    if(norm!=='nachtglas') return wrongGameAnswer(res,team);
-    add('Team',value);add('Victor Valmont','Akkoord. Waar en wanneer spreken we af? Stel een locatie en tijdstip voor.');chat.stage='location';
+  if(action==='codeword1' && chat.stage==='codeword1') {
+    if(norm!=='karaat')return wrongGameAnswer(res,team);
+    add('Team',value);add('Victor Valmont','Codewoord 2?');chat.stage='codeword2';
+  } else if(action==='codeword2' && chat.stage==='codeword2') {
+    if(norm!=='nachtglas')return wrongGameAnswer(res,team);
+    add('Team',value);add('Victor Valmont','De woorden kloppen. Waar en wanneer vindt de overdracht plaats?');chat.stage='location';
   } else if(action==='location' && chat.stage==='location') {
     const time=String(req.body.time||'').trim();
-    if(value.length<4 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return wrongGameAnswer(res,team);
+    if(value.length<4 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return wrongGameAnswer(res,team);
     chat.location=value;chat.meetingTime=time;
     add('Team',`${value} · ${time}`);
-    add('Victor Valmont',`Afgesproken. ${value}, ${time}. Ik verwacht dat de steen daar klaarstaat. Geen verrassingen.`);
-    chat.stage='police_code';
-  } else if(action==='police_code' && chat.stage==='police_code') {
-    // Beveiligd politiekanaal. De code wordt niet aan Victor doorgestuurd.
-    if(value.toUpperCase().replace(/\s+/g,'')!==POLICE_CODE_B.toUpperCase().replace(/\s+/g,'')) return wrongGameAnswer(res,team);
-    chat.policeCodeAccepted=true;
-    chat.stage='ready';
-  } else if(action==='launch' && chat.stage==='ready') {
-    team.currentPhase='RESULTAAT';team.status='klaar';team.arrestStartedAt=Date.now();
+    add('Victor Valmont',`Afgesproken. ${value}, ${time}. Ik neem het geld mee. Geen politie.`);
+    chat.stage='confirmed';
+    team.currentPhase='KOPER_KEUZE';
+    team.finalDecisionStartedAt=Date.now();
+  } else if(action==='launch' && chat.stage==='confirmed') {
+    return res.status(409).json({error:'Maak eerst jullie keuze over de koper.'});
   } else {
     return res.status(409).json({error:'Dit bericht past niet bij de huidige chatstap.',team:enrich(team)});
   }
@@ -513,6 +525,8 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.finalChoiceTimedOut = false;
   team.buyerChat = null;
   team.arrestStartedAt = null;
+  team.johnnyLocation = null;
+  team.johnnyArrestStartedAt = null;
   team.johnnyOfferStartedAt = null;
   team.status = 'bezig';
   team.startedAt = Date.now();

@@ -172,3 +172,17 @@ De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV
 - Na een bevestigde afspraak met Victor geeft de spelbegeleider in zijn rol als inspecteur Operatiedossier B. De politiecode gaat niet via de koperschat.
 - Tijdens de finale verschijnt de inspecteur met drie opeenvolgende arrestatiebevelen en als laatste de goedgekeurde cinematische eindvisual.
 - De bestaande chat, servercontrole, code B, tijdsregistratie en arrestatiefases zijn behouden.
+
+
+## v6.1 — nieuwe slotroute Johnny / Victor
+
+- Na het openen van de digitale kluis liggen er twee bewijsstukken: Johnny's bestaande koperskladje en een nieuw handgeschreven briefje dat zijn schuilplaats aanwijst.
+- Dezelfde inspecteur als bij de opening vraagt om Johnny's locatie en Operatiedossier B. Test: locatie `Chauffeurskeet achter Laadperron 9`, Code B `NV-07419`. Fout: +1 minuut.
+- Bij juiste bevestiging wordt Johnny afzonderlijk aangehouden, vóór de chat met Victor.
+- Victor vraagt eerst codewoord 1 `KARAAT`, dan codewoord 2 `NACHTGLAS`. Geen vraag meer over de kluis.
+- Het team kan vervolgens zelf een overdrachtslocatie en tijdstip voorstellen.
+- Zodra Victor die bevestigt start een echte (servergestuurde) keuzeperiode van drie minuten: `Victor laten arresteren` of `geld zelf houden`. De standaardkeuze bij tijdsoverschrijding is arrestatie.
+- De eindscène verschilt: Johnny is altijd aangehouden, Victor alleen bij arrestatiekeuze. Het geld wordt alleen bij de geldkeuze als zelf gehouden beschreven.
+- De politiecode wordt nooit aan de koper gestuurd.
+
+**Let op:** deze game is nog een prototype met in-memory teamstatus: een herstart van de Render-backend kan actieve teams resetten. De frontend wordt bij deployment door Render gebouwd.

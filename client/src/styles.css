@@ -578,3 +578,17 @@
 .approved-endgame-art{margin:18px 0 24px;border:1px solid rgba(201,162,39,.48);border-radius:15px;overflow:hidden;background:#08090e}
 .approved-endgame-art img{display:block;width:100%;height:auto}
 @media(max-width:650px){.inspector-final-briefing{grid-template-columns:1fr;gap:12px}.final-inspector-portrait img{height:190px;min-height:0;object-position:center 34%}.final-inspector-dispatch img{width:76px;height:88px}.final-inspector-dispatch{gap:11px}.final-inspector-dispatch strong{font-size:17px}}
+
+/* v6.1: Johnny's handgeschreven schuilplaats, gescheiden arrestatie en koperskeuze */
+.johnny-location-paper{max-width:550px;margin:22px auto 26px;padding:28px 28px 22px;transform:rotate(-1deg);background:linear-gradient(105deg,#e9d9ab,#f4ebcc 45%,#d7c59b);color:#272014;box-shadow:3px 8px 27px #0009;border:1px solid #bdab80;border-radius:2px;font-family:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;font-size:clamp(17px,2.7vw,24px);line-height:1.6}
+.johnny-location-paper p{color:#272014!important;line-height:1.45;margin:13px 0}
+.johnny-location-paper u{text-decoration-color:#9c2525;text-underline-offset:4px}
+.paper-redline{font-family:monospace;font-weight:900;letter-spacing:.14em;color:#8f2525;font-size:12px;border-bottom:1px dashed #a58d5e;padding-bottom:12px}
+.paper-signature{text-align:right;font-weight:800;transform:rotate(-4deg)}
+.johnny-caught-brief{display:grid;grid-template-columns:minmax(130px,240px) minmax(0,1fr);gap:15px;padding:15px;border:1px solid #b18a49;border-radius:14px;background:#1b1520;margin:18px 0}
+.johnny-caught-brief img{width:100%;height:170px;object-fit:cover;border-radius:9px}
+.johnny-caught-brief div{align-self:center;display:grid;gap:9px}
+.johnny-caught-brief span{color:#c9a227;font-size:11px;letter-spacing:.12em}
+.johnny-caught-brief strong{font-size:clamp(18px,3vw,25px);color:#f6e4ae}
+.johnny-caught-brief p{margin:0}
+@media(max-width:600px){.johnny-caught-brief{grid-template-columns:1fr}.johnny-caught-brief img{height:210px}.johnny-location-paper{padding:18px 17px}}
