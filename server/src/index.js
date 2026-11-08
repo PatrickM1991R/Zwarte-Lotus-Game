@@ -152,7 +152,15 @@ const phaseNext = {
   JOHNNY_ROUTE: 'KLUIS',
   KLUIS: 'LOTUS_GEVONDEN',
   LOTUS_GEVONDEN: 'JOHNNY_MELDEN',
-  EINDOPERATIE: 'RESULTAAT'
+  EINDOPERATIE: 'RESULTAAT',
+  POLITIE_BRIEFING: 'POLITIE_CAMERA',
+  POLITIE_CAMERA: 'POLITIE_LEK',
+  POLITIE_LEK: 'POLITIE_INVAL',
+  POLITIE_INVAL: 'POLITIE_COMMUNICATIE',
+  POLITIE_COMMUNICATIE: 'POLITIE_DIAMANT',
+  POLITIE_DIAMANT: 'POLITIE_COORDINATIE',
+  POLITIE_COORDINATIE: 'POLITIE_FINALE',
+  POLITIE_FINALE: 'POLITIE_RESULTAAT'
 };
 
 const FINAL_DECISION_MS = 3 * 60 * 1000;
@@ -212,7 +220,16 @@ const previousPhase = {
   JOHNNY_ARRESTATIE:'JOHNNY_MELDEN',
   EINDOPERATIE:'JOHNNY_ARRESTATIE',
   KOPER_KEUZE:'EINDOPERATIE',
-  RESULTAAT:'KOPER_KEUZE'
+  RESULTAAT:'KOPER_KEUZE',
+  POLITIE_BRIEFING:'KEUZE',
+  POLITIE_CAMERA:'POLITIE_BRIEFING',
+  POLITIE_LEK:'POLITIE_CAMERA',
+  POLITIE_INVAL:'POLITIE_LEK',
+  POLITIE_COMMUNICATIE:'POLITIE_INVAL',
+  POLITIE_DIAMANT:'POLITIE_COMMUNICATIE',
+  POLITIE_COORDINATIE:'POLITIE_DIAMANT',
+  POLITIE_FINALE:'POLITIE_COORDINATIE',
+  POLITIE_RESULTAAT:'POLITIE_FINALE'
 };
 const localStepAnswers = {
   ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
@@ -438,6 +455,29 @@ app.post('/api/teams/:id/answer', (req, res) => {
     if(!team.johnnyArrestStartedAt || Date.now()-team.johnnyArrestStartedAt<9000)return res.status(409).json({error:'De aanhoudingsoperatie is nog bezig.'});
     team.currentPhase='EINDOPERATIE';
     return res.json({correct:true,team:enrich(team)});
+  } else if (phase.startsWith('POLITIE_')) {
+    if(team.chosenRoute !== 'Politie') return res.status(409).json({error:'Deze verhaallijn is niet actief.'});
+    const input = req.body.answer || {};
+    const normalized = x => String(x||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'');
+    const matches = (field, expected) => normalized(input[field])===normalized(expected);
+    let valid = false;
+    if(phase==='POLITIE_BRIEFING') valid=String(input).toLowerCase()==='onderzoek starten';
+    if(phase==='POLITIE_CAMERA') valid=matches('camera','06') && matches('exit','west');
+    if(phase==='POLITIE_LEK') valid=matches('suspect','Freddy Flessentrekker') && matches('access','FF27');
+    if(phase==='POLITIE_INVAL') valid=String(input).toLowerCase()==='inval afronden' && team.policeRaidStartedAt && (Date.now()-team.policeRaidStartedAt)>=11000;
+    if(phase==='POLITIE_COMMUNICATIE') valid=matches('channel','VV37') && matches('time','2310') && matches('location','Perron 3');
+    if(phase==='POLITIE_DIAMANT') valid=matches('location','Koelcel B12') && matches('seal','ZL09');
+    if(phase==='POLITIE_COORDINATIE') valid=matches('code','SCHADUW27') && matches('buyer','Victor Valmont');
+    if(phase==='POLITIE_FINALE') valid=String(input).toLowerCase()==='operatie afronden' && team.policeFinalStartedAt && (Date.now()-team.policeFinalStartedAt)>=16000;
+    if(!valid) {
+      if(['POLITIE_BRIEFING','POLITIE_INVAL','POLITIE_FINALE'].includes(phase)) return res.status(409).json({error:'De operatie kan nog niet worden voortgezet.'});
+      return wrongGameAnswer(res,team);
+    }
+    if(phase==='POLITIE_LEK') team.policeRaidStartedAt=Date.now();
+    if(phase==='POLITIE_COORDINATIE') team.policeFinalStartedAt=Date.now();
+    if(phase==='POLITIE_FINALE') team.status='klaar';
+    team.currentPhase=phaseNext[phase];
+    return res.json({correct:true,team:enrich(team)});
   } else if (phase === 'EINDOPERATIE') {
     return res.status(409).json({error:'Gebruik het beveiligde koperskanaal.'});
   } else {
@@ -491,7 +531,8 @@ app.post('/api/teams/:id/route', (req, res) => {
   const route = String(req.body.route || '');
   if (!['Johnny','Politie'].includes(route)) return res.status(422).json({ error: 'Ongeldige routekeuze.' });
   team.chosenRoute = route;
-  team.currentPhase = route === 'Johnny' ? 'JOHNNY_ROUTE' : 'EINDE';
+  team.currentPhase = route === 'Johnny' ? 'JOHNNY_ROUTE' : 'POLITIE_BRIEFING';
+  if(route==='Politie'){team.policeRaidStartedAt=null;team.policeFinalStartedAt=null;team.policeProgress={};}
   res.json({ team: enrich(team) });
 });
 
@@ -586,6 +627,9 @@ app.post('/api/facilitator/teams/:id/reset', (req, res) => {
   team.participants = [];
   team.dossierPlan = null;
   team.completedSteps = {};
+  team.policeRaidStartedAt = null;
+  team.policeFinalStartedAt = null;
+  team.policeProgress = {};
   res.json({ team: enrich(team) });
 });
 

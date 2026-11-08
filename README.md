@@ -234,3 +234,9 @@ Victor lijkt te ontsnappen, wordt later alsnog opgepakt en noemt de rechercheurs
 - Na het verhoor verschijnt een filmische nachtelijke haven-scène met bewegend camerabeeld, blauw-rode zwaailichten en aanhoudingsbevestiging voor het rechercheteam.
 - De succesvolle politie-route blijft ongewijzigd; de geldroute eindigt met inbeslagname van het geld.
 - De scène is een geanimeerde afbeelding, geen vooraf gerenderde video.
+
+
+## v7.1 – Operatie Schaduwjacht: volledige alternatieve politieroute
+Na Johnny's 30-secondenaanbod opent **Waarschuw de politie** een eigen route met negen schermen (waaronder vijf inhoudelijke bewijsopdrachten), een mislukte inval en een dubbele arrestatiefinale. De Johnny-samenwerkingsroute is behouden. Alle puzzelantwoorden worden op de server gevalideerd met +1 minuut bij fouten. Terug naar de vorige pagina kost +2 minuten. De live operaties hebben vaste timing en herstarten niet bij vernieuwen zolang de demo-API in geheugen actief blijft.
+
+Spelbegeleidersoplossingen politieroute: Camera 06 / West; Freddy Flessentrekker / FF-27; kanaal VV-37 / 23:10 / Perron 3; Koelcel B-12 / ZL-09; SCHADUW-27 / Victor Valmont. De extra 35–45 minuten blijft een spelduurdoel en moet met testteams worden geverifieerd.

@@ -5,6 +5,8 @@ import './styles.css';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','JOHNNY_MELDEN','JOHNNY_ARRESTATIE','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
 
+const policePhases = [...phases.slice(0,phases.indexOf('JOHNNY_ROUTE')), 'POLITIE_BRIEFING', 'POLITIE_CAMERA', 'POLITIE_LEK', 'POLITIE_INVAL', 'POLITIE_COMMUNICATIE', 'POLITIE_DIAMANT', 'POLITIE_COORDINATIE', 'POLITIE_FINALE', 'POLITIE_RESULTAAT'];
+
 
 const investigatorCharacters = [
   { id:'kees-zoek', name:'Kees Zoek', specialty:'Opsporing & details', blurb:'Ziet wat anderen missen en blijft zoeken tot het laatste detail klopt.', image:'/assets/characters/kees-zoek.jpg' },
@@ -17,7 +19,8 @@ const investigatorCharacters = [
 
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Toegangscode', CAMERA: 'Toegangscode', KIST_OPEN: 'Toegangscode', DOSSIER: 'Verdachtenonderzoek',
-  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Bewijs uit de kluis', JOHNNY_MELDEN: 'Inspecteur · Code B', JOHNNY_ARRESTATIE: 'Aanhouding Johnny', EINDOPERATIE: 'Koperskanaal', KOPER_KEUZE:'Laatste keuze', RESULTAAT: 'Zaak afgerond'
+  ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Bewijs uit de kluis', JOHNNY_MELDEN: 'Inspecteur · Code B', JOHNNY_ARRESTATIE: 'Aanhouding Johnny', EINDOPERATIE: 'Koperskanaal', KOPER_KEUZE:'Laatste keuze', RESULTAAT: 'Zaak afgerond',
+  POLITIE_BRIEFING:'Inspecteur ingelicht',POLITIE_CAMERA:'Cameraonderzoek',POLITIE_LEK:'Informatielek',POLITIE_INVAL:'Eerste inval',POLITIE_COMMUNICATIE:'Koper onderscheppen',POLITIE_DIAMANT:'Diamant opsporen',POLITIE_COORDINATIE:'Arrestatie voorbereiden',POLITIE_FINALE:'Dubbele arrestatie',POLITIE_RESULTAAT:'Zaak gesloten'
 };
 
 
@@ -343,14 +346,15 @@ function App() {
   };
 
   if (mode === 'game' && team) {
-    const idx = Math.max(0, phases.indexOf(team.currentPhase));
+    const activePhases = team.chosenRoute==='Politie'?policePhases:phases;
+    const idx = Math.max(0, activePhases.indexOf(team.currentPhase));
     const canGoBack = idx > 0;
     return <main className={`scene-page phase-${String(team.currentPhase || "start").toLowerCase()}`}> 
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
         <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
-        <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
+        <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(activePhases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
           : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
@@ -375,7 +379,7 @@ function App() {
             </div>
           </div>
         </div>}
-        <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
+        <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{activePhases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
       </div>
     </main>;
   }
@@ -513,7 +517,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
   if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_MELDEN') return <JohnnyInspectorReport loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_ARRESTATIE') return <JohnnyArrestOperation team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
-  if (phase === 'EINDE' && team.chosenRoute === 'Politie') return <section className="panel cinematic"><div className="section-label">POLITIEROUTE</div><h2>De mede-agenten zijn ingelicht.</h2><p>Deze verhaallijn bouwen we later verder. Voor de huidige test stopt deze route hier.</p></section>;
+  if (phase.startsWith('POLITIE_') && team.chosenRoute==='Politie') return <PoliceRoutePage key={phase} team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint}/>;
   if (phase === 'KOPER_KEUZE' && team.chosenRoute === 'Johnny') return <BuyerFinalChoice team={team} loading={loading} feedback={feedback} chooseFinal={chooseFinal} syncFinal={syncFinal} />;
   if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} sendBuyerChat={sendBuyerChat} />;
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
@@ -1249,6 +1253,72 @@ function JohnnyResult({team}) {
       <div className="case-stamp">{keptMoney?'ZAAK TEGEN RECHERCHEURS':'ZAAK GESLOTEN'}</div>
     </div>}
   </section>;
+}
+
+
+// Volwaardige langere verhaallijn zonder samenwerking met Johnny.
+// Alleen de server controleert antwoorden en registreert strafminuten.
+function PoliceRoutePage({team,loading,feedback,submitAnswer,requestHint}) {
+  const phase=team.currentPhase;
+  const [camera,setCamera]=useState('');
+  const [exit,setExit]=useState('');
+  const [suspect,setSuspect]=useState('');
+  const [access,setAccess]=useState('');
+  const [channel,setChannel]=useState('');
+  const [time,setTime]=useState('');
+  const [location,setLocation]=useState('');
+  const [seal,setSeal]=useState('');
+  const [code,setCode]=useState('');
+  const [buyer,setBuyer]=useState('');
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{if(!['POLITIE_INVAL','POLITIE_FINALE'].includes(phase))return;const id=setInterval(()=>setNow(Date.now()),200);return()=>clearInterval(id);},[phase]);
+  const send=(value)=>submitAnswer(phase,value);
+  const status=(startedAt,duration)=>Math.max(0,now-Number(startedAt||now))>=duration;
+  const evidence=(title,content)=><article className="police-evidence"><span>VERZEGELD BEWIJSSTUK</span><h3>{title}</h3>{content}</article>;
+  const field=(label,value,fn,placeholder)=><label>{label}<input value={value} onChange={e=>fn(e.target.value)} placeholder={placeholder||''} autoComplete="off" required /></label>;
+  const form=(fields,action)=><form className="police-answer-form" onSubmit={e=>{e.preventDefault();send(action)}}>{fields}<button className="primary" disabled={loading}>{loading?'Controleren...':'Verzend conclusie naar de inspecteur'}</button></form>;
+  const intro=<div className="police-route-header"><div className="section-label">OPERATIE SCHADUWJACHT · POLITIEROUTE</div><span className="police-route-tag">GEEN SAMENWERKING MET J.J.</span></div>;
+  if(phase==='POLITIE_BRIEFING')return <section className="panel cinematic police-route-panel">{intro}<h2>De inspecteur neemt het over.</h2>
+    <div className="inspector-final-briefing"><div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="De inspecteur uit de openingsbriefing"/></div><div className="final-inspector-message"><span>VERTROUWELIJKE INSTRUCTIE</span><h3>“Eindelijk gebruiken jullie je hersens.”</h3><p>“Johnny weet nu dat jullie hem niet helpen. Hij kan overal zitten. De container is leeg en zijn telefoon is uit. We krijgen één kans om zijn spoor terug te vinden.”</p><p>“Jullie krijgen toegang tot aanvullende cameraregistraties, toegangsjournalen en onderschepte berichten. Niet gokken. Bewijs verzamelen!”</p></div></div>
+    <div className="mission-card"><span>MISSIE</span><strong>Doorzoek de havenadministratie en bouw een nieuw dossier op. Johnny helpt jullie niet.</strong></div>
+    <button className="primary" disabled={loading} onClick={()=>send('onderzoek starten')}>Open aanvullend onderzoek →</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_CAMERA')return <section className="panel cinematic police-route-panel">{intro}<h2>Johnny verdwijnt van de radar</h2><p>Container JJX-2034 is verlaten. Uit de haven zijn onvolledige cameraregistraties veiliggesteld. Zoek welke camera de chauffeur nog heeft gezien, en via welke uitgang hij verdween.</p>
+    <div className="police-evidence-grid">{evidence('Camerarecorder · tijdlijn',<table><tbody><tr><th>CAM 02</th><td>20:38 · Binnenkomst terminal</td></tr><tr><th>CAM 04</th><td>20:40 · Loodsingang</td></tr><tr><th>CAM 06</th><td>20:41 · Voertuig, zwart jack, kenteken gedeeltelijk onleesbaar</td></tr><tr><th>CAM 08</th><td>20:44 · Geen signalement</td></tr></tbody></table>)}{evidence('Schematische havencamera',<div className="police-map"><p>Cam 02 → Noord</p><p>Cam 04 → Oost</p><p>Cam 06 → West</p><p>Cam 08 → Zuid</p><small>Observatie 20:41: uitrijdend busje, leren kraag.</small></div>)}</div>
+    {form(<>{field('Welke camera zag Johnny voor het laatst?',camera,setCamera,'Bijv. 02')}{field('Welke uitgang gebruikte hij?',exit,setExit,'Windrichting')}</>,{camera,exit})}
+    <button className="hint-link" onClick={()=>requestHint('Kijk naar de laatste cameraregistratie die overeenkomt met het signalement van Johnny.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_LEK')return <section className="panel cinematic police-route-panel">{intro}<h2>Iemand heeft Johnny gewaarschuwd.</h2><p>De inspecteur ziet dat de cameragegevens kort voor jullie onderzoek zijn bekeken. Welke crimineel heeft toegang gebruikt om Johnny te waarschuwen?</p>
+    <div className="police-evidence-grid">{evidence('Toegangsjournaal · terminal',<table><tbody><tr><th>20:35</th><td>Account CK-11 · cameraonderhoud</td></tr><tr><th>20:37</th><td>Account FF-27 · export cam 06 / uitgang West</td></tr><tr><th>20:39</th><td>Account DD-03 · vrachtinformatie</td></tr><tr><th>20:42</th><td>Account RB-12 · logboek ingezien</td></tr></tbody></table>)}{evidence('Criminele werkwijzen',<div><p>Carla Kraak: beveiliging en camera's.</p><p>Freddy Flessentrekker: vervalste documenten en toegangsbewijzen.</p><p>Don Diamantini: koper en afzet.</p><p>Johnny Jatwerk: chauffeur en smokkelaar.</p><small>Notitie: export gebruikt een vervalste toegangspas, niet het technische onderhoudsaccount.</small></div>)}</div>
+    {form(<>{field('Wie heeft de gegevens gelekt? (volledige naam)',suspect,setSuspect,'Naam')}{field('Welke toegangscode werd gebruikt?',access,setAccess,'Account-ID')}</>,{suspect,access})}
+    <button className="hint-link" onClick={()=>requestHint('Bepaal welk account een export deed en wie toegangsbewijzen kan vervalsen.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_INVAL'){
+    const elapsed=Math.max(0,now-Number(team.policeRaidStartedAt||now));const complete=status(team.policeRaidStartedAt,11000);
+    const raid=[{at:0,label:'01 · In positie',title:'Loods West wordt omsingeld',text:'De politie volgt het spoor naar de westelijke dienstingang.'},{at:3000,label:'02 · Binnen',title:'Eenheden zoeken de loods',text:'Agenten doorzoeken het terrein. Johnny reageert nergens op.'},{at:6500,label:'03 · Niets gevonden',title:'De loods blijkt leeg',text:'Een verlaten bestelwagen en een open magazijndeur. Johnny is alweer vertrokken.'},{at:11000,label:'04 · Nieuw bewijs',title:'Onderschept document gevonden',text:'Een verscheurd kopersbericht wordt bij de achteruitgang aangetroffen.'}];
+    return <section className="panel cinematic police-route-panel">{intro}<h2>De eerste inval mislukt</h2><p>Volg de politieactie op de bewakingsmonitor. De inspecteur houdt jullie op de hoogte.</p><LiveOperationFeed title="SCHADUWJACHT · LOODS WEST" image="/assets/story/johnny-arrestatie.jpg" alt="Nachtelijke politieactie in de haven" steps={raid} elapsed={elapsed}/>
+    {complete&&evidence('Vondst uit de loods',<p>Een verscheurde overdrachtsbon met de letters <strong>V.V.</strong> en een tijdstempel. De rest is nog versleuteld.</p>)}
+    <button className="primary" disabled={loading||!complete} onClick={()=>send('inval afronden')}>{complete?'Open onderschept bericht →':'Politieactie loopt…'}</button>{feedback&&<div className="feedback">{feedback}</div>}</section>
+  }
+  if(phase==='POLITIE_COMMUNICATIE')return <section className="panel cinematic police-route-panel">{intro}<h2>Onderschept bericht van de koper</h2><p>Het document is beschadigd. Combineer de fragmenten om het communicatiekanaal, tijdstip en de ontmoetingsplek te reconstrueren.</p>
+    <div className="police-evidence-grid">{evidence('Fragment A · getypte bon',<p>“…verzamelaar… kanaal <strong>V.V.</strong> / dossier <strong>37</strong>… overdracht vóór middernacht…”</p>)}{evidence('Fragment B · agenda',<p>“Spoor <strong>3</strong> · oude goederenloods · <strong>23</strong> uur en <strong>10</strong> minuten.”</p>)}{evidence('Fragment C · geannuleerd plan',<p>“Perron 8 vervalt. Bevestiging alleen op het derde perron.”</p>)}</div>
+    {form(<>{field('Communicatiekanaal',channel,setChannel,'Kanaal + dossiernummer')}{field('Afspraaktijd',time,setTime,'UU:MM')}{field('Ontmoetingslocatie',location,setLocation,'Perronnummer')}</>,{channel,time,location})}
+    <button className="hint-link" onClick={()=>requestHint('Combineer de twee delen van de kanaalreferentie en let op de gecorrigeerde perronvermelding.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_DIAMANT')return <section className="panel cinematic police-route-panel">{intro}<h2>Waar ligt de diamant nu?</h2><p>Johnny is niet bij de loods. Maar de Douane heeft drie opslagbewegingen aangetroffen die aan het koperskanaal zijn gekoppeld.</p>
+    <div className="police-evidence-grid">{evidence('Koelopslag · uitgifteboek',<table><tbody><tr><th>Koelcel A-03</th><td>Medicijnen · verzegeling MED-21</td></tr><tr><th>Koelcel B-12</th><td>Onbekend object · verzegeling ZL-09</td></tr><tr><th>Koelcel B-14</th><td>Leeg retourmaterieel · RET-05</td></tr><tr><th>Koelcel C-12</th><td>Voedingsmiddelen · FOOD-82</td></tr></tbody></table>)}{evidence('Inbeslagname-instructie',<><p>“De zwarte steen is niet op een vrachtbon vermeld. Verplaatsing zonder productspecificatie. Enkel kistzegel met initialen van het object: <strong>Z.L.</strong> plus nummer van het laadperron.”</p><small>De eerdere afspraak met Johnny noemde Laadperron 9.</small></>)}</div>
+    {form(<>{field('Welke koelcel?',location,setLocation,'Koelcel + code')}{field('Welk zegelnummer?',seal,setSeal,'Zegel')}</>,{location,seal})}
+    <button className="hint-link" onClick={()=>requestHint('Vergelijk de onbekende lading met de initialen van de steen en het nummer van het laadperron.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_COORDINATIE')return <section className="panel cinematic police-route-panel">{intro}<h2>Bereid de dubbele arrestatie voor</h2><p>De inspecteur heeft de Zwarte Lotus laten veiligstellen. Johnny is nog op vrije voeten, net als de koper. Jullie bewijs moet nu aan één operatie worden gekoppeld.</p>
+    <div className="inspector-final-briefing"><div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="De vaste inspecteur" /></div><div className="final-inspector-message"><span>BEVEILIGDE OPERATIEORDER</span><h3>“Geen tweede fout, nietsnutten!”</h3><p>“We hebben de steen. De koper komt om 23:10 naar Perron 3. Johnny probeert zijn geld op te halen. Zorg dat mijn mensen weten dat deze actie <strong>SCHADUW</strong> heet en onder eenheid <strong>27</strong> valt.”</p></div></div>
+    {form(<>{field('Operatiecode',code,setCode,'Naam en eenheid')}{field('Volledige naam van de koper',buyer,setBuyer,'Naam')}</>,{code,buyer})}
+    <button className="hint-link" onClick={()=>requestHint('Combineer operatienaam en eenheid. De koper wordt eerder in de dossiers genoemd.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_FINALE'){
+    const elapsed=Math.max(0,now-Number(team.policeFinalStartedAt||now));const complete=status(team.policeFinalStartedAt,16000);
+    const johnnySteps=[{at:0,label:'01 · Signalement',title:'Johnny wordt gezien',text:'Een surveillancewagen ziet Johnny bij het laadperron.'},{at:4000,label:'02 · Weg',title:'Johnny verdwijnt tussen de containers',text:'De verbinding valt even weg. Agenten zoeken langs het dienstpad.'},{at:8000,label:'03 · Teruggevonden',title:'Eenheden hebben Johnny opnieuw in beeld',text:'De chauffeur wordt aan de achterzijde van de loods klemgereden.'},{at:11000,label:'04 · Bevestigd',title:'Johnny Jatwerk aangehouden',text:'De inspecteur bevestigt de eerste aanhouding.'}];
+    const victorSteps=[{at:0,label:'01 · Posities',title:'Perron 3 wordt afgezet',text:'Victor komt nog niet opdagen.'},{at:4000,label:'02 · Geen contact',title:'De koper is niet te zien',text:'De agenten wachten op een zwart handschoensignaal.'},{at:8000,label:'03 · Signaal',title:'Victor in beeld',text:'Een observant bevestigt de koper. Het geldkoffertje is zichtbaar.'},{at:16000,label:'04 · Aanhouding',title:'Victor Valmont aangehouden',text:'Beide verdachten zitten vast. De diamant en het geld zijn veiliggesteld.'}];
+    return <section className="panel cinematic police-route-panel">{intro}<h2>Operatie Schaduwjacht · Live</h2><p>De rechercheurs volgen twee teams. Eerst lijkt Johnny te ontkomen. Ook Victor laat op zich wachten. De inspecteur coördineert de arrestaties.</p><LiveOperationFeed title="TEAM WEST · JOHNNY" image="/assets/story/johnny-arrestatie.jpg" alt="Politie volgt Johnny in nachtelijke haven" steps={johnnySteps} elapsed={elapsed} person="Johnny Jatwerk"/>
+    {elapsed>=7000&&<LiveOperationFeed title="TEAM PERRON · VICTOR" image="/assets/story/victor-operatie.jpg" alt="Politie observeert Victor op Perron 3" steps={victorSteps} elapsed={elapsed} person="Victor Valmont"/>}
+    <button className="primary" disabled={loading||!complete} onClick={()=>send('operatie afronden')}>{complete?'Bekijk operatieverslag →':'Live verbinding actief…'}</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  }
+  if(phase==='POLITIE_RESULTAAT')return <section className="panel cinematic police-route-panel">{intro}<div className="success-seal">OPERATIE GESLAAGD</div><h2>De Zwarte Lotus is terug.</h2><div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="De inspecteur van het begin"/><div><span>LAATSTE BERICHT VAN DE INSPECTEUR</span><strong>“Prima werk. Beetje traag, maar jullie hebben ze allebei.”</strong></div></div><div className="approved-endgame-art"><img src="/assets/story/eindoperatie-goedgekeurd.webp" alt="Geslaagde politieoperatie in de haven"/></div><div className="result-grid"><article><span>JOHNNY JATWERK</span><strong>Aangehouden</strong></article><article><span>VICTOR VALMONT</span><strong>Aangehouden</strong></article><article><span>DE ZWARTE LOTUS</span><strong>Veiliggesteld</strong></article><article><span>€37.000.000</span><strong>Bewijs veiliggesteld</strong></article></div><div className="case-stamp">ZAAK GESLOTEN · POLITIEROUTE</div></section>;
+  return null;
 }
 
 function PuzzleCard({label,title,feedback,children}) {
