@@ -157,6 +157,7 @@ function App() {
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
   const [penaltyShown, setPenaltyShown] = useState(false);
+  const [backConfirmOpen, setBackConfirmOpen] = useState(false);
 
   const loginTeam = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
@@ -326,13 +327,28 @@ function App() {
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
   };
 
+  const goBackWithPenalty = async () => {
+    setLoading(true); setFeedback('');
+    try {
+      const r = await fetch(`${API}/api/teams/${team.id}/go-back`, { method:'POST' });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok) throw new Error(j.error || 'Teruggaan mislukt.');
+      if (j.team) setTeam(j.team);
+      setBackConfirmOpen(false);
+    } catch (err) {
+      setFeedback(err.message);
+      setBackConfirmOpen(false);
+    } finally { setLoading(false); }
+  };
+
   if (mode === 'game' && team) {
     const idx = Math.max(0, phases.indexOf(team.currentPhase));
+    const canGoBack = idx > 0;
     return <main className={`scene-page phase-${String(team.currentPhase || "start").toLowerCase()}`}> 
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
-        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
+        <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(phases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
@@ -344,6 +360,18 @@ function App() {
             <h2>+1 MINUUT</h2>
             <p>Strafminuut toegevoegd aan jullie speeltijd.</p>
             <button className="primary" onClick={()=>setPenaltyShown(false)}>Terug naar het onderzoek</button>
+          </div>
+        </div>}
+        {backConfirmOpen && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Vorige pagina openen">
+          <div className="penalty-screen backtrack-screen">
+            <div className="penalty-exclamation" aria-hidden="true">↶</div>
+            <div className="penalty-eyebrow">VORIGE PAGINA</div>
+            <h2>+2 MINUTEN STRAFTIJD</h2>
+            <p>Willen jullie echt terug naar de vorige pagina om informatie opnieuw te bekijken?</p>
+            <div className="actions">
+              <button className="secondary" onClick={()=>setBackConfirmOpen(false)} disabled={loading}>Blijven hier</button>
+              <button className="primary" onClick={goBackWithPenalty} disabled={loading}>{loading?'Teruggaan...':'Ja, ga terug'}</button>
+            </div>
           </div>
         </div>}
         <section className="stats"><div><strong>{team.hintCount}</strong><span>Hints</span></div><div><strong>{idx+1}/{phases.length}</strong><span>{phaseLabels[team.currentPhase] || 'Fase'}</span></div><div><strong>{team.chosenRoute || '—'}</strong><span>Route</span></div></section>
@@ -1005,6 +1033,15 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
   const chat=team.buyerChat || {stage:'codeword1',messages:[{from:'Victor Valmont',text:'V.V.-37. Codewoord 1?'}]};
   const [value,setValue]=useState('');
   const [time,setTime]=useState('23:10');
+  const [operationNow,setOperationNow]=useState(Date.now());
+  useEffect(()=>{const id=setInterval(()=>setOperationNow(Date.now()),250);return()=>clearInterval(id);},[]);
+  const johnnyElapsed=Math.max(0, operationNow-Number(team.johnnyArrestStartedAt||operationNow));
+  const johnnySteps=[
+    {at:0,label:'Eenheden zoeken',title:'Zoekactie rond Laadperron 9',text:'De inspecteur stuurt teams naar de laadzone, maar Johnny is niet direct in beeld.'},
+    {at:2600,label:'Contact verloren',title:'Verdachte nog niet gevonden',text:'De mannen zien wel de gele deur, maar de keet lijkt eerst leeg.'},
+    {at:5200,label:'Dreiging',title:'Onrust bij de keet',text:'Er ontstaat rumoer achter de loods. Er wordt gewaarschuwd voor mogelijk gewapend verzet.'},
+    {at:8200,label:'Aanhouding',title:'Johnny Jatwerk gearresteerd',text:'Johnny wordt overmeesterd en afgevoerd. De koper mag hier niets van weten.'}
+  ];
   useEffect(()=>{setValue('');},[chat.stage]);
   const submit=async(e)=>{e.preventDefault();if(await sendBuyerChat(chat.stage,value,time))setValue('');};
   return <section className="panel cinematic final-operation">
@@ -1014,6 +1051,7 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
       <img src="/assets/story/johnny-arrestatie.jpg" alt="Johnny Jatwerk wordt door de politie aangehouden"/>
       <div><span>POLITIEBERICHT · INSPECTEUR</span><strong>Johnny Jatwerk is aangehouden.</strong><p>Zijn schuilplaats is bevestigd. De volgende stap is de afspraak met de koper. Victor mag niet weten dat Johnny vastzit.</p></div>
     </div>
+    <LiveOperationFeed title="OPERATIE B · JOHNNY" image="/assets/story/johnny-arrestatie.jpg" alt="Live-politiebeeld van de aanhouding van Johnny Jatwerk" steps={johnnySteps} elapsed={johnnyElapsed} person="Johnny Jatwerk" compact />
     <div className="secure-chat new-buyer-chat">
       <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding beveiligd</small></div>
       <div className="chat-log" aria-live="polite">{(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}><span>{m.from}</span><p>{m.text}</p></div>)}</div>
@@ -1050,17 +1088,114 @@ function BuyerFinalChoice({team,loading,feedback,chooseFinal,syncFinal}) {
   </section>;
 }
 
+function LiveOperationFeed({title, image, alt, steps, elapsed, compact=false, person='', outcome='arrest'}) {
+  const [soundEnabled,setSoundEnabled]=useState(false);
+  const currentIndex = steps.reduce((acc, step, index) => elapsed >= step.at ? index : acc, 0);
+  const current = steps[currentIndex];
+  const isFinal = currentIndex === steps.length-1;
+  const soundRef = React.useRef(null);
+  const previousSoundStage = React.useRef(-1);
+
+  const playSignal = (isSiren=false) => {
+    try {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+      const ctx = soundRef.current || new Context();
+      soundRef.current = ctx;
+      if(ctx.state==='suspended') ctx.resume();
+      const start=ctx.currentTime;
+      const tones=isSiren?[540,680,540,680]:[640,780];
+      tones.forEach((frequency,i)=>{
+        const osc=ctx.createOscillator();
+        const gain=ctx.createGain();
+        osc.type='sine';
+        osc.frequency.setValueAtTime(frequency,start+i*.22);
+        gain.gain.setValueAtTime(.0001,start+i*.22);
+        gain.gain.exponentialRampToValueAtTime(.035,start+i*.22+.025);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+i*.22+.19);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(start+i*.22);
+        osc.stop(start+i*.22+.2);
+      });
+    } catch {}
+  };
+  useEffect(()=>{
+    if(!soundEnabled){previousSoundStage.current=currentIndex;return;}
+    if(previousSoundStage.current!==currentIndex){
+      previousSoundStage.current=currentIndex;
+      playSignal(currentIndex===2);
+    }
+  },[currentIndex,soundEnabled]);
+
+  return <div className={`operation-live-feed ${compact?'compact':''}`}>
+    <div className={`operation-live-visual stage-${currentIndex}`}>
+      <img src={image} alt={alt} />
+      <div className="operation-live-overlay"></div>
+      <div className="operation-live-noise"></div>
+      <div className="operation-live-blue-red" aria-hidden="true"></div>
+      <div className="operation-live-head">
+        <span className="live-dot"></span><strong>LIVE OPERATIE</strong><small>{title}</small>
+        <button className="live-sound-toggle" type="button" onClick={()=>{
+          if (!soundEnabled) playSignal(true);
+          setSoundEnabled(!soundEnabled);
+        }}>{soundEnabled?'Geluid aan · uitschakelen':'Geluid inschakelen'}</button>
+      </div>
+      <div className="operation-live-timecode" aria-hidden="true">CAM 09 · REC <span>{String(Math.floor(elapsed/1000)).padStart(2,'0')}s</span></div>
+      {currentIndex===2&&<div className="operation-live-alert" aria-hidden="true">⚠ VERBINDING ONSTABIEL · EENHEDEN IN POSITIE</div>}
+      <div className="operation-live-status"><span>{current.label}</span><strong>{current.title}</strong><p>{current.text}</p></div>
+      {isFinal&&person&&<div className={`operation-arrest-badge ${outcome==='escaped'?'escaped':''}`} role="status">
+        <span>{outcome==='escaped'?'!':'✓'}</span>
+        <div><small>{person.toUpperCase()}</small><strong>{outcome==='escaped'?'NIET AANGEHOUDEN':'AANGEHOUDEN'}</strong></div>
+      </div>}
+    </div>
+    <div className="operation-live-timeline">
+      {steps.map((step, index)=><article key={index} className={index<=currentIndex?'active':''}><span>{String(index+1).padStart(2,'0')}</span><strong>{step.title}</strong><small>{step.label}</small></article>)}
+    </div>
+    {isFinal&&person&&<section className={`capture-confirmation ${outcome==='escaped'?'failed':''}`}>
+      <div className="capture-confirmation-symbol">{outcome==='escaped'?'!':'✓'}</div>
+      <div><small>POLITIEKANAAL · STATUSBEVESTIGING</small><h3>{person} {outcome==='escaped'?'is ontkomen':'is aangehouden'}</h3><p>{outcome==='escaped'?'De koper is niet onderschept. De inspecteur registreert dit als een onvolledige operatie.':'Identiteit bevestigd. De verdachte is overgedragen aan de politie-eenheden.'}</p></div>
+    </section>}
+  </div>;
+}
+
 function JohnnyResult({team}) {
   const keptMoney=team.finalChoice==='GELD';
   const [elapsed,setElapsed]=useState(()=>Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now())));
   useEffect(()=>{const timer=setInterval(()=>setElapsed(Math.max(0,Date.now()-Number(team.arrestStartedAt||Date.now()))),250);return()=>clearInterval(timer);},[team.arrestStartedAt]);
-  const stage=elapsed<2500?0:elapsed<5700?1:2;
+
+  const johnnySteps=[
+    {at:0,label:'Zoeken',title:'Teams doorzoeken de laadzone',text:'De politie zoekt Johnny bij Laadperron 9, maar hij is niet direct te lokaliseren.'},
+    {at:2600,label:'Geen visueel contact',title:'Johnny blijft even uit beeld',text:'De keet is donker. De inspecteur laat de teams omlopen via het dienstpad achter de loods.'},
+    {at:5400,label:'Spanning loopt op',title:'Dreiging bij de gele deur',text:'Er klinkt geschreeuw en een waarschuwingsroep. De situatie lijkt even te escaleren.'},
+    {at:8200,label:'Aanhouding',title:'Johnny Jatwerk is gepakt',text:'Johnny wordt op de grond gewerkt en afgevoerd. Zijn rol in de roof is bevestigd.'}
+  ];
+  const victorArrestSteps=[
+    {at:9000,label:'Posities innemen',title:'Teams wachten op Victor',text:`Eenheden staan opgesteld rond ${team.buyerChat?.location||'de afgesproken plek'} voor de overdracht.`},
+    {at:11800,label:'Twijfel',title:'Victor laat op zich wachten',text:'Een paar seconden lijkt het mis te gaan: de koper verschijnt niet op de afgesproken route.'},
+    {at:14500,label:'Contact',title:'Victor komt toch opdagen',text:'Een observant ziet de zwarte handschoen en bevestigt dat Victor Valmont in beeld is.'},
+    {at:17300,label:'Aanhouding',title:'Victor Valmont is aangehouden',text:'De politie grijpt in, overmeestert Victor en stelt het geld veilig als bewijsmateriaal.'}
+  ];
+  const victorEscapeSteps=[
+    {at:9000,label:'Afleiding',title:'De koper wordt niet aangehouden',text:'Het team houdt Victor bewust uit handen van de politie.'},
+    {at:11800,label:'Overdracht',title:'Victor levert het geld af',text:'De koper vertrouwt het kanaal en geeft het geld vrij op de afgesproken plek.'},
+    {at:14500,label:'Ontsnapping',title:'Victor verdwijnt in de nacht',text:'Voordat agenten kunnen ingrijpen, is Victor alweer onderweg.'},
+    {at:17300,label:'Nasleep',title:'Alleen Johnny zit vast',text:'De diamant is veilig, maar Victor is ontsnapt en jullie hebben het geld gehouden.'}
+  ];
+
+  const doneJohnny = elapsed >= 8200;
+  const doneVictor = elapsed >= 17300;
+  const title = !doneJohnny ? 'De politie zit Johnny op de hielen...' : !doneVictor ? (keptMoney ? 'Victor glipt weg...' : 'De koper wordt opgewacht...') : (keptMoney ? 'Jullie hebben voor het geld gekozen.' : 'Operatie geslaagd.');
+
   return <section className="panel cinematic case-result arrest-scene">
     <div className="section-label">DE ZWARTE LOTUS · EINDOPERATIE</div>
-    <h2>{stage<2?'De overdracht loopt...':keptMoney?'Jullie hebben voor het geld gekozen.':'Operatie geslaagd.'}</h2>
-    <div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="De inspecteur uit het begin"/><div><span>BERICHT VAN DE INSPECTEUR</span><strong>{keptMoney?'Johnny is aangehouden. Maar wat hebben jullie met Victor afgesproken?':stage<2?'Eenheden gereed. Victor wordt op de afgesproken plek opgewacht.':'Johnny en Victor zijn aangehouden. De diamant is veilig.'}</strong></div></div>
-    <div className={`arrest-photo-wrap arrest-stage-${stage}`}><img src="/assets/story/johnny-arrestatie.jpg" alt="De arrestatie van Johnny Jatwerk"/><div className="arrest-screen-shade"></div><div className="arrest-scene-caption final">JOHNNY JATWERK · AANGEHOUDEN</div></div>
-    {stage===2&&<div className="arrest-result-reveal">
+    <h2>{title}</h2>
+    <div className="final-inspector-dispatch"><img src="/assets/inspector-kist.jpg" alt="Dezelfde inspecteur als uit de openingsbriefing"/><div><span>BERICHT VAN DE INSPECTEUR</span><strong>{!doneJohnny?'Eenheden zoeken Johnny in de laadzone.':!doneVictor?(keptMoney?'Johnny is gepakt. Victor verdwijnt uit beeld.':'Johnny zit vast. Nu de koper nog.'):(keptMoney?'Johnny is aangehouden. Victor is niet gepakt.':'Johnny en Victor zijn aangehouden. De diamant is veilig.')}</strong></div></div>
+
+    <LiveOperationFeed title="OPERATIE B · JOHNNY" image="/assets/story/johnny-arrestatie.jpg" alt="Live-politiebeeld van de aanhouding van Johnny Jatwerk" steps={johnnySteps} elapsed={elapsed} person="Johnny Jatwerk" />
+
+    {doneJohnny && <LiveOperationFeed title="OPERATIE KOPER · VICTOR" image={keptMoney?"/assets/zwarte-lotus-login-background.jpg":"/assets/story/eindoperatie-goedgekeurd.webp"} alt="Live-politiebeeld van de operatie rond Victor Valmont" steps={keptMoney?victorEscapeSteps:victorArrestSteps} elapsed={elapsed} person="Victor Valmont" outcome={keptMoney?"escaped":"arrest"} />}
+
+    {doneVictor&&<div className="arrest-result-reveal">
       {!keptMoney&&<div className="approved-endgame-art"><img src="/assets/story/eindoperatie-goedgekeurd.webp" alt="De succesvolle politieoperatie"/></div>}
       <div className="success-seal">{keptMoney?'DUBBELE AGENDA':'MISSIE VOLTOOID'}</div>
       <p>{keptMoney?`Bij ${team.buyerChat?.location||'de overdracht'} hebben jullie het geld voor jezelf gehouden en Victor laten gaan. Johnny zit vast, maar jullie keuze heeft een gevaarlijk nieuw geheim gecreëerd.`:`Victor is bij ${team.buyerChat?.location||'de overdracht'} om ${team.buyerChat?.meetingTime||'het afgesproken tijdstip'} aangehouden. Johnny zat al vast. De Zwarte Lotus en het geld zijn veiliggesteld.`}</p>

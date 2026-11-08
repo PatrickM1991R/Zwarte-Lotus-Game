@@ -186,3 +186,18 @@ De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV
 - De politiecode wordt nooit aan de koper gestuurd.
 
 **Let op:** deze game is nog een prototype met in-memory teamstatus: een herstart van de Render-backend kan actieve teams resetten. De frontend wordt bij deployment door Render gebouwd.
+
+## v6.2 – Terugnavigatie en live eindoperatie
+- Teams kunnen nu terug naar de vorige pagina via een expliciete knop.
+- Voor teruggaan vraagt het systeem eerst bevestiging en telt daarna automatisch **2 minuten straftijd** op.
+- De inspecteur in het slotstuk gebruikt weer consequent dezelfde foto/uitstraling als in de openingsbriefing.
+- Het Johnny-blok in de eindfase is visueel netter uitgelijnd.
+- De eindoperatie toont nu een **live operatie-animatie** met spanningsopbouw voor de arrestatie van Johnny.
+- Bij de finale wordt ook Victor Valmont zichtbaar meegenomen in een aparte live operatievolgorde: eerst onzekerheid / niet direct vinden, daarna wel of niet aanhouding, afhankelijk van de teamkeuze.
+
+## v6.3 – Live arrestatiebeleving
+- Aanhoudingsbeeld met bewegende camera, blauw-rode politielichten en dreigende beeldstoring.
+- Optioneel signaalgeluid, uitgeschakeld totdat speler het zelf activeert.
+- Afzonderlijk groot statuspaneel per verdachte: Johnny aangehouden; Victor aangehouden of ontkomen afhankelijk van de laatste keuze.
+- De politie-inval is een geanimeerde spelsimulatie op basis van stilstaand beeld en tijdlijn, **geen echte video of lip-sync**.
+- Bestaande codewoorden, keuzes en strafminuten blijven ongewijzigd.

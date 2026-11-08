@@ -180,17 +180,37 @@ const enrich = (team) => {
   return { ...team, locationName: db.location.name, eventName: db.event.name };
 };
 
-// Eén centrale strafregel voor alle onjuiste spelantwoorden.
-function addPenaltyMinute(team) {
+// Eén centrale strafregel voor alle onjuiste spelantwoorden en terugnavigatie.
+function addPenaltyMinutes(team, amount = 1) {
+  const minutes = Math.max(1, Number(amount) || 1);
   const base = team.timerStartedAt == null ? Date.now() : Number(team.timerStartedAt);
-  team.timerStartedAt = base - 60_000;
-  team.penaltyMinutes = (team.penaltyMinutes || 0) + 1;
+  team.timerStartedAt = base - (minutes * 60_000);
+  team.penaltyMinutes = (team.penaltyMinutes || 0) + minutes;
   return team;
+}
+function addPenaltyMinute(team) {
+  return addPenaltyMinutes(team, 1);
 }
 function wrongGameAnswer(res, team) {
   addPenaltyMinute(team);
   return res.status(422).json({ correct:false, penaltySeconds:60, team:enrich(team), error:'Onjuist antwoord.' });
 }
+const previousPhase = {
+  ALARM:'START',
+  DOSSIER:'ALARM',
+  ORIGINELE_CONTAINER:'DOSSIER',
+  ORIGINELE_CONTAINER_BEVESTIGEN:'ORIGINELE_CONTAINER',
+  ROTJE_KNOR:'ORIGINELE_CONTAINER_BEVESTIGEN',
+  JOHNNY_ONTMASKERD:'ROTJE_KNOR',
+  NIEUWE_CONTAINER:'ROTJE_KNOR',
+  KEUZE:'NIEUWE_CONTAINER',
+  JOHNNY_ROUTE:'KEUZE',
+  KLUIS:'JOHNNY_ROUTE',
+  LOTUS_GEVONDEN:'KLUIS',
+  EINDOPERATIE:'LOTUS_GEVONDEN',
+  KOPER_KEUZE:'EINDOPERATIE',
+  RESULTAAT:'KOPER_KEUZE'
+};
 const localStepAnswers = {
   ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
   KLUIS:{riddle1:['20'],riddle2:['34'],riddle3:['09','9'],code:['203409']},
@@ -198,6 +218,19 @@ const localStepAnswers = {
 };
 
 // Ook lokale tussenstappen worden door de server gevalideerd en bestraft.
+
+app.post('/api/teams/:id/go-back', (req,res)=>{
+  const team = db.teams.find((t) => t.id === Number(req.params.id));
+  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  const target = previousPhase[team.currentPhase];
+  if (!target) return res.status(409).json({ error: 'Teruggaan is vanaf deze pagina niet beschikbaar.' });
+  addPenaltyMinutes(team, 2);
+  team.currentPhase = target;
+  if (target !== 'KOPER_KEUZE') team.finalDecisionStartedAt = null;
+  if (target !== 'RESULTAAT') team.arrestStartedAt = null;
+  res.json({ ok:true, penaltySeconds:120, team: enrich(team) });
+});
+
 app.post('/api/teams/:id/check-step', (req,res)=>{
   const team = db.teams.find(t=>t.id===Number(req.params.id));
   if(!team) return res.status(404).json({error:'Team niet gevonden'});
