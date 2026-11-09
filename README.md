@@ -260,3 +260,7 @@ Het MISSIE-blok “Doorzoek de havenadministratie en bouw een nieuw dossier op. 
 - De voertuigfoto staat ook als asset in `client/public/assets/story/johnny-range-rover-evoque.jpg` voor later dossierbeheer.
 - Geen oplossingen in de spelersdocumenten; oplossingen blijven ongewijzigd.
 - De foto is fictief spelmateriaal en geen bewijs van een echt voertuig of incident.
+
+
+## v7.5 – Wie heeft Johnny gewaarschuwd?
+De online pagina toont alleen drie vragen; alle aanwijzingen komen uit vier fysieke, verzegelde inspecteursstukken. Logboek bevat 16 gebeurtenissen. Freddy Flessentrekker / FF-27 / gekloonde toegangspas is de volledige oplossing. Carla Kraak is afleider: zij werkte aan de camera’s, maar niet aan de waarschuwing. De fysieke stukken worden bij deze fase door de inspecteur uitgereikt.

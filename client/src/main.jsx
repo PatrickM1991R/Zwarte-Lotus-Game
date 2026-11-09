@@ -1264,6 +1264,7 @@ function PoliceRoutePage({team,loading,feedback,submitAnswer,requestHint}) {
   const [exit,setExit]=useState('');
   const [suspect,setSuspect]=useState('');
   const [access,setAccess]=useState('');
+  const [leakProof,setLeakProof]=useState('');
   const [channel,setChannel]=useState('');
   const [time,setTime]=useState('');
   const [location,setLocation]=useState('');
@@ -1284,10 +1285,14 @@ function PoliceRoutePage({team,loading,feedback,submitAnswer,requestHint}) {
   if(phase==='POLITIE_CAMERA')return <section className="panel cinematic police-route-panel">{intro}<h2>Johnny verdwijnt van de radar</h2><p>Container JJX-2034 is verlaten. De inspecteur heeft aanvullende cameraregistraties veiliggesteld. Vraag het aanvullende cameradossier op bij de inspecteur. Vergelijk de waarnemingen met de voertuiggegevens uit Johnny Jatwerks dossier. Reconstrueer waar het voertuig voor het laatst met zekerheid is vastgelegd en via welke uitgang het terrein is verlaten.</p>
     {form(<>{field('Welke camera legde Johnny’s voertuig als laatste met zekerheid vast?',camera,setCamera,'Bijv. 02')}{field('Welke uitgang gebruikte hij?',exit,setExit,'Windrichting')}</>,{camera,exit})}
     <button className="hint-link" onClick={()=>requestHint('Gebruik de voertuigkenmerken uit Johnny’s dossier. Niet iedere donkere SUV is hetzelfde voertuig; vergelijk details en chronologie.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
-  if(phase==='POLITIE_LEK')return <section className="panel cinematic police-route-panel">{intro}<h2>Iemand heeft Johnny gewaarschuwd.</h2><p>De inspecteur ziet dat de cameragegevens kort voor jullie onderzoek zijn bekeken. Welke crimineel heeft toegang gebruikt om Johnny te waarschuwen?</p>
-    <div className="police-evidence-grid">{evidence('Toegangsjournaal · terminal',<table><tbody><tr><th>20:35</th><td>Account CK-11 · cameraonderhoud</td></tr><tr><th>20:37</th><td>Account FF-27 · export cam 06 / uitgang West</td></tr><tr><th>20:39</th><td>Account DD-03 · vrachtinformatie</td></tr><tr><th>20:42</th><td>Account RB-12 · logboek ingezien</td></tr></tbody></table>)}{evidence('Criminele werkwijzen',<div><p>Carla Kraak: beveiliging en camera's.</p><p>Freddy Flessentrekker: vervalste documenten en toegangsbewijzen.</p><p>Don Diamantini: koper en afzet.</p><p>Johnny Jatwerk: chauffeur en smokkelaar.</p><small>Notitie: export gebruikt een vervalste toegangspas, niet het technische onderhoudsaccount.</small></div>)}</div>
-    {form(<>{field('Wie heeft de gegevens gelekt? (volledige naam)',suspect,setSuspect,'Naam')}{field('Welke toegangscode werd gebruikt?',access,setAccess,'Account-ID')}</>,{suspect,access})}
-    <button className="hint-link" onClick={()=>requestHint('Bepaal welk account een export deed en wie toegangsbewijzen kan vervalsen.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
+  if(phase==='POLITIE_LEK')return <section className="panel cinematic police-route-panel">{intro}
+    <h2>Iemand heeft Johnny gewaarschuwd.</h2>
+    <p>De inspecteur heeft een lek in de havenadministratie vastgesteld. Er zijn toegangsregistraties, een pascontrole en een onderschept bericht veiliggesteld. Haal de vier verzegelde bewijsstukken op bij de inspecteur en vergelijk ze met de verdachte-dossiers uit jullie eerdere onderzoek.</p>
+    <p>Niet degene die de camera's onderhoudt hoeft de waarschuwing te hebben verstuurd. Toon aan wie het lek heeft veroorzaakt en welk bewijs dat ondersteunt.</p>
+    {form(<>{field('Wie heeft Johnny gewaarschuwd? (volledige naam)',suspect,setSuspect,'Volledige naam')}{field('Welk account is gebruikt?',access,setAccess,'Account-ID')}{field('Wat is het doorslaggevende bewijs?',leakProof,setLeakProof,'Beschrijf de afwijking in de pasregistratie')}</>,{suspect,access,proof:leakProof})}
+    <button className="hint-link" onClick={()=>requestHint('Leg de tijdlijn uit alle vier de bewijsstukken naast elkaar. Controleer of één toegangspas fysiek op twee plaatsen tegelijk kon zijn. Carla’s onderhoudshandeling staat los van het uitgaande bericht.')}>Hint aanvragen</button>
+    {feedback&&<div className="feedback">{feedback}</div>}
+  </section>;
   if(phase==='POLITIE_INVAL'){
     const elapsed=Math.max(0,now-Number(team.policeRaidStartedAt||now));const complete=status(team.policeRaidStartedAt,11000);
     const raid=[{at:0,label:'01 · In positie',title:'Loods West wordt omsingeld',text:'De politie volgt het spoor naar de westelijke dienstingang.'},{at:3000,label:'02 · Binnen',title:'Eenheden zoeken de loods',text:'Agenten doorzoeken het terrein. Johnny reageert nergens op.'},{at:6500,label:'03 · Niets gevonden',title:'De loods blijkt leeg',text:'Een verlaten bestelwagen en een open magazijndeur. Johnny is alweer vertrokken.'},{at:11000,label:'04 · Nieuw bewijs',title:'Onderschept document gevonden',text:'Een verscheurd kopersbericht wordt bij de achteruitgang aangetroffen.'}];

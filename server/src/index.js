@@ -463,7 +463,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
     let valid = false;
     if(phase==='POLITIE_BRIEFING') valid=String(input).toLowerCase()==='onderzoek starten';
     if(phase==='POLITIE_CAMERA') valid=matches('camera','06') && matches('exit','west');
-    if(phase==='POLITIE_LEK') valid=matches('suspect','Freddy Flessentrekker') && matches('access','FF27');
+    if(phase==='POLITIE_LEK') {
+      const proof=normalized(input.proof);
+      const cloneEvidence=['gekloondetoegangspas','toegangspasgekloond','gekloondepas','pasgekloond','dubbelepasregistratie','onmogelijkegelijktijdigeaanwezigheid','onmogelijkepasregistratie','pasoptweeplekken','pasoptweeplaatsen','dubbelelocatie','zelfdepasoptweelocaties','vervalstetoegangspas'];
+      valid=matches('suspect','Freddy Flessentrekker') && matches('access','FF27') && cloneEvidence.some(v=>proof.includes(v));
+    }
     if(phase==='POLITIE_INVAL') valid=String(input).toLowerCase()==='inval afronden' && team.policeRaidStartedAt && (Date.now()-team.policeRaidStartedAt)>=11000;
     if(phase==='POLITIE_COMMUNICATIE') valid=matches('channel','VV37') && matches('time','2310') && matches('location','Perron 3');
     if(phase==='POLITIE_DIAMANT') valid=matches('location','Koelcel B12') && matches('seal','ZL09');
