@@ -240,3 +240,14 @@ Victor lijkt te ontsnappen, wordt later alsnog opgepakt en noemt de rechercheurs
 Na Johnny's 30-secondenaanbod opent **Waarschuw de politie** een eigen route met negen schermen (waaronder vijf inhoudelijke bewijsopdrachten), een mislukte inval en een dubbele arrestatiefinale. De Johnny-samenwerkingsroute is behouden. Alle puzzelantwoorden worden op de server gevalideerd met +1 minuut bij fouten. Terug naar de vorige pagina kost +2 minuten. De live operaties hebben vaste timing en herstarten niet bij vernieuwen zolang de demo-API in geheugen actief blijft.
 
 Spelbegeleidersoplossingen politieroute: Camera 06 / West; Freddy Flessentrekker / FF-27; kanaal VV-37 / 23:10 / Perron 3; Koelcel B-12 / ZL-09; SCHADUW-27 / Victor Valmont. De extra 35–45 minuten blijft een spelduurdoel en moet met testteams worden geverifieerd.
+
+
+## v7.2
+Het MISSIE-blok “Doorzoek de havenadministratie en bouw een nieuw dossier op. Johnny helpt jullie niet.” is verwijderd van de politie-intro. Overige puzzels en functionaliteit blijven gelijk.
+
+
+## v7.3 - Inspecteur geeft cameradossier uit
+- De cameraregistratietabel en het schematische havencameraschema zijn verwijderd van de politieroute-pagina.
+- De inspecteur reikt het printbare bestand `dossier-inleg/Inspecteur_Aanvullend_Cameradossier_Schaduwjacht.pdf` fysiek uit (2 pagina's).
+- De online antwoordvelden blijven bestaan: CAM 06 en uitgang West.
+- Het eerder verwijderde MISSIE-blok blijft verwijderd.
