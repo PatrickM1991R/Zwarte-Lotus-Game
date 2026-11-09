@@ -271,3 +271,10 @@ De online pagina toont alleen drie vragen; alle aanwijzingen komen uit vier fysi
 - De inspecteur noemt de code niet meer letterlijk. De gevalideerde antwoorden blijven B-12/ZL-09 en SCHADUW27/Victor Valmont.
 - De oude zichtbare fragmenten A-C bij de koperscommunicatie zijn van de spelpagina verwijderd zoals eerder gevraagd.
 - Er is niets veranderd aan de Johnny-route en aan de strafminuten.
+
+
+## v7.7 – Kryptische opslagpuzzel in de vertrouwelijke douanemail
+- De opslagmail bevat drie apart te openen vertrouwelijke bijlagen: A opslagregister (14 regels), B overslagjournaal (9 gebeurtenissen) en C interne koppelstaat (9 koppelingen).
+- Meer onbekende goederen en afleidende zegels, waaronder meerdere identieke ZL-09 zegels.
+- Oplossingsketen: JJX-2034 -> fysieke overbrenging naar afgeschermde koeling Q-614 -> intern ticket ST-682 -> koelcel B-12, zegel ZL-09.
+- De bestaande antwoordcontrole voor B-12 en ZL-09, strafminuten, andere routes en de eindoperatie zijn ongewijzigd.
