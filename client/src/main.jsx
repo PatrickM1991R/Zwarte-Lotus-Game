@@ -3,6 +3,17 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Alle API-verzoeken naar de game en het dashboard hebben een eigen sessietoken.
+function apiFetch(url,options={}) {
+  const token=localStorage.getItem(url.includes('/api/teams/')?'lotus_team_token':'lotus_staff_token');
+  return fetch(url,{...options,headers:{...(options.headers||{}),...(token?{Authorization:`Bearer ${token}`}:{})}});
+}
+function formatDuration(seconds) {
+  const s=Math.max(0,Math.floor(Number(seconds)||0));
+  return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+function localTime(value) {return value?new Date(value).toLocaleString('nl-NL'):'—';}
+
 const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','JOHNNY_ONTMASKERD','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','JOHNNY_MELDEN','JOHNNY_ARRESTATIE','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
 
 const policePhases = [...phases.slice(0,phases.indexOf('JOHNNY_ROUTE')), 'POLITIE_BRIEFING', 'POLITIE_CAMERA', 'POLITIE_LEK', 'POLITIE_INVAL', 'POLITIE_COMMUNICATIE', 'POLITIE_DIAMANT', 'POLITIE_COORDINATIE', 'POLITIE_FINALE', 'POLITIE_RESULTAAT'];
@@ -42,7 +53,7 @@ function InfiltrantPage() {
 
   useEffect(()=>{
     let active=true;
-    fetch(`${API}/api/infiltrant/verify?code=${encodeURIComponent(accessCode)}`)
+    apiFetch(`${API}/api/infiltrant/verify?code=${encodeURIComponent(accessCode)}`)
       .then(async r=>({ok:r.ok,body:await r.json().catch(()=>({}))}))
       .then(({ok})=>{if(active)setVerified(ok);})
       .catch(()=>{if(active)setVerified(false);});
@@ -52,7 +63,7 @@ function InfiltrantPage() {
   const sendCamera=async(e)=>{
     e.preventDefault(); setSending(true); setStatus('');
     try{
-      const r=await fetch(`${API}/api/infiltrant/send-camera`,{
+      const r=await apiFetch(`${API}/api/infiltrant/send-camera`,{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode,email})
       });
       const j=await r.json().catch(()=>({}));
@@ -74,7 +85,7 @@ function InfiltrantPage() {
       {!briefingDone&&<div className="infiltrant-locked"><span>BERICHT NOG NIET VOLLEDIG AFGELUISTERD</span></div>}
       {briefingDone&&status!=='VERZONDEN'&&<form className="infiltrant-mail-form" onSubmit={sendCamera}>
         <div><span>BEVEILIGDE OVERDRACHT</span><h2>Waar moeten de bestanden naartoe?</h2><p>Vul één e-mailadres in. De bron stuurt het cameramateriaal direct door.</p></div>
-        <label>E-mailadres<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="naam@voorbeeld.nl" autoComplete="email" required/></label>
+        <label>E-mailadres<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required/></label>
         <button className="primary" disabled={sending}>{sending?'Bestanden verzenden...':'Verstuur beveiligde bestanden'}</button>
       </form>}
       {status&&status!=='VERZONDEN'&&<div className="feedback">{status}</div>}
@@ -91,7 +102,7 @@ function RotjeSecretPage() {
   const [completed,setCompleted] = useState(false);
   useEffect(()=>{
     let active=true;
-    fetch(`${API}/api/rotje/verify?code=${encodeURIComponent(accessCode)}`)
+    apiFetch(`${API}/api/rotje/verify?code=${encodeURIComponent(accessCode)}`)
       .then(r=>{if(active)setVerified(r.ok);})
       .catch(()=>{if(active)setVerified(false);});
     return()=>{active=false};
@@ -117,7 +128,7 @@ function TransportSystemPage() {
   const login=async(e)=>{
     e.preventDefault();setError('');setLoading(true);
     try {
-      const r=await fetch(`${API}/api/transport-system/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+      const r=await apiFetch(`${API}/api/transport-system/access`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok) {
         if(r.status===403) throw new Error('Toegang geweigerd. Controleer de ontvangen toegangscode.');
@@ -133,7 +144,7 @@ function TransportSystemPage() {
     <div className="section-label">AFGESCHERMD SYSTEEM</div>
     <h1>Transport­systeem</h1>
     {!record?<><p className="infiltrant-copy">Alleen toegankelijk met een geldige autorisatiecode.</p>
-      <form onSubmit={login} className="transport-login"><label>Autorisatiecode<input autoComplete="off" value={code} onChange={e=>setCode(e.target.value)} placeholder="Voer toegangscode in" required /></label>
+      <form onSubmit={login} className="transport-login"><label>Autorisatiecode<input autoComplete="off" value={code} onChange={e=>setCode(e.target.value)} required /></label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Inloggen'}</button></form>
       {error&&<div className="feedback" role="alert">{error}</div>}
     </>:<div className="transport-record">
@@ -162,41 +173,34 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [penaltyShown, setPenaltyShown] = useState(false);
   const [backConfirmOpen, setBackConfirmOpen] = useState(false);
+  useEffect(()=>{
+    const id=localStorage.getItem('lotus_team_id');
+    if(!id||!localStorage.getItem('lotus_team_token'))return;
+    apiFetch(`${API}/api/teams/${id}/final-status`).then(r=>r.ok?r.json():null).then(j=>{if(j?.team){setTeam(j.team);setMode('game');}}).catch(()=>{});
+  },[]);
+  useEffect(()=>{
+    if(mode!=='game'||!team)return;
+    const id=setInterval(()=>{
+      apiFetch(`${API}/api/teams/${team.id}/final-status`).then(r=>r.ok?r.json():null).then(j=>{if(j?.team && (j.team.currentPhase!==team.currentPhase||j.team.status!==team.status||j.team.pausedAt!==team.pausedAt))setTeam(j.team);}).catch(()=>{});
+    },4000);
+    return()=>clearInterval(id);
+  },[mode,team?.id,team?.currentPhase,team?.status,team?.pausedAt]);
+
 
   const loginTeam = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
     const form = new FormData(e.currentTarget);
     try {
-      const r = await fetch(`${API}/api/team-login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ teamName: form.get('teamName'), code: form.get('code') }) });
+      const r = await apiFetch(`${API}/api/team-login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ teamName: form.get('teamName'), code: form.get('code') }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Inloggen mislukt');
-      setTeam(j.team); setMode('game');
+      localStorage.setItem('lotus_team_token',j.token);localStorage.setItem('lotus_team_id',String(j.team.id));setTeam(j.team); setMode('game');
     } catch (err) { setError(err.message); } finally { setLoading(false); }
-  };
-
-  const loadDashboard = async () => {
-    setLoading(true); setError('');
-    try {
-      const r = await fetch(`${API}/api/facilitator/location/1`); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Dashboard niet beschikbaar');
-      setDashboard(j); setMode('facilitator');
-    } catch (err) { setError(err.message); } finally { setLoading(false); }
-  };
-
-  const resetTeam = async (teamId, teamName) => {
-    const ok = window.confirm(`Weet je zeker dat je ${teamName} volledig wilt resetten? Timer, hints, routekeuze en voortgang worden gewist.`);
-    if (!ok) return;
-    setLoading(true); setError('');
-    try {
-      const r = await fetch(`${API}/api/facilitator/teams/${teamId}/reset`, { method:'POST' });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'Resetten mislukt');
-      await loadDashboard();
-    } catch (err) { setError(err.message); setLoading(false); }
   };
 
   const saveTeamSetup = async (participants) => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/team-setup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ participants }) });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/team-setup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ participants }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Teamopstelling opslaan mislukt');
       setTeam(j.team); return true;
@@ -207,7 +211,7 @@ function App() {
   const startGame = async () => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/start`, { method: 'POST' });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/start`, { method: 'POST' });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Starten mislukt');
       setTeam(j.team);
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
@@ -215,7 +219,7 @@ function App() {
 
   const startCountdown = async () => {
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/timer-start`, { method:'POST' });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/timer-start`, { method:'POST' });
       const j = await r.json();
       if (r.ok) setTeam(j.team);
     } catch {}
@@ -224,7 +228,7 @@ function App() {
   const submitOpening = async (answers) => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/opening`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(answers) });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/opening`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(answers) });
       const j = await r.json();
       if (!r.ok) {
         if (r.status===422 && j.penaltySeconds===60) {setTeam(j.team);setPenaltyShown(true);}
@@ -239,7 +243,7 @@ function App() {
   const submitAnswer = async (phase, answer) => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/answer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ phase, answer }) });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/answer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ phase, answer }) });
       const j = await r.json();
       if (!r.ok) {
         if (j.team) setTeam(j.team);
@@ -258,7 +262,7 @@ function App() {
 
   const checkStep = async (phase,step,value) => {
     try {
-      const r=await fetch(`${API}/api/teams/${team.id}/check-step`,{
+      const r=await apiFetch(`${API}/api/teams/${team.id}/check-step`,{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phase,step,value})
       });
       const j=await r.json();
@@ -274,7 +278,7 @@ function App() {
   const requestHint = async (text) => {
     setFeedback(text);
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/hint`, { method:'POST' });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/hint`, { method:'POST' });
       const j = await r.json(); if (r.ok) setTeam(j.team);
     } catch {}
   };
@@ -282,7 +286,7 @@ function App() {
   const startJohnnyOffer = async () => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/johnny-offer-start`, {method:'POST'});
+      const r = await apiFetch(`${API}/api/teams/${team.id}/johnny-offer-start`, {method:'POST'});
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Kon de keuzeperiode niet starten.');
       setTeam(j.team);
     } catch(err) { setFeedback(err.message); } finally { setLoading(false); }
@@ -291,7 +295,7 @@ function App() {
   const chooseRoute = async (route) => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/route`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ route }) });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/route`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ route }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Keuze opslaan mislukt');
       setTeam(j.team);
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
@@ -300,7 +304,7 @@ function App() {
   const syncFinal = async () => {
     if (!team || team.currentPhase!=='KOPER_KEUZE') return;
     try {
-      const r=await fetch(`${API}/api/teams/${team.id}/final-status`);
+      const r=await apiFetch(`${API}/api/teams/${team.id}/final-status`);
       const j=await r.json();if(r.ok && j.team) setTeam(j.team);
     } catch {}
   };
@@ -308,7 +312,7 @@ function App() {
   const sendBuyerChat = async (action,value='',time='') => {
     setLoading(true);setFeedback('');
     try {
-      const r=await fetch(`${API}/api/teams/${team.id}/buyer-chat`,{
+      const r=await apiFetch(`${API}/api/teams/${team.id}/buyer-chat`,{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,value,time})
       });
       const j=await r.json().catch(()=>({}));
@@ -325,7 +329,7 @@ function App() {
   const chooseFinal = async (choice) => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/final-choice`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ choice }) });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/final-choice`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ choice }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Eindkeuze opslaan mislukt');
       setTeam(j.team);
     } catch (err) { setFeedback(err.message); } finally { setLoading(false); }
@@ -334,7 +338,7 @@ function App() {
   const goBackWithPenalty = async () => {
     setLoading(true); setFeedback('');
     try {
-      const r = await fetch(`${API}/api/teams/${team.id}/go-back`, { method:'POST' });
+      const r = await apiFetch(`${API}/api/teams/${team.id}/go-back`, { method:'POST' });
       const j = await r.json().catch(()=>({}));
       if (!r.ok) throw new Error(j.error || 'Teruggaan mislukt.');
       if (j.team) setTeam(j.team);
@@ -353,11 +357,14 @@ function App() {
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
-        <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>setMode('login')}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
+        <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>{localStorage.removeItem('lotus_team_token');localStorage.removeItem('lotus_team_id');setTeam(null);setMode('login');}}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt} finishedAt={team.finishedAt||team.stoppedAt} pausedAt={team.pausedAt} totalPausedMs={team.totalPausedMs||0}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(activePhases.length-1))*100)}%</div></section>
         {team.currentPhase === 'START' && !team.charactersConfigured
           ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
           : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
+        {team.editorNote && <section className="panel"><strong>Aanvullende instructie</strong><p>{team.editorNote}</p></section>}
+        {(team.status==='klaar'||team.status==='gestopt') && <div className="game-finished"><h2>{team.status==='klaar'?'MISSIE VOLTOOID':'SPEL GESTOPT'}</h2><strong>{formatDuration(team.elapsedSeconds)}</strong><p>Eindtijd: {localTime(team.finishedAt||team.stoppedAt)}</p></div>}
+        {team.pausedAt && <div className="game-finished"><h2>TEAM GEPAUZEERD</h2><p>De spelbegeleider hervat jullie spel.</p></div>}
         {penaltyShown && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
           <div className="penalty-screen">
             <div className="penalty-exclamation" aria-hidden="true">!</div>
@@ -384,17 +391,7 @@ function App() {
     </main>;
   }
 
-  if (mode === 'facilitator' && dashboard) {
-    return <main className="scene-page">
-      <div className="scene-backdrop" aria-hidden="true"></div>
-      <div className="scene-vignette" aria-hidden="true"></div>
-      <div className="app-shell wide scene-inner">
-        <section className="topbar"><button className="ghost" onClick={()=>setMode('login')}>← Terug</button><div className="eyebrow">SPELBEGELEIDER</div></section>
-        <section className="hero compact"><div><span className="chip">SPELBEGELEIDING</span><h1>Locatiedashboard</h1><p>{dashboard.event.name} · {dashboard.teams.length} teams actief</p></div><button className="secondary" onClick={loadDashboard}>Vernieuwen</button></section>
-        <section className="table-card"><table><thead><tr><th>Team</th><th>Fase</th><th>Tijd</th><th>Hints</th><th>Route</th><th>Status</th><th>Actie</th></tr></thead><tbody>{dashboard.teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase] || t.currentPhase.replaceAll('_',' ')}</td><td>{t.elapsedMinutes} min</td><td>{t.hintCount}</td><td>{t.chosenRoute||'—'}</td><td><span className={`status ${t.status}`}>{t.status}</span></td><td><button className="reset-team-button" disabled={loading} onClick={()=>resetTeam(t.id,t.teamName)}>Reset team</button></td></tr>)}</tbody></table></section>
-      </div>
-    </main>;
-  }
+  if(mode==='staff')return <StaffPortal onExit={()=>setMode('login')} />;
 
   return <main className="login-scene">
     <div className="login-backdrop" aria-hidden="true"></div>
@@ -418,21 +415,87 @@ function App() {
           <div className="access-light">LIVE</div>
         </div>
         <form onSubmit={loginTeam}>
-          <label>Teamnaam<input name="teamName" placeholder="Bijv. Team Nacht" required/></label>
-          <label>Spelcode<input name="code" placeholder="LOTUS-4171" autoCapitalize="characters" required/></label>
+          <label>Teamnaam<input name="teamName" required/></label>
+          <label>Spelcode<input name="code" autoCapitalize="characters" required/></label>
           {error&&<div className="error">{error}</div>}
           <button className="primary full login-start" disabled={loading}>{loading?'Controleren...':'Start het onderzoek'}</button>
         </form>
         <div className="security-strip"><span>●</span> Verbinding beveiligd · Maison Beaumont</div>
         <div className="divider"><span>spelbegeleider</span></div>
-        <button className="secondary full" onClick={loadDashboard} disabled={loading}>Open locatiedashboard</button>
-        <p className="demo">Demo teamcode: <strong>LOTUS-4171</strong></p>
+        <button className="secondary full" onClick={()=>setMode('staff')} disabled={loading}>Inloggen als spelbegeleider of beheerder</button>
+
       </section>
     </div>
   </main>;
 }
 
-function GameCountdown({timerStartedAt}) {
+function StaffPortal({onExit}) {
+  const [user,setUser]=useState(null);
+  const [events,setEvents]=useState([]);
+  const [event,setEvent]=useState(null);
+  const [teams,setTeams]=useState([]);
+  const [notice,setNotice]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [staffUsers,setStaffUsers]=useState([]);
+  const [editor,setEditor]=useState(null);
+  const [editPhase,setEditPhase]=useState('');
+  const [answers,setAnswers]=useState('');
+  const [note,setNote]=useState('');
+  const [tab,setTab]=useState('events');
+  async function request(path,options={}) {
+    const response=await apiFetch(`${API}${path}`,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(data.error||'Verzoek mislukt.');
+    return data;
+  }
+  async function refreshEvents(){const data=await request('/api/events');setEvents(data.events);}
+  async function refreshEvent(id){const data=await request(`/api/events/${id}`);setEvent(data.event);setTeams(data.teams);}
+  useEffect(()=>{
+    if(!localStorage.getItem('lotus_staff_token'))return;
+    request('/api/auth/me').then(j=>{setUser(j.user);refreshEvents().catch(()=>{});}).catch(()=>localStorage.removeItem('lotus_staff_token'));
+  },[]);
+  useEffect(()=>{
+    if(!event)return;
+    const interval=setInterval(()=>refreshEvent(event.id).catch(()=>{}),2500);
+    return()=>clearInterval(interval);
+  },[event?.id]);
+  async function login(e){
+    e.preventDefault();setBusy(true);setNotice('');
+    const f=new FormData(e.currentTarget);
+    try{const data=await request('/api/auth/login',{method:'POST',body:JSON.stringify({username:f.get('username'),password:f.get('password')})});
+      localStorage.setItem('lotus_staff_token',data.token);setUser(data.user);await refreshEvents();
+    }catch(e){setNotice(e.message);}finally{setBusy(false);}
+  }
+  async function createEvent(e){
+    e.preventDefault();setBusy(true);setNotice('');const f=new FormData(e.currentTarget);
+    try{const data=await request('/api/events',{method:'POST',body:JSON.stringify({name:f.get('name')})});await refreshEvents();await refreshEvent(data.event.id);e.currentTarget.reset();}catch(e){setNotice(e.message);}finally{setBusy(false);}
+  }
+  async function teamAction(team,action){
+    if(['reset','stop'].includes(action)&&!confirm(`${action==='reset'?'Reset':'Stop'} ${team.teamName}?`))return;
+    try{await request(`/api/events/${event.id}/teams/${team.id}/action`,{method:'POST',body:JSON.stringify({action})});await refreshEvent(event.id);}catch(e){setNotice(e.message);}
+  }
+  async function addFacilitator(e){
+    e.preventDefault();const f=new FormData(e.currentTarget);
+    try{await request('/api/admin/facilitators',{method:'POST',body:JSON.stringify({username:f.get('username'),password:f.get('password')})});e.currentTarget.reset();const j=await request('/api/admin/facilitators');setStaffUsers(j.users);setNotice('Spelbegeleider aangemaakt.');}catch(e){setNotice(e.message);}
+  }
+  async function loadEditor(){try{const j=await request('/api/admin/editor');setEditor(j);selectPhase(j.phases[0],j);setTab('editor');}catch(e){setNotice(e.message);}}
+  function selectPhase(phase,model=editor){setEditPhase(phase);setAnswers((model?.answers?.[phase]||[]).join('\n'));setNote(model?.notes?.[phase]||'');}
+  async function saveEditor(e){e.preventDefault();try{await request('/api/admin/editor',{method:'PUT',body:JSON.stringify({phase:editPhase,answers,note})});setNotice('Opgeslagen. Nieuwe antwoorden gelden voor volgende inzendingen.');const j=await request('/api/admin/editor');setEditor(j);}catch(e){setNotice(e.message);}}
+  if(!user)return <main className="scene-page staff-scene"><div className="app-shell"><section className="panel staff-login"><span className="chip">BEVEILIGDE TOEGANG</span><h1>Spelbegeleider / Beheerder</h1><p>Log in met je persoonlijke account.</p><form onSubmit={login}><label>Gebruikersnaam<input name="username" autoComplete="username" required/></label><label>Wachtwoord<input name="password" type="password" autoComplete="current-password" required/></label><button className="primary" disabled={busy}>Inloggen</button></form>{notice&&<p className="feedback">{notice}</p>}<button className="secondary" onClick={onExit}>← Spelerslogin</button></section></div></main>;
+  return <main className="scene-page staff-scene"><div className="app-shell wide">
+    <section className="topbar"><div><span className="chip">DE ZWARTE LOTUS · {user.role==='admin'?'BEHEERDER':'SPELBEGELEIDER'}</span><h1>Spelbeheer</h1></div><button className="secondary" onClick={()=>{localStorage.removeItem('lotus_staff_token');setUser(null);onExit();}}>Uitloggen</button></section>
+    <div className="staff-nav"><button className="secondary" onClick={()=>{setTab('events');setEvent(null);refreshEvents().catch(e=>setNotice(e.message));}}>Mijn evenementen</button>{user.role==='admin'&&<><button className="secondary" onClick={loadEditor}>Spel-editor</button><button className="secondary" onClick={async()=>{try{const j=await request('/api/admin/facilitators');setStaffUsers(j.users);setTab('staff');}catch(e){setNotice(e.message);}}}>Accounts</button></>}</div>
+    {notice&&<div className="feedback" role="status">{notice}</div>}
+    {tab==='events'&&!event&&<><section className="panel"><h2>Nieuw evenement</h2><form onSubmit={createEvent} className="staff-form"><label>Evenementnaam<input name="name" required/></label><button className="primary" disabled={busy}>Evenement aanmaken</button></form></section><section className="panel"><h2>Mijn evenementen</h2><div className="staff-event-grid">{events.map(e=><button key={e.id} className="staff-event-button" onClick={()=>refreshEvent(e.id).catch(x=>setNotice(x.message))}><strong>{e.name}</strong><small>{e.teamCount} teams · {e.status==='closed'?'Afgesloten':'Open'}</small></button>)}</div></section></>}
+    {tab==='events'&&event&&<><section className="panel"><div className="staff-heading"><div><button className="secondary" onClick={()=>setEvent(null)}>← Evenementen</button><h2>{event.name}</h2><p>Deel deze code met alle teams. De timer start automatisch zodra een team het spel begint.</p></div><div className="staff-code"><span>EVENEMENTCODE</span><strong>{event.code}</strong><button className="secondary" onClick={()=>navigator.clipboard.writeText(event.code)}>Kopieer</button></div></div><p>Status: <strong>{event.status==='closed'?'Afgesloten':'Open voor deelname'}</strong> · {teams.length} teams</p>{event.status!=='closed'&&<button className="secondary" onClick={async()=>{if(!confirm('Evenement afsluiten? Alle nog actieve teams worden gestopt.'))return;try{await request(`/api/events/${event.id}/close`,{method:'POST'});await refreshEvent(event.id);}catch(e){setNotice(e.message);}}}>Evenement afsluiten</button>}</section>
+    <section className="panel staff-table"><h2>Live dashboard</h2><table><thead><tr><th>Team</th><th>Fase</th><th>Route</th><th>Speeltijd</th><th>Hints</th><th>Straf</th><th>Status</th><th>Eindtijd</th><th>Bediening</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase]||t.currentPhase}</td><td>{t.chosenRoute||'—'}</td><td>{formatDuration(t.elapsedSeconds)}</td><td>{t.hintCount}</td><td>+{t.penaltyMinutes||0} min</td><td>{t.pausedAt?'Gepauzeerd':t.status}</td><td>{localTime(t.finishedAt||t.stoppedAt)}</td><td><div className="staff-actions">{t.status!=='klaar'&&t.status!=='gestopt'&&<>{t.pausedAt?<button onClick={()=>teamAction(t,'resume')}>Hervat</button>:<button onClick={()=>teamAction(t,'pause')}>Pauzeer</button>}<button onClick={()=>teamAction(t,'next')}>Volgende fase</button><button onClick={()=>teamAction(t,'stop')}>Stop</button></>}<button onClick={()=>teamAction(t,'reset')}>Reset</button></div></td></tr>)}</tbody></table>{teams.length===0&&<p>Er zijn nog geen teams ingelogd.</p>}</section>
+    <section className="panel"><h2>Ranglijst afgeronde teams</h2>{teams.filter(t=>t.status==='klaar').sort((a,b)=>a.elapsedSeconds-b.elapsedSeconds).map((t,i)=><p key={t.id}>{i+1}. {t.teamName} — {formatDuration(t.elapsedSeconds)}</p>)}</section></>}
+    {tab==='staff'&&user.role==='admin'&&<><section className="panel"><h2>Spelbegeleider aanmaken</h2><form className="staff-form" onSubmit={addFacilitator}><label>Gebruikersnaam<input name="username" required/></label><label>Wachtwoord (minimaal 12 tekens)<input name="password" type="password" minLength={12} required/></label><button className="primary">Account aanmaken</button></form></section><section className="panel"><h2>Accounts</h2>{staffUsers.map(u=><p key={u.id}>{u.username} · {u.role}</p>)}</section></>}
+    {tab==='editor'&&user.role==='admin'&&editor&&<section className="panel"><h2>Spel-editor · antwoordcontrole</h2><p>Je kunt hier de geaccepteerde antwoorden voor de basispuzzels en aanvullende instructies instellen. Complexe routes en verhaalscènes staan nog in de broncode.</p><form onSubmit={saveEditor} className="staff-form"><label>Puzzel<select value={editPhase} onChange={e=>selectPhase(e.target.value)}>{editor.phases.map(p=><option key={p} value={p}>{phaseLabels[p]||p}</option>)}</select></label><label>Geaccepteerde antwoorden (één per regel)<textarea rows={7} value={answers} onChange={e=>setAnswers(e.target.value)} required/></label><label>Aanvullende instructie voor spelers (optioneel)<textarea rows={4} value={note} onChange={e=>setNote(e.target.value)}/></label><button className="primary">Opslaan</button></form></section>}
+  </div></main>;
+}
+
+function GameCountdown({timerStartedAt,finishedAt,pausedAt,totalPausedMs=0}) {
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{
     if(!timerStartedAt) return;
@@ -440,13 +503,13 @@ function GameCountdown({timerStartedAt}) {
     return()=>clearInterval(id);
   },[timerStartedAt]);
   if(!timerStartedAt) return <div className="game-countdown waiting"><span>SPEELTIJD</span><strong>00:00</strong><small>max. 90:00 · start na briefing</small></div>;
-  const elapsed=Math.max(0,Math.floor((now-Number(timerStartedAt))/1000));
+  const elapsed=Math.max(0,Math.floor(((finishedAt||pausedAt||now)-Number(timerStartedAt)-totalPausedMs)/1000));
   const shown=elapsed;
   const min=Math.floor(shown/60);
   const sec=shown%60;
   const urgent=elapsed>=4500 && elapsed<5400;
   const expired=elapsed>=5400;
-  return <div className={`game-countdown ${urgent?'urgent':''} ${expired?'expired':''}`}><span>{expired?'MAXIMALE TIJD':'SPEELTIJD'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>maximaal 90:00</small></div>;
+  return <div className={`game-countdown ${urgent?'urgent':''} ${expired?'expired':''}`}><span>{finishedAt?'EINDTIJD':expired?'MAXIMALE TIJD':'SPEELTIJD'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>maximaal 90:00</small></div>;
 }
 
 
@@ -482,7 +545,7 @@ function TeamSetup({team,loading,feedback,saveTeamSetup}) {
     <div className="assignment-board random-assignment-board">
       <div className="assignment-head"><span>DEELNEMERS</span><strong>Vul jullie namen in</strong></div>
       {players.map((p,i)=><div className="assignment-row name-only" key={i}>
-        <label>Deelnemer {i+1}<input value={p.playerName} onChange={e=>update(i,e.target.value)} placeholder={`Naam deelnemer ${i+1}`} /></label>
+        <label>Deelnemer {i+1}<input value={p.playerName} onChange={e=>update(i,e.target.value)} /></label>
       </div>)}
     </div>
 
@@ -571,7 +634,7 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
         <h3>Voer de toegangscode in.</h3>
         <p>Gebruik jullie onderzoeksresultaten om toegang te krijgen tot het vervolg van de zaak.</p>
         <label>Toegangscode
-          <input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" placeholder="••••" maxLength={4} required aria-label="Viercijferige toegangscode" />
+          <input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} required aria-label="Viercijferige toegangscode" />
         </label>
       </article>
       <div className="opening-submit">
@@ -631,7 +694,7 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
 
     <div className="dossier-count-card">
       <label>Hoeveel mensen zijn er verdacht?
-        <input type="number" min="1" max="8" inputMode="numeric" value={suspectCount} onChange={e=>changeCount(e.target.value)} placeholder="Aantal verdachten" />
+        <input type="number" min="1" max="8" inputMode="numeric" value={suspectCount} onChange={e=>changeCount(e.target.value)} />
       </label>
     </div>
 
@@ -639,7 +702,7 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
       {entries.map((entry,index)=><div className="physical-suspect-entry" key={index}>
         <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
         <label>Welke verdachte?
-          <input value={entry.name} onChange={e=>updateEntry(index,'name',e.target.value)} placeholder="Naam uit het dossier" autoComplete="off" />
+          <input value={entry.name} onChange={e=>updateEntry(index,'name',e.target.value)} autoComplete="off" />
         </label>
         <label>Door welke vaardigheid is deze persoon verdacht?
           <select value={entry.skill} onChange={e=>updateEntry(index,'skill',e.target.value)}>
@@ -704,21 +767,21 @@ function OriginalContainerPuzzle({team,loading,feedback,submitAnswer,requestHint
         <span>ROUTEGEGEVEN</span>
         <strong>Welk dock hoort bij de oorspronkelijke route?</strong>
         <small>Gebruik de fysieke routegegevens van het heist-team.</small>
-        <div className="filter-input"><input value={dock} onChange={e=>setDock(e.target.value)} placeholder="Docknummer" inputMode="numeric" required/><button className="primary">{dockOk?'Bevestigd ✓':'Controleer'}</button></div>
+        <div className="filter-input"><input value={dock} onChange={e=>setDock(e.target.value)} inputMode="numeric" required/><button className="primary">{dockOk?'Bevestigd ✓':'Controleer'}</button></div>
       </form>
 
       <form className={`transport-filter-card ${arrivalOk?'solved':''} ${!dockOk?'locked':''}`} onSubmit={checkArrival}>
         <span>TIJDLIJN</span>
         <strong>Welke aankomsttijd hoort bij de zending?</strong>
         <small>Combineer de eerder gevonden tijden met de transportinformatie.</small>
-        <div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} placeholder="Bijv. 20:15" disabled={!dockOk} required/><button className="primary" disabled={!dockOk}>{arrivalOk?'Bevestigd ✓':'Controleer'}</button></div>
+        <div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} disabled={!dockOk} required/><button className="primary" disabled={!dockOk}>{arrivalOk?'Bevestigd ✓':'Controleer'}</button></div>
       </form>
 
       <form className={`transport-filter-card ${originOk?'solved':''} ${!arrivalOk?'locked':''}`} onSubmit={checkOrigin}>
         <span>HERKOMST</span>
         <strong>Uit welk land kwam de juiste zending?</strong>
         <small>Onderzoek welke herkomstgegevens nog ontbreken.</small>
-        <div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="Land van herkomst" disabled={!arrivalOk} required/><button className="primary" disabled={!arrivalOk}>{originOk?'Bevestigd ✓':'Controleer'}</button></div>
+        <div className="filter-input"><input value={origin} onChange={e=>setOrigin(e.target.value)} disabled={!arrivalOk} required/><button className="primary" disabled={!arrivalOk}>{originOk?'Bevestigd ✓':'Controleer'}</button></div>
       </form>
     </div>
 
@@ -743,7 +806,7 @@ function OriginalContainerConfirmation({loading,feedback,submitAnswer,requestHin
     <p>Het transportonderzoek is afgerond. Welk containernummer hoort volgens jullie bij het oorspronkelijke plan?</p>
     <div className="transport-confirmation-card">
       <span>DEFINITIEVE IDENTIFICATIE</span>
-      <AnswerForm loading={loading} placeholder="Containernummer" maxLength={16} button="Bevestig container" onSubmit={v=>submitAnswer('ORIGINELE_CONTAINER_BEVESTIGEN',v)}/>
+      <AnswerForm loading={loading} maxLength={16} button="Bevestig container" onSubmit={v=>submitAnswer('ORIGINELE_CONTAINER_BEVESTIGEN',v)}/>
     </div>
     <button className="hint-link" onClick={()=>requestHint('Hint: controleer de enige overgebleven regel uit het transportonderzoek.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
@@ -758,10 +821,10 @@ function RotjeKnorPhase({loading,feedback,submitAnswer}) {
     <h2>Nieuw spoor</h2>
     <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',{event,who})}}>
       <label>Wat is er met het oorspronkelijke transport gebeurd?
-        <input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" placeholder="Jullie bevinding" />
+        <input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" />
       </label>
       <label>Wie heeft de route gewijzigd?
-        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" placeholder="Volledige voor- en achternaam" />
+        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" />
       </label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig conclusie'}</button>
     </form>
@@ -809,7 +872,7 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
     <div className="manifest-count">{johnnyRows.length} containers in het register</div>
     <form className="final-confirm" onSubmit={finalSubmit}>
       <span>CONCLUSIE</span><h3>Welk containernummer hoort bij de gewijzigde zending?</h3>
-      <label>Containernummer<input value={container} onChange={e=>setContainer(e.target.value)} autoComplete="off" placeholder="Containernummer" required/></label>
+      <label>Containernummer<input value={container} onChange={e=>setContainer(e.target.value)} autoComplete="off" required/></label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig containernummer'}</button>
     </form>
     <button className="hint-link" onClick={()=>requestHint('Hint: vergelijk de mutatietijd en transportregistratie uit het afgeschermde transportsysteem met de volledige containerlijst.')}>Hint aanvragen</button>
@@ -1039,8 +1102,8 @@ function JohnnyInspectorReport({loading,feedback,submitAnswer}) {
       <div className="final-inspector-message"><span>BERICHT VAN DE INSPECTEUR</span><h3>Geef de locatie door.</h3><p>“Niets naar die koper sturen over Johnny. Zoek die chauffeur eerst. Geef mij zijn locatie en haal <strong>Operatiedossier B</strong> bij me op. Dan kunnen mijn mensen hem aanhouden!”</p></div>
     </div>
     <form className="operation-step" onSubmit={e=>{e.preventDefault();submitAnswer('JOHNNY_MELDEN',{location,policeCode})}}>
-      <label>Waar bevindt Johnny Jatwerk zich?<input value={location} onChange={e=>setLocation(e.target.value)} required placeholder="Vul jullie bevinding in" autoComplete="off"/></label>
-      <label>Code B van de inspecteur<input value={policeCode} onChange={e=>setPoliceCode(e.target.value)} required placeholder="Code uit Operatiedossier B" autoComplete="off"/></label>
+      <label>Waar bevindt Johnny Jatwerk zich?<input value={location} onChange={e=>setLocation(e.target.value)} required autoComplete="off"/></label>
+      <label>Code B van de inspecteur<input value={policeCode} onChange={e=>setPoliceCode(e.target.value)} required autoComplete="off"/></label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Stuur locatie naar de inspecteur'}</button>
     </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
@@ -1085,9 +1148,9 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
     <form className="operation-step buyer-chat-compose" onSubmit={submit}>
       <span>{chat.stage==='codeword1'?'CODEWOORD 1':chat.stage==='codeword2'?'CODEWOORD 2':'AFSPRAAK'}</span>
       {chat.stage==='location'?<>
-        <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required placeholder="Kies een ontmoetingsplek"/></label>
+        <label>Locatie voor de overdracht<input maxLength={180} value={value} onChange={e=>setValue(e.target.value)} required/></label>
         <label>Tijdstip<input type="time" value={time} onChange={e=>setTime(e.target.value)} required/></label>
-      </>:<label>Geheim codewoord<input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required placeholder="Voer het codewoord in"/></label>}
+      </>:<label>Geheim codewoord<input value={value} onChange={e=>setValue(e.target.value)} autoComplete="off" required/></label>}
       <button className="primary" disabled={loading}>{loading?'Verwerken...':'Verstuur beveiligd bericht'}</button>
     </form>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
@@ -1276,7 +1339,7 @@ function PoliceRoutePage({team,loading,feedback,submitAnswer,requestHint}) {
   const send=(value)=>submitAnswer(phase,value);
   const status=(startedAt,duration)=>Math.max(0,now-Number(startedAt||now))>=duration;
   const evidence=(title,content)=><article className="police-evidence"><span>VERZEGELD BEWIJSSTUK</span><h3>{title}</h3>{content}</article>;
-  const field=(label,value,fn,placeholder)=><label>{label}<input value={value} onChange={e=>fn(e.target.value)} placeholder={placeholder||''} autoComplete="off" required /></label>;
+  const field=(label,value,fn,placeholder)=><label>{label}<input value={value} onChange={e=>fn(e.target.value)} autoComplete="off" required /></label>;
   const form=(fields,action)=><form className="police-answer-form" onSubmit={e=>{e.preventDefault();send(action)}}>{fields}<button className="primary" disabled={loading}>{loading?'Controleren...':'Verzend conclusie naar de inspecteur'}</button></form>;
   const intro=<div className="police-route-header"><div className="section-label">OPERATIE SCHADUWJACHT · POLITIEROUTE</div><span className="police-route-tag">GEEN SAMENWERKING MET J.J.</span></div>;
   if(phase==='POLITIE_BRIEFING')return <section className="panel cinematic police-route-panel">{intro}<h2>De inspecteur neemt het over.</h2>
@@ -1374,7 +1437,7 @@ function PuzzleCard({label,title,feedback,children}) {
 function AnswerForm({onSubmit,loading,placeholder,button,maxLength=12,inputMode='text'}) {
   const [value,setValue]=useState('');
   const submit = async (e)=>{ e.preventDefault(); const ok=await onSubmit(value); if(!ok) setValue(value); };
-  return <form className="answer-form" onSubmit={submit}><input value={value} onChange={e=>setValue(e.target.value)} placeholder={placeholder} maxLength={maxLength} inputMode={inputMode} autoComplete="off" required/><button className="primary" disabled={loading}>{loading?'Controleren...':button}</button></form>;
+  return <form className="answer-form" onSubmit={submit}><input value={value} onChange={e=>setValue(e.target.value)} maxLength={maxLength} inputMode={inputMode} autoComplete="off" required/><button className="primary" disabled={loading}>{loading?'Controleren...':button}</button></form>;
 }
 
 createRoot(document.getElementById('root')).render(<Root/>);

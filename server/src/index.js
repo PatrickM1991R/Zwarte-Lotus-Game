@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual, randomBytes, scryptSync } from 'node:crypto';
 import { fileURLToPath } from 'url';
 
 dotenv.config();
@@ -81,17 +81,89 @@ app.post('/api/webhooks/koos-toms', express.text({type:'application/json',limit:
 
 app.use(express.json());
 
-const now = Date.now();
-const db = {
-  location: { id: 1, name: 'Spellocatie' },
-  event: { id: 1, locationId: 1, name: 'De Zwarte Lotus · Demoavond', status: 'active' },
-  teams: [
-    { id: 1, eventId: 1, teamName: 'Team Nacht', code: 'LOTUS-4171', currentPhase: 'START', hintCount: 0, chosenRoute: null, johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now, timerStartedAt: null, charactersConfigured: false, participants: [], dossierPlan: null },
-    { id: 2, eventId: 1, teamName: 'Team Karaat', code: 'LOTUS-4172', currentPhase: 'ROTJE_KNOR', hintCount: 0, chosenRoute: null, johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 36 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
-    { id: 3, eventId: 1, teamName: 'Team Zwart', code: 'LOTUS-4173', currentPhase: 'KEUZE', hintCount: 2, chosenRoute: 'Johnny', johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 43 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null },
-    { id: 4, eventId: 1, teamName: 'Team Lotus', code: 'LOTUS-4174', currentPhase: 'KLUIS', hintCount: 1, chosenRoute: 'Johnny', johnnyOfferStartedAt: null, finalChoice: null, status: 'bezig', startedAt: now - 48 * 60000, timerStartedAt: null, charactersConfigured: true, participants: [], dossierPlan: null }
-  ]
-};
+// Persistente sessiegegevens: zet DATA_FILE op een permanente schijf in productie.
+const DATA_FILE = process.env.DATA_FILE || path.resolve(__dirname, '../data/game-state.json');
+const TOKEN_SECRET = process.env.SESSION_SECRET || 'ONLY-FOR-LOCAL-DEV-CHANGE-ME';
+if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.ADMIN_PASSWORD)) {
+  throw new Error('SESSION_SECRET en ADMIN_PASSWORD moeten in productie zijn ingesteld.');
+}
+function passwordHash(password, salt=randomBytes(16).toString('hex')) {
+  return `${salt}:${scryptSync(String(password), salt, 64).toString('hex')}`;
+}
+function passwordMatches(password, saved) {
+  if (!saved || !saved.includes(':')) return false;
+  const [salt, digest] = saved.split(':');
+  const actual = scryptSync(String(password), salt, 64);
+  const expected = Buffer.from(digest,'hex');
+  return actual.length===expected.length && timingSafeEqual(actual,expected);
+}
+const db = { events: [], teams: [], users: [], config: {answerOverrides:{}, playerNotes:{}} };
+try {
+  const stored=JSON.parse(fs.readFileSync(DATA_FILE,'utf8'));
+  for(const key of ['events','teams','users']) if(Array.isArray(stored[key])) db[key]=stored[key];
+  if(stored.config) db.config=stored.config;
+} catch(e) { if(e.code!=='ENOENT') throw e; }
+if (process.env.ADMIN_PASSWORD) {
+  const admin=db.users.find(u=>u.role==='admin' && u.username===(process.env.ADMIN_USERNAME||'admin'));
+  if(!admin) db.users.push({id:randomBytes(12).toString('hex'),username:process.env.ADMIN_USERNAME||'admin',role:'admin',passwordHash:passwordHash(process.env.ADMIN_PASSWORD)});
+  else if(!passwordMatches(process.env.ADMIN_PASSWORD,admin.passwordHash)) admin.passwordHash=passwordHash(process.env.ADMIN_PASSWORD);
+}
+function persist() {
+  fs.mkdirSync(path.dirname(DATA_FILE),{recursive:true});
+  const tmp=DATA_FILE+'.tmp';
+  fs.writeFileSync(tmp,JSON.stringify(db,null,2));
+  fs.renameSync(tmp,DATA_FILE);
+}
+persist();
+function sign(payload) {
+  const body=Buffer.from(JSON.stringify({...payload,expiresAt:Date.now()+1000*60*60*24*7})).toString('base64url');
+  const mac=createHmac('sha256',TOKEN_SECRET).update(body).digest('base64url');
+  return body+'.'+mac;
+}
+function verify(token) {
+  try {
+    const [body,mac]=String(token||'').split('.');
+    if(!body||!mac)return null;
+    const expected=createHmac('sha256',TOKEN_SECRET).update(body).digest();
+    const given=Buffer.from(mac,'base64url');
+    if(expected.length!==given.length||!timingSafeEqual(expected,given))return null;
+    const value=JSON.parse(Buffer.from(body,'base64url').toString());
+    return value.expiresAt>Date.now()?value:null;
+  }catch{return null;}
+}
+function auth(req) { return verify((req.get('Authorization')||'').replace(/^Bearer\s+/i,'')); }
+function staff(req) {
+  const token=auth(req); if(!token || token.type!=='staff')return null;
+  return db.users.find(u=>u.id===token.id && u.role===token.role)||null;
+}
+function permittedEvent(req,event) {
+  const user=staff(req);
+  return user && event && (user.role==='admin'||event.ownerId===user.id);
+}
+function teamView(team) {
+  const ended=team.finishedAt||team.stoppedAt;
+  const elapsedMs=team.timerStartedAt ? Math.max(0,(ended||Date.now())-team.timerStartedAt-(team.totalPausedMs||0)-(team.pausedAt ? (ended||Date.now())-team.pausedAt:0)) : 0;
+  return {...team,elapsedSeconds:Math.floor(elapsedMs/1000),elapsedMinutes:Math.floor(elapsedMs/60000),endTime:ended||null};
+}
+function finishTeam(team) {
+  if(!team.finishedAt)team.finishedAt=Date.now();
+  team.status='klaar';team.pausedAt=null;
+}
+function guardTeam(req,res,next) {
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team)return res.status(404).json({error:'Team niet gevonden'});
+  const token=auth(req);
+  if(token?.type==='team'&&token.id===team.id){if((team.status==='klaar'||team.status==='gestopt'||team.pausedAt) && req.method!=='GET')return res.status(409).json({error:'Dit team is afgerond, gestopt of gepauzeerd.'});return next();}
+  if(permittedEvent(req,db.events.find(e=>e.id===team.eventId)))return next();
+  return res.status(401).json({error:'Niet ingelogd voor dit team.'});
+}
+// Alle spelmutaties worden eerst duurzaam opgeslagen voor ze aan de client bevestigd worden.
+app.use((req,res,next)=>{
+  const original=res.json.bind(res);
+  res.json=(value)=>{if(req.method!=='GET')persist();return original(value);};
+  next();
+});
+app.use('/api/teams/:id',guardTeam);
 
 
 const characterDefinitions = {
@@ -180,13 +252,14 @@ function enforceFinalDeadline(team) {
     team.finalChoice='VAL';
     team.finalChoiceTimedOut=true;
     team.currentPhase='RESULTAAT';
-    team.status='klaar';
+    finishTeam(team);
     team.arrestStartedAt=Date.now();
+    persist();
   }
 }
 const enrich = (team) => {
   enforceFinalDeadline(team);
-  return { ...team, locationName: db.location.name, eventName: db.event.name };
+  return { ...teamView(team), editorNote:db.config.playerNotes?.[team.currentPhase]||'', locationName: db.events.find(e=>e.id===team.eventId)?.name || '', eventName: db.events.find(e=>e.id===team.eventId)?.name || '' };
 };
 
 // Eén centrale strafregel voor alle onjuiste spelantwoorden en terugnavigatie.
@@ -324,13 +397,18 @@ app.post('/api/infiltrant/send-camera', async (req,res)=>{
   }
 });
 
-app.post('/api/team-login', (req, res) => {
-  const code = String(req.body.code || '').trim().toUpperCase();
-  const name = String(req.body.teamName || '').trim();
-  const team = db.teams.find((t) => t.code === code);
-  if (!team) return res.status(401).json({ error: 'Ongeldige spelcode' });
-  if (name) team.teamName = name;
-  res.json({ team: enrich(team) });
+app.post('/api/team-login', (req,res)=>{
+  const code=String(req.body.code||'').trim().toUpperCase();
+  const name=String(req.body.teamName||'').trim().slice(0,64);
+  const event=db.events.find(e=>e.code===code);
+  if(!event || event.status==='closed')return res.status(401).json({error:'Ongeldige of afgesloten evenementcode.'});
+  if(!name)return res.status(422).json({error:'Vul een teamnaam in.'});
+  let team=db.teams.find(t=>t.eventId===event.id && t.teamName.toLowerCase()===name.toLowerCase());
+  if(!team){
+    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:false,participants:[],dossierPlan:null,penaltyMinutes:0};
+    db.teams.push(team);
+  }
+  res.json({team:enrich(team),token:sign({type:'team',id:team.id})});
 });
 
 
@@ -370,7 +448,7 @@ app.post('/api/teams/:id/start', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
   if (!team.charactersConfigured) return res.status(409).json({ error:'Stel eerst het rechercheteam samen.' });
-  if (team.currentPhase === 'START') team.startedAt = Date.now();
+  if (team.currentPhase === 'START' && !team.startedAt) team.startedAt = Date.now();
   team.currentPhase = 'ALARM';
   res.json({ team: enrich(team) });
 });
@@ -479,14 +557,14 @@ app.post('/api/teams/:id/answer', (req, res) => {
     }
     if(phase==='POLITIE_LEK') team.policeRaidStartedAt=Date.now();
     if(phase==='POLITIE_COORDINATIE') team.policeFinalStartedAt=Date.now();
-    if(phase==='POLITIE_FINALE') team.status='klaar';
+    if(phase==='POLITIE_FINALE') finishTeam(team);
     team.currentPhase=phaseNext[phase];
     return res.json({correct:true,team:enrich(team)});
   } else if (phase === 'EINDOPERATIE') {
     return res.status(409).json({error:'Gebruik het beveiligde koperskanaal.'});
   } else {
     const answer = String(req.body.answer || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    const accepted = (phaseAnswers[phase] || []).map((x) => x.toLowerCase());
+    const accepted = (db.config.answerOverrides?.[phase] || phaseAnswers[phase] || []).map((x) => x.toLowerCase());
     if (!accepted.includes(answer)) return wrongGameAnswer(res,team);
   }
 
@@ -498,14 +576,14 @@ app.post('/api/teams/:id/answer', (req, res) => {
     team.johnnyLocation = null;
     team.johnnyArrestStartedAt = null;
   }
-  if (phase === 'EINDOPERATIE') team.status = 'klaar';
+  if (phase === 'EINDOPERATIE') finishTeam(team);
   res.json({ correct: true, team: enrich(team) });
 });
 
 app.post('/api/teams/:id/timer-start', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  if (!team.timerStartedAt) team.timerStartedAt = Date.now();
+  if (!team.timerStartedAt) { team.timerStartedAt = Date.now(); team.startedAt ??= Date.now(); team.status='bezig'; }
   res.json({ team: enrich(team), durationSeconds: 5400 });
 });
 
@@ -557,7 +635,7 @@ app.post('/api/teams/:id/final-choice', (req,res)=>{
   team.finalChoice=choice;
   team.finalChoiceTimedOut=false;
   team.currentPhase='RESULTAAT';
-  team.status='klaar';
+  finishTeam(team);
   team.arrestStartedAt=Date.now();
   res.json({team:enrich(team)});
 });
@@ -598,50 +676,95 @@ app.post('/api/teams/:id/buyer-chat', (req,res) => {
   res.json({ok:true,team:enrich(team)});
 });
 
-app.post('/api/teams/:id/progress', (req, res) => {
-  const team = db.teams.find((t) => t.id === Number(req.params.id));
-  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  if (req.body.currentPhase) team.currentPhase = req.body.currentPhase;
-  if (req.body.chosenRoute !== undefined) team.chosenRoute = req.body.chosenRoute;
-  if (req.body.hintCount !== undefined) team.hintCount = req.body.hintCount;
-  res.json({ team: enrich(team) });
+// Beheerders- en spelbegeleidersportaal
+app.post('/api/auth/login',(req,res)=>{
+  const user=db.users.find(u=>u.username===String(req.body.username||'').trim().toLowerCase());
+  if(!user||!passwordMatches(req.body.password,user.passwordHash))return res.status(401).json({error:'Ongeldige inloggegevens.'});
+  res.json({token:sign({type:'staff',id:user.id,role:user.role}),user:{id:user.id,username:user.username,role:user.role}});
 });
-
-
-app.post('/api/facilitator/teams/:id/reset', (req, res) => {
-  const team = db.teams.find((t) => t.id === Number(req.params.id));
-  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  team.currentPhase = 'START';
-  team.hintCount = 0;
-  team.chosenRoute = null;
-  team.finalChoice = null;
-  team.finalDecisionStartedAt = null;
-  team.finalChoiceTimedOut = false;
-  team.buyerChat = null;
-  team.arrestStartedAt = null;
-  team.johnnyLocation = null;
-  team.johnnyArrestStartedAt = null;
-  team.johnnyOfferStartedAt = null;
-  team.status = 'bezig';
-  team.startedAt = Date.now();
-  team.timerStartedAt = null;
-  team.penaltyMinutes = 0;
-  team.dossierLockedUntil = null;
-  team.charactersConfigured = false;
-  team.participants = [];
-  team.dossierPlan = null;
-  team.completedSteps = {};
-  team.policeRaidStartedAt = null;
-  team.policeFinalStartedAt = null;
-  team.policeProgress = {};
-  res.json({ team: enrich(team) });
+app.get('/api/auth/me',(req,res)=>{
+  const user=staff(req);if(!user)return res.status(401).json({error:'Niet ingelogd.'});
+  res.json({user:{id:user.id,username:user.username,role:user.role}});
 });
-
-app.get('/api/facilitator/location/:id', (req, res) => {
-  if (Number(req.params.id) !== db.location.id) return res.status(404).json({ error: 'Locatie niet gevonden' });
-  const teams = db.teams.map((t) => ({ ...t, elapsedMinutes: Math.max(0, Math.floor((Date.now() - t.startedAt) / 60000)) }));
-  res.json({ location: db.location, event: db.event, teams });
+app.get('/api/events',(req,res)=>{
+  const user=staff(req);if(!user)return res.status(401).json({error:'Niet ingelogd.'});
+  res.json({events:db.events.filter(e=>user.role==='admin'||e.ownerId===user.id).map(e=>({...e,teamCount:db.teams.filter(t=>t.eventId===e.id).length}))});
 });
-
+app.post('/api/events',(req,res)=>{
+  const user=staff(req);if(!user)return res.status(401).json({error:'Niet ingelogd.'});
+  const name=String(req.body.name||'').trim().slice(0,100);
+  if(name.length<3)return res.status(422).json({error:'Vul een evenementnaam in.'});
+  let code;do{code='LOTUS-'+randomBytes(5).toString('hex').toUpperCase();}while(db.events.some(e=>e.code===code));
+  const event={id:Math.max(0,...db.events.map(e=>e.id))+1,name,code,ownerId:user.id,status:'open',createdAt:Date.now()};
+  db.events.push(event);res.status(201).json({event});
+});
+app.get('/api/events/:id',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang tot dit evenement.'});
+  res.json({event,teams:db.teams.filter(t=>t.eventId===event.id).map(teamView)});
+});
+app.post('/api/events/:id/close',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang.'});
+  event.status='closed';event.closedAt=Date.now();
+  for(const team of db.teams.filter(t=>t.eventId===event.id && t.status!=='klaar' && t.status!=='gestopt')){team.stoppedAt=Date.now();team.status='gestopt';}
+  res.json({event});
+});
+app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang.'});
+  const team=db.teams.find(t=>t.id===Number(req.params.teamId)&&t.eventId===event.id);
+  if(!team)return res.status(404).json({error:'Team niet gevonden.'});
+  const action=String(req.body.action||'');
+  if(action==='pause' && !team.pausedAt && team.status==='bezig'){team.pausedAt=Date.now();}
+  else if(action==='resume' && team.pausedAt){team.totalPausedMs=(team.totalPausedMs||0)+(Date.now()-team.pausedAt);team.pausedAt=null;}
+  else if(action==='stop' && team.status!=='klaar'){team.stoppedAt=Date.now();team.status='gestopt';}
+  else if(action==='next' && team.status!=='klaar' && team.status!=='gestopt'){
+    const routeSequence=team.chosenRoute==='Politie'
+      ? ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','POLITIE_BRIEFING','POLITIE_CAMERA','POLITIE_LEK','POLITIE_INVAL','POLITIE_COMMUNICATIE','POLITIE_DIAMANT','POLITIE_COORDINATIE','POLITIE_FINALE','POLITIE_RESULTAAT']
+      : ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','JOHNNY_MELDEN','JOHNNY_ARRESTATIE','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
+    const idx=routeSequence.indexOf(team.currentPhase);
+    const nextPhase=routeSequence[idx+1]||phaseNext[team.currentPhase];
+    if(!nextPhase)return res.status(409).json({error:'Geen volgende fase beschikbaar.'});
+    if(nextPhase==='KOPER_KEUZE')team.finalDecisionStartedAt=Date.now();
+    if(nextPhase==='RESULTAAT'&&!team.finalChoice)team.finalChoice='VAL';
+    if(nextPhase==='POLITIE_FINALE')team.policeFinalStartedAt=Date.now();
+    if(nextPhase==='JOHNNY_ARRESTATIE')team.johnnyArrestStartedAt=Date.now();
+    team.currentPhase=nextPhase;
+    if(nextPhase==='RESULTAAT'||nextPhase==='POLITIE_RESULTAAT')finishTeam(team);
+  } else if(action==='reset'){
+    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,charactersConfigured:false,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+  } else if(!['pause','resume','stop','next','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
+  team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
+  res.json({team:teamView(team)});
+});
+app.get('/api/admin/facilitators',(req,res)=>{
+  if(staff(req)?.role!=='admin')return res.status(403).json({error:'Alleen voor beheerders.'});
+  res.json({users:db.users.map(({id,username,role})=>({id,username,role}))});
+});
+app.post('/api/admin/facilitators',(req,res)=>{
+  if(staff(req)?.role!=='admin')return res.status(403).json({error:'Alleen voor beheerders.'});
+  const username=String(req.body.username||'').trim().toLowerCase();
+  const password=String(req.body.password||'');
+  if(!/^[a-z0-9._-]{3,40}$/.test(username)||password.length<12)return res.status(422).json({error:'Gebruikersnaam minimaal 3 tekens; wachtwoord minimaal 12 tekens.'});
+  if(db.users.some(u=>u.username===username))return res.status(409).json({error:'Gebruikersnaam bestaat al.'});
+  const user={id:randomBytes(12).toString('hex'),username,role:'facilitator',passwordHash:passwordHash(password)};
+  db.users.push(user);res.status(201).json({user:{id:user.id,username,role:user.role}});
+});
+// Beheerderseditor: configureer veilige antwoordvarianten en aanvullende instructieteksten.
+app.get('/api/admin/editor',(req,res)=>{
+  if(staff(req)?.role!=='admin')return res.status(403).json({error:'Alleen voor beheerders.'});
+  res.json({phases:Object.keys(phaseAnswers),answers:{...phaseAnswers,...(db.config.answerOverrides||{})},notes:db.config.playerNotes||{}});
+});
+app.put('/api/admin/editor',(req,res)=>{
+  if(staff(req)?.role!=='admin')return res.status(403).json({error:'Alleen voor beheerders.'});
+  const phase=String(req.body.phase||'');
+  if(!Object.hasOwn(phaseAnswers,phase))return res.status(422).json({error:'Ongeldige puzzelfase.'});
+  const answers=String(req.body.answers||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!answers.length||answers.length>40||answers.some(x=>x.length>100))return res.status(422).json({error:'Vul 1 tot 40 antwoordvarianten in.'});
+  db.config.answerOverrides??={};db.config.answerOverrides[phase]=answers;
+  db.config.playerNotes??={};db.config.playerNotes[phase]=String(req.body.note||'').slice(0,1000);
+  res.json({ok:true});
+});
 const port = process.env.PORT || 3001;
 app.listen(port, () => console.log(`Zwarte Lotus API draait op ${port}`));
