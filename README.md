@@ -264,3 +264,10 @@ Het MISSIE-blok “Doorzoek de havenadministratie en bouw een nieuw dossier op. 
 
 ## v7.5 – Wie heeft Johnny gewaarschuwd?
 De online pagina toont alleen drie vragen; alle aanwijzingen komen uit vier fysieke, verzegelde inspecteursstukken. Logboek bevat 16 gebeurtenissen. Freddy Flessentrekker / FF-27 / gekloonde toegangspas is de volledige oplossing. Carla Kraak is afleider: zij werkte aan de camera’s, maar niet aan de waarschuwing. De fysieke stukken worden bij deze fase door de inspecteur uitgereikt.
+
+## v7.6 – Vertrouwelijke douanemail en afzonderlijke politieorder
+- Puzzel 'Waar ligt de diamant nu?' toont de opslagregistratie en inbeslagname-instructie als twee uitklapbare bijlagen van een vertrouwelijke douanemail; daarna een apart beveiligd antwoordformulier.
+- Finale 'Bereid de dubbele arrestatie voor' toont een afzonderlijke operationele e-mail met twee bijlagen: radioprotocol (beginletters van zeven regels vormen de operatienaam) en eenhedenrooster (beide inzetlocaties).
+- De inspecteur noemt de code niet meer letterlijk. De gevalideerde antwoorden blijven B-12/ZL-09 en SCHADUW27/Victor Valmont.
+- De oude zichtbare fragmenten A-C bij de koperscommunicatie zijn van de spelpagina verwijderd zoals eerder gevraagd.
+- Er is niets veranderd aan de Johnny-route en aan de strafminuten.
