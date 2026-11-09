@@ -1,3 +1,1 @@
-De Zwarte Lotus — v8.0 testpakket (op basis van v7.8)
-Sessies per evenement, spelbegeleider- en beheerdersaccounts, live dashboard, eindtijden, lege antwoordvelden.
-Zie START_HIER_V8.md voor installatie, opslag en huidige testbeperkingen.
+8.1 — gezamenlijke start en onderzoeksdossier, zonder individuele detectivepersonages

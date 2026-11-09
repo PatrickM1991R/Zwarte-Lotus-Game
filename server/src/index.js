@@ -67,7 +67,7 @@ app.post('/api/webhooks/koos-toms', express.text({type:'application/json',limit:
         from:KOOS_FROM_EMAIL,
         to:[from],
         subject:'RE: Vertrouwelijk – transportregistratie',
-        text:'Rob Berie,\n\nIk heb de transportregistraties voor je opgehaald. In de bijlage vind je de containerlijst met de geregistreerde herkomstlanden.\n\nTussen de containerpapieren vond ik ook nog een blad met aantekeningen van Don Diamantini. Geen idee waarom dat ertussen lag, maar ik stuur het je mee. Misschien kun jij er wat mee.\n\nIk kan niet te lang in dit systeem blijven. Hou dit tussen ons.\n\nKoos Toms\nDouane',
+        text:'Onderzoeksteam,\n\nIk heb de transportregistraties voor je opgehaald. In de bijlage vind je de containerlijst met de geregistreerde herkomstlanden.\n\nTussen de containerpapieren vond ik ook nog een blad met aantekeningen van Don Diamantini. Geen idee waarom dat ertussen lag, maar ik stuur het je mee. Misschien kun jij er wat mee.\n\nIk kan niet te lang in dit systeem blijven. Hou dit tussen ons.\n\nKoos Toms\nDouane',
         attachments:[{filename:'Transportregister-herkomst-Koos-Toms.pdf',content},{filename:'Aantekeningen-Don-Diamantini.pdf',content:donNotesContent}]
       })
     });
@@ -165,39 +165,6 @@ app.use((req,res,next)=>{
 });
 app.use('/api/teams/:id',guardTeam);
 
-
-const characterDefinitions = {
-  'kees-zoek': { name:'Kees Zoek', specialty:'Opsporing & details' },
-  'rob-berie': { name:'Rob Berie', specialty:'Roof & criminelen' },
-  'al-larm': { name:'Al Larm', specialty:'Beveiliging & tijdlijnen' },
-  'cold-case': { name:'Cold Case', specialty:'Analyse & verbanden' },
-  'ben-de-bajes': { name:'Ben de Bajes', specialty:'Verdachten & antecedenten' },
-  'ferry-fout': { name:'Ferry Fout', specialty:'Afwijkingen & fouten' }
-};
-
-const cluePacks = [
-  { id:'alarmregister', title:'Alarmregister Maison Beaumont', preferred:'al-larm' },
-  { id:'infiltrant-kanaal', title:'Vertrouwelijk contactkanaal infiltrant', preferred:'kees-zoek' },
-  { id:'verdachtennetwerk', title:'Verdachtennetwerk en werkwijzen', preferred:'rob-berie' },
-  { id:'tijdlijn', title:'Tijdlijn en verbanden', preferred:'cold-case' },
-  { id:'antecedenten', title:'Antecedenten en criminele contacten', preferred:'ben-de-bajes' },
-  { id:'afwijkingen', title:'Afwijkingen en foutieve registraties', preferred:'ferry-fout' },
-  { id:'don-notities', title:'Privé-aantekeningen Don Diamantini', preferred:'cold-case' },
-  { id:'transport', title:'Transport- en routebewijs', preferred:'kees-zoek' },
-  { id:'rotje-contact', title:'Vertrouwelijk contact Rotje Knor – dossierlink en toegangscode', preferred:'cold-case' }
-];
-
-function buildDossierPlan(participants) {
-  const activeIds = participants.map(p=>p.characterId);
-  const load = Object.fromEntries(activeIds.map(id=>[id,0]));
-  const plan = Object.fromEntries(activeIds.map(id=>[id,[]]));
-  cluePacks.forEach(pack=>{
-    let target = pack.id==='rotje-contact' && !activeIds.includes('cold-case') ? 'rob-berie' : (activeIds.includes(pack.preferred) ? pack.preferred : [...activeIds].sort((a,b)=>(load[a]||0)-(load[b]||0))[0]);
-    plan[target].push({id:pack.id,title:pack.title});
-    load[target]=(load[target]||0)+1;
-  });
-  return plan;
-}
 
 const phaseAnswers = {
   ALARM: ['14', '20:14', '2014'],
@@ -384,7 +351,7 @@ app.post('/api/infiltrant/send-camera', async (req,res)=>{
         from:INFILTRANT_FROM_EMAIL,
         to:[email],
         subject:'VERTROUWELIJK — camerabeelden Maison Beaumont',
-        html:`<div style="font-family:Arial,sans-serif;background:#0b0b0d;color:#eee;padding:28px"><div style="max-width:620px;margin:auto"><p style="color:#c9a227;letter-spacing:2px;font-size:12px">VERTROUWELIJKE OVERDRACHT</p><h1 style="font-family:Georgia,serif">Kees Zoek,</h1><p>Zoals afgesproken. Dit is alles wat ik van de server heb kunnen halen.</p><p>Bekijk de camerabeelden goed. Let op de tijdstempels en op welk beeld op het beslissende moment wegvalt.</p><p style="margin-top:30px;color:#999">Verwijder dit bericht zodra je hebt wat je nodig hebt.</p><p>— Abrikoos</p></div></div>`,
+        html:`<div style="font-family:Arial,sans-serif;background:#0b0b0d;color:#eee;padding:28px"><div style="max-width:620px;margin:auto"><p style="color:#c9a227;letter-spacing:2px;font-size:12px">VERTROUWELIJKE OVERDRACHT</p><h1 style="font-family:Georgia,serif">Onderzoeksteam,</h1><p>Zoals afgesproken. Dit is alles wat ik van de server heb kunnen halen.</p><p>Bekijk de camerabeelden goed. Let op de tijdstempels en op welk beeld op het beslissende moment wegvalt.</p><p style="margin-top:30px;color:#999">Verwijder dit bericht zodra je hebt wat je nodig hebt.</p><p>— Abrikoos</p></div></div>`,
         attachments:[{filename:'camerabeelden-maison-beaumont.png',content}]
       })
     });
@@ -405,49 +372,16 @@ app.post('/api/team-login', (req,res)=>{
   if(!name)return res.status(422).json({error:'Vul een teamnaam in.'});
   let team=db.teams.find(t=>t.eventId===event.id && t.teamName.toLowerCase()===name.toLowerCase());
   if(!team){
-    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:false,participants:[],dossierPlan:null,penaltyMinutes:0};
+    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0};
     db.teams.push(team);
   }
   res.json({team:enrich(team),token:sign({type:'team',id:team.id})});
 });
 
 
-app.post('/api/teams/:id/team-setup', (req, res) => {
-  const team = db.teams.find((t) => t.id === Number(req.params.id));
-  if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  if (team.currentPhase !== 'START') return res.status(409).json({ error: 'De teamopstelling kan alleen vóór de briefing worden gewijzigd.' });
-  const participants = Array.isArray(req.body.participants) ? req.body.participants : [];
-  if (participants.length < 2 || participants.length > 6) return res.status(422).json({ error:'Kies tussen 2 en 6 deelnemers.' });
-  const names = participants.map(p=>String(p.playerName||'').trim());
-  if (names.some(name=>!name)) return res.status(422).json({ error:'Vul voor iedere deelnemer een naam in.' });
-  if (new Set(names.map(name=>name.toLowerCase())).size !== names.length) return res.status(422).json({ error:'Gebruik voor iedere deelnemer een unieke naam.' });
-
-  const shuffle = (items) => {
-    const copy=[...items];
-    for(let i=copy.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [copy[i],copy[j]]=[copy[j],copy[i]];
-    }
-    return copy;
-  };
-
-  const fixedCharacters=['kees-zoek','rob-berie'];
-  const optionalCharacters=shuffle(['al-larm','cold-case','ben-de-bajes','ferry-fout']);
-  const activeCharacters=[...fixedCharacters,...optionalCharacters.slice(0,Math.max(0,names.length-2))];
-  const assignedCharacters=shuffle(activeCharacters);
-  const shuffledNames=shuffle(names);
-  const assigned = shuffledNames.map((playerName,index)=>({ playerName, characterId:assignedCharacters[index] }));
-
-  team.participants = assigned.map(p=>({...p, characterName:characterDefinitions[p.characterId].name, specialty:characterDefinitions[p.characterId].specialty}));
-  team.dossierPlan = buildDossierPlan(assigned);
-  team.charactersConfigured = true;
-  res.json({ team: enrich(team) });
-});
-
 app.post('/api/teams/:id/start', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
-  if (!team.charactersConfigured) return res.status(409).json({ error:'Stel eerst het rechercheteam samen.' });
   if (team.currentPhase === 'START' && !team.startedAt) team.startedAt = Date.now();
   team.currentPhase = 'ALARM';
   res.json({ team: enrich(team) });
@@ -733,7 +667,7 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
     team.currentPhase=nextPhase;
     if(nextPhase==='RESULTAAT'||nextPhase==='POLITIE_RESULTAAT')finishTeam(team);
   } else if(action==='reset'){
-    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,charactersConfigured:false,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
   } else if(!['pause','resume','stop','next','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
   team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
   res.json({team:teamView(team)});

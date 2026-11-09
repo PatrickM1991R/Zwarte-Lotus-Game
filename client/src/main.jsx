@@ -19,15 +19,6 @@ const phases = ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTA
 const policePhases = [...phases.slice(0,phases.indexOf('JOHNNY_ROUTE')), 'POLITIE_BRIEFING', 'POLITIE_CAMERA', 'POLITIE_LEK', 'POLITIE_INVAL', 'POLITIE_COMMUNICATIE', 'POLITIE_DIAMANT', 'POLITIE_COORDINATIE', 'POLITIE_FINALE', 'POLITIE_RESULTAAT'];
 
 
-const investigatorCharacters = [
-  { id:'kees-zoek', name:'Kees Zoek', specialty:'Opsporing & details', blurb:'Ziet wat anderen missen en blijft zoeken tot het laatste detail klopt.', image:'/assets/characters/kees-zoek.jpg' },
-  { id:'rob-berie', name:'Rob Berie', specialty:'Roof & criminelen', blurb:'Denkt als een overvaller en herkent patronen in de werkwijze van daders.', image:'/assets/characters/rob-berie.jpg' },
-  { id:'al-larm', name:'Al Larm', specialty:'Beveiliging & tijdlijnen', blurb:'Leeft voor alarmen, logboeken en systemen die nét op het verkeerde moment uitvallen.', image:'/assets/characters/al-larm.jpg' },
-  { id:'cold-case', name:'Cold Case', specialty:'Analyse & verbanden', blurb:'Blijft ijzig kalm en legt verbanden tussen oude en nieuwe sporen.', image:'/assets/characters/cold-case.jpg' },
-  { id:'ben-de-bajes', name:'Ben de Bajes', specialty:'Verdachten & antecedenten', blurb:'Kent het boeventuig, hun contacten en de verhalen die ze liever verzwijgen.', image:'/assets/characters/ben-de-bajes.jpg' },
-  { id:'ferry-fout', name:'Ferry Fout', specialty:'Afwijkingen & fouten', blurb:'Vindt slordigheden, tegenstrijdigheden en precies dat ene detail dat niet klopt.', image:'/assets/characters/ferry-fout.jpg' }
-];
-
 const phaseLabels = {
   START: 'Introductie', ALARM: 'Toegangscode', CAMERA: 'Toegangscode', KIST_OPEN: 'Toegangscode', DOSSIER: 'Verdachtenonderzoek',
   ORIGINELE_CONTAINER: 'Transportonderzoek', ORIGINELE_CONTAINER_BEVESTIGEN: 'Container bevestigen', ROTJE_KNOR: 'Nieuw spoor', JOHNNY_ONTMASKERD: 'Johnny ontmaskerd', NIEUWE_CONTAINER: 'Nieuwe container', KEUZE: 'Keuze', JOHNNY_ROUTE: 'Naar de kluis', KLUIS: 'Kluiscode', LOTUS_GEVONDEN: 'Bewijs uit de kluis', JOHNNY_MELDEN: 'Inspecteur · Code B', JOHNNY_ARRESTATIE: 'Aanhouding Johnny', EINDOPERATIE: 'Koperskanaal', KOPER_KEUZE:'Laatste keuze', RESULTAAT: 'Zaak afgerond',
@@ -78,7 +69,7 @@ function InfiltrantPage() {
   return <main className="infiltrant-page">
     <section className="infiltrant-card">
       <div className="infiltrant-status"><span></span> VERSLEUTELDE VERBINDING</div>
-      <div className="section-label">ALLEEN VOOR KEES ZOEK</div>
+      <div className="section-label">GEZAMENLIJK ONDERZOEKSTEAM</div>
       <h1>De informant stuurt je een bericht</h1>
       <p className="infiltrant-copy">Speel het bericht volledig af. Reageer pas wanneer de verbinding daarom vraagt.</p>
       <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/infiltrant-kees-zoek.mp3" onEnded={()=>setBriefingDone(true)} />
@@ -195,17 +186,6 @@ function App() {
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Inloggen mislukt');
       localStorage.setItem('lotus_team_token',j.token);localStorage.setItem('lotus_team_id',String(j.team.id));setTeam(j.team); setMode('game');
     } catch (err) { setError(err.message); } finally { setLoading(false); }
-  };
-
-  const saveTeamSetup = async (participants) => {
-    setLoading(true); setFeedback('');
-    try {
-      const r = await apiFetch(`${API}/api/teams/${team.id}/team-setup`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ participants }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'Teamopstelling opslaan mislukt');
-      setTeam(j.team); return true;
-    } catch (err) { setFeedback(err.message); return false; }
-    finally { setLoading(false); }
   };
 
   const startGame = async () => {
@@ -359,9 +339,7 @@ function App() {
       <div className="app-shell game-shell scene-inner">
         <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>{localStorage.removeItem('lotus_team_token');localStorage.removeItem('lotus_team_id');setTeam(null);setMode('login');}}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt} finishedAt={team.finishedAt||team.stoppedAt} pausedAt={team.pausedAt} totalPausedMs={team.totalPausedMs||0}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
         <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(activePhases.length-1))*100)}%</div></section>
-        {team.currentPhase === 'START' && !team.charactersConfigured
-          ? <TeamSetup team={team} loading={loading} feedback={feedback} saveTeamSetup={saveTeamSetup}/>
-          : <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>}
+        <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>
         {team.editorNote && <section className="panel"><strong>Aanvullende instructie</strong><p>{team.editorNote}</p></section>}
         {(team.status==='klaar'||team.status==='gestopt') && <div className="game-finished"><h2>{team.status==='klaar'?'MISSIE VOLTOOID':'SPEL GESTOPT'}</h2><strong>{formatDuration(team.elapsedSeconds)}</strong><p>Eindtijd: {localTime(team.finishedAt||team.stoppedAt)}</p></div>}
         {team.pausedAt && <div className="game-finished"><h2>TEAM GEPAUZEERD</h2><p>De spelbegeleider hervat jullie spel.</p></div>}
@@ -467,16 +445,31 @@ function StaffPortal({onExit}) {
     }catch(e){setNotice(e.message);}finally{setBusy(false);}
   }
   async function createEvent(e){
-    e.preventDefault();setBusy(true);setNotice('');const f=new FormData(e.currentTarget);
-    try{const data=await request('/api/events',{method:'POST',body:JSON.stringify({name:f.get('name')})});await refreshEvents();await refreshEvent(data.event.id);e.currentTarget.reset();}catch(e){setNotice(e.message);}finally{setBusy(false);}
+    e.preventDefault();setBusy(true);setNotice('');
+    const form=e.currentTarget;
+    const f=new FormData(form);
+    try{
+      const data=await request('/api/events',{method:'POST',body:JSON.stringify({name:f.get('name')})});
+      form.reset();
+      await refreshEvents();
+      await refreshEvent(data.event.id);
+    }catch(err){setNotice(err.message);}finally{setBusy(false);}
   }
   async function teamAction(team,action){
     if(['reset','stop'].includes(action)&&!confirm(`${action==='reset'?'Reset':'Stop'} ${team.teamName}?`))return;
     try{await request(`/api/events/${event.id}/teams/${team.id}/action`,{method:'POST',body:JSON.stringify({action})});await refreshEvent(event.id);}catch(e){setNotice(e.message);}
   }
   async function addFacilitator(e){
-    e.preventDefault();const f=new FormData(e.currentTarget);
-    try{await request('/api/admin/facilitators',{method:'POST',body:JSON.stringify({username:f.get('username'),password:f.get('password')})});e.currentTarget.reset();const j=await request('/api/admin/facilitators');setStaffUsers(j.users);setNotice('Spelbegeleider aangemaakt.');}catch(e){setNotice(e.message);}
+    e.preventDefault();
+    const form=e.currentTarget;
+    const f=new FormData(form);
+    try{
+      await request('/api/admin/facilitators',{method:'POST',body:JSON.stringify({username:f.get('username'),password:f.get('password')})});
+      form.reset();
+      const j=await request('/api/admin/facilitators');
+      setStaffUsers(j.users);
+      setNotice('Spelbegeleider aangemaakt.');
+    }catch(err){setNotice(err.message);}
   }
   async function loadEditor(){try{const j=await request('/api/admin/editor');setEditor(j);selectPhase(j.phases[0],j);setTab('editor');}catch(e){setNotice(e.message);}}
   function selectPhase(phase,model=editor){setEditPhase(phase);setAnswers((model?.answers?.[phase]||[]).join('\n'));setNote(model?.notes?.[phase]||'');}
@@ -513,55 +506,13 @@ function GameCountdown({timerStartedAt,finishedAt,pausedAt,totalPausedMs=0}) {
 }
 
 
-function TeamSetup({team,loading,feedback,saveTeamSetup}) {
-  const [count,setCount]=useState(2);
-  const [players,setPlayers]=useState([{playerName:''},{playerName:''}]);
-
-  const changeCount=(n)=>{
-    const next=Math.max(2,Math.min(6,Number(n)||2));
-    setCount(next);
-    setPlayers(prev=>Array.from({length:next},(_,i)=>prev[i]||{playerName:''}));
-  };
-  const update=(i,value)=>setPlayers(prev=>prev.map((p,idx)=>idx===i?{playerName:value}:p));
-  const complete=players.length===count && players.every(p=>p.playerName.trim()) && new Set(players.map(p=>p.playerName.trim().toLowerCase())).size===count;
-  const submit=async()=>{ if(!complete)return; await saveTeamSetup(players.map(p=>({playerName:p.playerName.trim()}))); };
-
-  return <section className="panel cinematic team-setup-panel">
-    <div className="section-label">TEAMOPSTELLING · VERTROUWELIJK</div>
-    <h2>Wie zitten er in jullie rechercheteam?</h2>
-    <p>Vul alleen de namen van de deelnemers in. Het spelsysteem bepaalt daarna willekeurig welke detective iedere deelnemer wordt.</p>
-
-    <div className="player-count-block">
-      <span>AANTAL DEELNEMERS</span>
-      <div className="player-count-buttons">{[2,3,4,5,6].map(n=><button type="button" key={n} className={count===n?'active':''} onClick={()=>changeCount(n)}>{n}</button>)}</div>
-    </div>
-
-    <h3 className="research-team-title">Het recherche team</h3>
-    <div className="character-roster">{investigatorCharacters.map(c=><article key={c.id} className="character-card">
-      <img src={c.image} alt={`Portret van ${c.name}`}/>
-      <div><strong>{c.name}{['kees-zoek','rob-berie'].includes(c.id)&&<em className="required-badge">VASTE KERN</em>}</strong><span>{c.specialty}</span><small>{c.blurb}</small></div>
-    </article>)}</div>
-
-    <div className="assignment-board random-assignment-board">
-      <div className="assignment-head"><span>DEELNEMERS</span><strong>Vul jullie namen in</strong></div>
-      {players.map((p,i)=><div className="assignment-row name-only" key={i}>
-        <label>Deelnemer {i+1}<input value={p.playerName} onChange={e=>update(i,e.target.value)} /></label>
-      </div>)}
-    </div>
-
-    <button type="button" className="primary full team-confirm" disabled={loading||!complete} onClick={submit}>{loading?'Team samenstellen...':'Verdeel de karakters'}</button>
-    {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
-  </section>;
-}
-
 function GamePhase({ team, loading, feedback, startGame, submitOpening, startCountdown, submitAnswer, requestHint, chooseRoute, chooseFinal, syncFinal, sendBuyerChat, checkStep, startJohnnyOffer }) {
   const phase = team.currentPhase;
   if (phase === 'START') return <section className="panel cinematic intro-panel">
     <div className="section-label">MAISON BEAUMONT · VERTROUWELIJK</div>
     <h2>Een diner. Een diamant. Een verdwenen spoor.</h2>
     <p>Vanavond presenteert Maison Beaumont één van de zeldzaamste stenen ter wereld: <strong>De Zwarte Lotus</strong>. Een zwarte diamant met een waarde waar mensen voor liegen, verdwijnen — en erger.</p>
-    {team.participants?.length>0&&<div className="active-team-strip">{team.participants.map(p=>{const c=investigatorCharacters.find(x=>x.id===p.characterId);return <article key={p.characterId}>{c&&<img src={c.image} alt=""/>}<span><small>{p.playerName}</small><strong>{p.characterName}</strong></span></article>})}</div>}
-    <div className="mission-card"><span>MISSIE 01</span><strong>Pak jullie persoonlijke dossierboeken. Daarna begint de briefing van de inspecteur.</strong></div>
+    <div className="mission-card"><span>MISSIE 01</span><strong>Pak jullie gezamenlijke onderzoeksdossier. Daarna begint de briefing van de inspecteur.</strong></div>
     <button className="primary" onClick={startGame} disabled={loading}>{loading?'Starten...':'Start het onderzoek'}</button>
   </section>;
 
@@ -690,7 +641,7 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
     <div className="mission-card inspector-summons" role="note"><span><strong>DRINGEND BERICHT VAN DE INSPECTEUR</strong></span><strong>Hé, nietsnutten!</strong><p>Schiet nou eens op! Ik heb eindelijk die verdomde transportgegevens van de Douane binnengekregen waar jullie om vroegen!</p><p>Wat staan jullie daar nog te kijken? Kom die papieren onmiddellijk bij me ophalen!</p><p>En zorg dat jullie er deze keer wél iets nuttigs mee doen!</p><strong>HUP! AAN HET WERK!</strong></div>
     <h2>Wie zijn verdacht van de roof?</h2>
-    <p>Gebruik de fysieke verdachte- en bewijsdossiers. Leg jullie gezamenlijke conclusie hieronder vast.</p>
+    <p>Gebruik jullie gezamenlijke onderzoeksdossier. Leg de conclusie van het team hieronder vast.</p>
 
     <div className="dossier-count-card">
       <label>Hoeveel mensen zijn er verdacht?
@@ -1345,7 +1296,7 @@ function PoliceRoutePage({team,loading,feedback,submitAnswer,requestHint}) {
   if(phase==='POLITIE_BRIEFING')return <section className="panel cinematic police-route-panel">{intro}<h2>De inspecteur neemt het over.</h2>
     <div className="inspector-final-briefing"><div className="final-inspector-portrait"><img src="/assets/inspector-kist.jpg" alt="De inspecteur uit de openingsbriefing"/></div><div className="final-inspector-message"><span>VERTROUWELIJKE INSTRUCTIE</span><h3>“Eindelijk gebruiken jullie je hersens.”</h3><p>“Johnny weet nu dat jullie hem niet helpen. Hij kan overal zitten. De container is leeg en zijn telefoon is uit. We krijgen één kans om zijn spoor terug te vinden.”</p><p>“Jullie krijgen toegang tot aanvullende cameraregistraties, toegangsjournalen en onderschepte berichten. Niet gokken. Bewijs verzamelen!”</p></div></div>
     <button className="primary" disabled={loading} onClick={()=>send('onderzoek starten')}>Open aanvullend onderzoek →</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
-  if(phase==='POLITIE_CAMERA')return <section className="panel cinematic police-route-panel">{intro}<h2>Johnny verdwijnt van de radar</h2><p>Container JJX-2034 is verlaten. De inspecteur heeft aanvullende cameraregistraties veiliggesteld. Vraag het aanvullende cameradossier op bij de inspecteur. Vergelijk de waarnemingen met de voertuiggegevens uit Johnny Jatwerks dossier. Reconstrueer waar het voertuig voor het laatst met zekerheid is vastgelegd en via welke uitgang het terrein is verlaten.</p>
+  if(phase==='POLITIE_CAMERA')return <section className="panel cinematic police-route-panel">{intro}<h2>Johnny verdwijnt van de radar</h2><p>Container JJX-2034 is verlaten. De inspecteur heeft aanvullende cameraregistraties veiliggesteld. Vraag het aanvullende cameradossier en de voertuigobservatie op bij de inspecteur. Vergelijk de waarnemingen met de voertuiggegevens. Reconstrueer waar het voertuig voor het laatst met zekerheid is vastgelegd en via welke uitgang het terrein is verlaten.</p>
     {form(<>{field('Welke camera legde Johnny’s voertuig als laatste met zekerheid vast?',camera,setCamera,'Bijv. 02')}{field('Welke uitgang gebruikte hij?',exit,setExit,'Windrichting')}</>,{camera,exit})}
     <button className="hint-link" onClick={()=>requestHint('Gebruik de voertuigkenmerken uit Johnny’s dossier. Niet iedere donkere SUV is hetzelfde voertuig; vergelijk details en chronologie.')}>Hint aanvragen</button>{feedback&&<div className="feedback">{feedback}</div>}</section>;
   if(phase==='POLITIE_LEK')return <section className="panel cinematic police-route-panel">{intro}
