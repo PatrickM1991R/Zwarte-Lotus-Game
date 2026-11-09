@@ -251,3 +251,12 @@ Het MISSIE-blok “Doorzoek de havenadministratie en bouw een nieuw dossier op. 
 - De inspecteur reikt het printbare bestand `dossier-inleg/Inspecteur_Aanvullend_Cameradossier_Schaduwjacht.pdf` fysiek uit (2 pagina's).
 - De online antwoordvelden blijven bestaan: CAM 06 en uitgang West.
 - Het eerder verwijderde MISSIE-blok blijft verwijderd.
+
+
+## v7.4 — Camerareconstructie met 16 registraties
+- De webpagina POLITIE_CAMERA toont uitsluitend de twee antwoordvelden (CAM 06 / West).
+- De inspecteur overhandigt `dossier-inleg/Inspecteur_Aanvullend_Cameradossier_16_registraties.pdf` met 16 afleidende cameraregistraties en sectorenkaart.
+- In Johnny's persoonlijke dossier hoort `dossier-inleg/Johnny_Jatwerk_Voertuigobservatie_Evoque.pdf`, met observatiefoto en herkenningspunten van een zwarte Range Rover Evoque.
+- De voertuigfoto staat ook als asset in `client/public/assets/story/johnny-range-rover-evoque.jpg` voor later dossierbeheer.
+- Geen oplossingen in de spelersdocumenten; oplossingen blijven ongewijzigd.
+- De foto is fictief spelmateriaal en geen bewijs van een echt voertuig of incident.
