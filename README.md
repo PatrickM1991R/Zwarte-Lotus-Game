@@ -278,3 +278,9 @@ De online pagina toont alleen drie vragen; alle aanwijzingen komen uit vier fysi
 - Meer onbekende goederen en afleidende zegels, waaronder meerdere identieke ZL-09 zegels.
 - Oplossingsketen: JJX-2034 -> fysieke overbrenging naar afgeschermde koeling Q-614 -> intern ticket ST-682 -> koelcel B-12, zegel ZL-09.
 - De bestaande antwoordcontrole voor B-12 en ZL-09, strafminuten, andere routes en de eindoperatie zijn ongewijzigd.
+
+
+## v7.8 – correctie antwoordcontrole koelopslag
+- POLITIE_DIAMANT accepteert zowel `B-12` als `Koelcel B-12` (met normale interpunctie/spaties).
+- Zegel `ZL-09` blijft vereist.
+- Voorkomt onterechte strafminuten voor de correcte korte koelcelaanduiding.

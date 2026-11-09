@@ -470,7 +470,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
     }
     if(phase==='POLITIE_INVAL') valid=String(input).toLowerCase()==='inval afronden' && team.policeRaidStartedAt && (Date.now()-team.policeRaidStartedAt)>=11000;
     if(phase==='POLITIE_COMMUNICATIE') valid=matches('channel','VV37') && matches('time','2310') && matches('location','Perron 3');
-    if(phase==='POLITIE_DIAMANT') valid=matches('location','Koelcel B12') && matches('seal','ZL09');
+    if(phase==='POLITIE_DIAMANT') valid=['b12','koelcelb12'].includes(normalized(input.location)) && matches('seal','ZL09');
     if(phase==='POLITIE_COORDINATIE') valid=matches('code','SCHADUW27') && matches('buyer','Victor Valmont');
     if(phase==='POLITIE_FINALE') valid=String(input).toLowerCase()==='operatie afronden' && team.policeFinalStartedAt && (Date.now()-team.policeFinalStartedAt)>=16000;
     if(!valid) {

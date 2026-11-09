@@ -1,2 +1,2 @@
-De Zwarte Lotus — v7.7
-Kryptische opslagpuzzel met 3 vertrouwelijke douanebijlagen en 14 koelopslagregistraties.
+De Zwarte Lotus — v7.8
+Correctie koelcelantwoord: B-12 en Koelcel B-12 worden beide geaccepteerd.
