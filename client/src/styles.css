@@ -670,3 +670,12 @@
 .staff-actions button{white-space:nowrap;padding:7px 10px;border:1px solid #8790a6;background:#29354d;color:white;border-radius:7px;cursor:pointer}
 .game-finished{position:relative;z-index:3;background:#140821;border:2px solid #c9a227;color:white;text-align:center;padding:24px;margin:20px 0;border-radius:15px}
 .game-finished strong{display:block;color:#e3bb43;font-size:36px;margin:10px 0}
+
+/* v8.2 · openingsfase: twee afzonderlijke audio-opnamen en onderzoekscode */
+.opening-puzzles .evidence-card{max-width:760px}
+.opening-alarm-evidence{display:grid;gap:11px;margin:8px 0 20px;padding:16px;border:1px solid rgba(201,162,39,.36);border-radius:12px;background:rgba(13,17,25,.75)}
+.opening-alarm-evidence-head{display:grid;gap:5px}
+.opening-alarm-evidence-head span{font-size:10px;color:#c9a227;font-weight:800;letter-spacing:.13em}
+.opening-alarm-evidence-head strong{font-size:17px;color:#f0dfad}
+.opening-alarm-evidence-head small{color:#c6bac8;font-size:12px;line-height:1.5}
+.opening-alarm-evidence audio{width:100%;max-width:100%}

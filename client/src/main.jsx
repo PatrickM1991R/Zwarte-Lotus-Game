@@ -582,9 +582,17 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
     <form className={`opening-puzzles evidence-board ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
       <article className="opening-puzzle-card evidence-card">
         <div className="puzzle-kicker">ONDERZOEK · BEVEILIGDE TOEGANG</div>
-        <h3>Voer de toegangscode in.</h3>
-        <p>Gebruik jullie onderzoeksresultaten om toegang te krijgen tot het vervolg van de zaak.</p>
-        <label>Toegangscode
+        <h3>Reconstrueer de code van het onderzoek.</h3>
+        <p>Gebruik de camerabeelden en het alarmbandje. Combineer de aanwijzingen en achterhaal de viercijferige onderzoekscode.</p>
+        <div className="opening-alarm-evidence">
+          <div className="opening-alarm-evidence-head">
+            <span>BEWIJSSTUK 01 · AUDIOREGISTRATIE</span>
+            <strong>Alarmfragment Maison Beaumont</strong>
+            <small>Beluister het beveiligingsbericht en vergelijk de gebeurtenissen met het cameramateriaal uit jullie onderzoeksdossier.</small>
+          </div>
+          <audio controls preload="metadata" src="/assets/alarmfragment.mp3" aria-label="Alarmfragment Maison Beaumont" />
+        </div>
+        <label>Onderzoekscode
           <input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} required aria-label="Viercijferige toegangscode" />
         </label>
       </article>
