@@ -643,6 +643,18 @@ app.get('/api/events/:id',(req,res)=>{
   if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang tot dit evenement.'});
   res.json({event,teams:db.teams.filter(t=>t.eventId===event.id).map(teamView)});
 });
+// Evenementen blijven, ook na afloop van alle teams, bewaard.
+// Alleen een bevoegde spelbegeleider/beheerder kan ze bewust verwijderen.
+app.delete('/api/events/:id',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang tot dit evenement.'});
+  if(String(req.body?.confirmName||'').trim()!==event.name)
+    return res.status(422).json({error:'Typ exact de evenementnaam om definitief te verwijderen.'});
+  const deletedTeams=db.teams.filter(t=>t.eventId===event.id).length;
+  db.teams=db.teams.filter(t=>t.eventId!==event.id);
+  db.events=db.events.filter(e=>e.id!==event.id);
+  res.json({ok:true,deletedTeams});
+});
 app.post('/api/events/:id/close',(req,res)=>{
   const event=db.events.find(e=>e.id===Number(req.params.id));
   if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang.'});
