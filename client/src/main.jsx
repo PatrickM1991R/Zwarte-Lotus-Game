@@ -337,8 +337,8 @@ function App() {
       <div className="scene-backdrop" aria-hidden="true"></div>
       <div className="scene-vignette" aria-hidden="true"></div>
       <div className="app-shell game-shell scene-inner">
-        <section className="topbar game-topbar"><div className="topbar-left"><button className="ghost" onClick={()=>{localStorage.removeItem('lotus_team_token');localStorage.removeItem('lotus_team_id');setTeam(null);setMode('login');}}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt} finishedAt={team.finishedAt||team.stoppedAt} pausedAt={team.pausedAt} totalPausedMs={team.totalPausedMs||0}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
-        <section className="hero compact"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(activePhases.length-1))*100)}%</div></section>
+        <section className="topbar game-topbar game-topbar-refined"><div className="topbar-left"><button className="ghost" onClick={()=>{localStorage.removeItem('lotus_team_token');localStorage.removeItem('lotus_team_id');setTeam(null);setMode('login');}}>← Uitloggen</button>{canGoBack&&<button className="secondary previous-page-button" onClick={()=>setBackConfirmOpen(true)}>← Vorige pagina</button>}</div><GameCountdown timerStartedAt={team.timerStartedAt} finishedAt={team.finishedAt||team.stoppedAt} pausedAt={team.pausedAt} totalPausedMs={team.totalPausedMs||0}/><div className="eyebrow">DE ZWARTE LOTUS</div></section>
+        <section className="hero compact game-case-hero"><div><span className="chip">VERTROUWELIJK ONDERZOEK</span><h1>{team.teamName}</h1><p>Spelronde: {team.eventName}</p></div><div className="progress-ring">{Math.round((idx/(activePhases.length-1))*100)}%</div></section>
         <GamePhase team={team} loading={loading} feedback={feedback} startGame={startGame} submitOpening={submitOpening} startCountdown={startCountdown} submitAnswer={submitAnswer} requestHint={requestHint} chooseRoute={chooseRoute} chooseFinal={chooseFinal} syncFinal={syncFinal} sendBuyerChat={sendBuyerChat} checkStep={checkStep} startJohnnyOffer={startJohnnyOffer}/>
         {team.editorNote && <section className="panel"><strong>Aanvullende instructie</strong><p>{team.editorNote}</p></section>}
         {(team.status==='klaar'||team.status==='gestopt') && <div className="game-finished"><h2>{team.status==='klaar'?'MISSIE VOLTOOID':'SPEL GESTOPT'}</h2><strong>{formatDuration(team.elapsedSeconds)}</strong><p>Eindtijd: {localTime(team.finishedAt||team.stoppedAt)}</p></div>}
@@ -491,18 +491,24 @@ function StaffPortal({onExit}) {
 function GameCountdown({timerStartedAt,finishedAt,pausedAt,totalPausedMs=0}) {
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{
-    if(!timerStartedAt) return;
+    if(!timerStartedAt || finishedAt || pausedAt) return;
     const id=setInterval(()=>setNow(Date.now()),1000);
     return()=>clearInterval(id);
-  },[timerStartedAt]);
-  if(!timerStartedAt) return <div className="game-countdown waiting"><span>SPEELTIJD</span><strong>00:00</strong><small>max. 90:00 · start na briefing</small></div>;
+  },[timerStartedAt,finishedAt,pausedAt]);
+  if(!timerStartedAt) return <div className="game-countdown refined-clock waiting" aria-label="De timer start na de inspecteursbriefing"><div className="clock-topline"><span>SPEELTIJD</span><small>NOG NIET GESTART</small></div><strong>00:00</strong><div className="clock-limit">Doeltijd <b>90:00</b> · Start na briefing</div></div>;
   const elapsed=Math.max(0,Math.floor(((finishedAt||pausedAt||now)-Number(timerStartedAt)-totalPausedMs)/1000));
-  const shown=elapsed;
-  const min=Math.floor(shown/60);
-  const sec=shown%60;
+  const min=Math.floor(elapsed/60);
+  const sec=elapsed%60;
   const urgent=elapsed>=4500 && elapsed<5400;
   const expired=elapsed>=5400;
-  return <div className={`game-countdown ${urgent?'urgent':''} ${expired?'expired':''}`}><span>{finishedAt?'EINDTIJD':expired?'MAXIMALE TIJD':'SPEELTIJD'}</span><strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong><small>maximaal 90:00</small></div>;
+  const overtime=Math.max(0,elapsed-5400);
+  const ovText=`+${String(Math.floor(overtime/60)).padStart(2,'0')}:${String(overtime%60).padStart(2,'0')}`;
+  return <div className={`game-countdown refined-clock ${urgent?'urgent':''} ${expired?'expired':''}`} role="timer" aria-label={`Speeltijd ${min} minuten en ${sec} seconden`}>
+    <div className="clock-topline"><span>{finishedAt?'DEFINITIEVE SPEELTIJD':pausedAt?'SPEL GEPAUZEERD':'LIVE SPEELTIJD'}</span><small>{finishedAt?'AFGEROND':pausedAt?'GEPAUZEERD': '● LIVE'}</small></div>
+    <strong>{String(min).padStart(2,'0')}:{String(sec).padStart(2,'0')}</strong>
+    <div className="clock-limit"><span>Doeltijd <b>90:00</b></span>{expired&&<em>{ovText} boven doeltijd</em>}</div>
+    <div className="clock-track" aria-hidden="true"><i style={{width:`${Math.min(100,elapsed/5400*100)}%`}}/></div>
+  </div>;
 }
 
 
@@ -563,43 +569,34 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
     if(!ok) setLocal('Toegang geweigerd. Controleer de aanwijzingen opnieuw.');
   };
 
-  return <section className="panel opening-case-panel">
-    {timerLaunch&&<div className="timer-launch-overlay" role="status" aria-live="assertive"><div className="timer-launch-inner"><span>DE SPEELTIJD START</span><strong>00:00</strong><small>Maximale speeltijd: 90 minuten.</small></div></div>}
+  return <section className="panel opening-case-panel opening-redesign">
+    {timerLaunch&&<div className="timer-launch-overlay" role="status" aria-live="assertive"><div className="timer-launch-inner"><span>DE SPEELTIJD START</span><strong>00:00</strong><small>Doeltijd: 90 minuten. De klok blijft daarna doorlopen.</small></div></div>}
 
-    <div className="opening-briefing">
-      <div className="inspector-visual"><img src="/assets/inspector-kist.jpg" alt="Boze inspecteur in een noir recherchekamer"/><div className="inspector-badge">HOOFDINSPECTEUR · MAISON BEAUMONT</div></div>
+    <div className="opening-section-header"><span className="opening-step-index">01</span><div><span className="opening-overline">MAISON BEAUMONT · VERTROUWELIJKE BRIEFING</span><h2>Het onderzoek begint hier</h2><p>Luister naar de hoofdinspecteur en onderzoek vervolgens de beschikbare bewijsmiddelen.</p></div></div>
+    <div className="opening-briefing opening-briefing-refined">
+      <div className="inspector-visual"><img src="/assets/inspector-kist.jpg" alt="Hoofdinspecteur in een recherchekamer"/><div className="inspector-badge">HOOFDINSPECTEUR · MAISON BEAUMONT</div></div>
       <div className="inspector-copy">
-        <div className="section-label">SPOEDBRIEFING</div>
+        <div className="opening-overline">SPOEDBRIEFING · AUDIO 01</div>
         <h2>“Jullie hebben één taak.”</h2>
-        <div className={`briefing-audio ${briefingDone?'complete':''}`}>
-          <div><span>{briefingDone?'BRIEFING VOLTOOID':'VERPLICHT BERICHT'}</span><strong>Inspecteur Beaumont</strong></div>
-          <audio controls preload="metadata" src="/assets/inspector-briefing.mp3" onEnded={finishBriefing} />
+        <p>Luister het bericht van de inspecteur helemaal af. Daarna start jullie officiële speeltijd.</p>
+        <div className={`briefing-audio briefing-audio-refined ${briefingDone?'complete':''}`}>
+          <div className="audio-heading"><span className="audio-symbol" aria-hidden="true">♫</span><div><span>{briefingDone?'BRIEFING VOLTOOID':'VERPLICHTE BRIEFING'}</span><strong>Bericht van de hoofdinspecteur</strong></div></div>
+          <audio controls preload="metadata" src="/assets/inspector-briefing.mp3" onEnded={finishBriefing} aria-label="Briefing hoofdinspecteur" />
         </div>
-        {!briefingDone&&<div className="briefing-lock">🔒 Luister het volledige bericht af.</div>}
+        <div className={`opening-briefing-status ${briefingDone?'ready':''}`}>{briefingDone?'✓ Briefing afgerond · De speeltijd is gestart':'Luister het fragment volledig af om het onderzoek te beginnen.'}</div>
       </div>
     </div>
 
     <form className={`opening-puzzles evidence-board ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
-      <article className="opening-puzzle-card evidence-card">
-        <div className="puzzle-kicker">ONDERZOEK · BEVEILIGDE TOEGANG</div>
-        <h3>Reconstrueer de code van het onderzoek.</h3>
-        <p>Gebruik de camerabeelden en het alarmbandje. Combineer de aanwijzingen en achterhaal de viercijferige onderzoekscode.</p>
-        <div className="opening-alarm-evidence">
-          <div className="opening-alarm-evidence-head">
-            <span>BEWIJSSTUK 01 · AUDIOREGISTRATIE</span>
-            <strong>Alarmfragment Maison Beaumont</strong>
-            <small>Beluister het beveiligingsbericht en vergelijk de gebeurtenissen met het cameramateriaal uit jullie onderzoeksdossier.</small>
-          </div>
-          <audio controls preload="metadata" src="/assets/alarmfragment.mp3" aria-label="Alarmfragment Maison Beaumont" />
+      <article className="opening-puzzle-card evidence-card opening-reconstruction">
+        <div className="opening-section-header question-heading"><span className="opening-step-index">02</span><div><span className="opening-overline">ONDERZOEK · BEVEILIGDE TOEGANG</span><h3>Reconstrueer de code van het onderzoek.</h3><p>Gebruik de camerabeelden uit jullie onderzoeksdossier en het alarmbandje hieronder. Combineer de aanwijzingen om de viercijferige code te reconstrueren.</p></div></div>
+        <div className="opening-evidence-grid">
+          <div className="opening-evidence-reference"><span className="evidence-number">BEWIJSSTUK 01</span><span className="evidence-symbol" aria-hidden="true">▣</span><strong>Camerabeelden</strong><p>Raadpleeg de beelden die jullie via het onderzoek hebben ontvangen.</p><small>Te vinden in jullie onderzoeksdossier</small></div>
+          <div className="opening-alarm-evidence"><div className="opening-alarm-evidence-head"><span>BEWIJSSTUK 02 · AUDIO</span><strong>Alarmregistratie Maison Beaumont</strong><small>Beluister het beveiligingsbericht. Je kunt het zo vaak opnieuw afspelen als nodig.</small></div><audio controls preload="metadata" src="/assets/alarmfragment.mp3" aria-label="Alarmfragment Maison Beaumont" /></div>
         </div>
-        <label>Onderzoekscode
-          <input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} required aria-label="Viercijferige toegangscode" />
-        </label>
+        <div className="opening-code-area"><div><span className="opening-overline">JULLIE CONCLUSIE</span><h4>Onderzoekscode</h4><p>Vul de vier cijfers in die jullie uit de bewijsstukken hebben afgeleid.</p></div><label className="opening-code-field"><span>Viercijferige code</span><input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} required aria-label="Viercijferige onderzoekscode" /></label></div>
       </article>
-      <div className="opening-submit">
-        <button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: vergelijk wat jullie via het alarmonderzoek en het visuele spoor hebben vastgesteld.')}>Hint aanvragen</button>
-        <button className="primary" disabled={loading||!briefingDone||accessCode.length!==4}>{loading?'Controleren...':'Ontgrendel het onderzoek'}</button>
-      </div>
+      <div className="opening-submit"><button type="button" className="hint-link" disabled={!briefingDone} onClick={()=>requestHint('Hint: vergelijk wat jullie via het alarmonderzoek en het visuele spoor hebben vastgesteld.')}>Hint aanvragen</button><button className="primary" disabled={loading||!briefingDone||accessCode.length!==4}>{loading?'Controleren...':'Controleer onderzoekscode →'}</button></div>
     </form>
     {local&&<div className="filter-feedback" aria-live="polite">{local}</div>}
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
