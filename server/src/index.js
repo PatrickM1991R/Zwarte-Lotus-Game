@@ -323,7 +323,7 @@ app.post('/api/transport-system/access', (req,res)=>{
   const code=String(req.body?.code||'').trim().toUpperCase().replace(/[–—−]/g,'-').replace(/\s+/g,'');
   if(code!==ROTJE_RECEIPT_CODE) return res.status(403).json({error:'Toegang geweigerd'});
   return res.json({ok:true, record:{
-    originalContainer:'MBX-4717', modifiedAt:'20:34', initials:'J.J.',
+    originalContainer:'MBX-4717', modifiedAt:'20:38', initials:'J.J.',
     modifiedBy:'J.J.', role:'Transport / chauffeur',
     originalStatus:'Lege huls', newContainerSeries:'JJX-reeks', action:'Ongeplande overslag geregistreerd; individueel containernummer afgeschermd'
   }});

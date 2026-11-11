@@ -7,7 +7,7 @@ Werkende technische basis voor het dinerspel.
 - Rotje Knor-fase met onderschept audiobericht op de spelpagina
 - Transportlog in beeld
 - Johnny Jatwerk ontmaskeren via J.J. + signalement
-- Tweede containerpuzzel: JJX-reeks → 20:34 → stille route → JJX-2034
+- Tweede containerpuzzel: JJX-reeks → 20:38 → stille route → JJX-2034
 - Eindbevestiging: dader + nieuwe container
 - 30-secondenkeuze: samenwerken met Johnny of politie inlichten
 - Johnny-route opent na keuze
@@ -212,7 +212,7 @@ De spelbegeleider is de inspecteur en reikt operatiedossier B uit. Testcode: `NV
 - **Terugkijken:** de bestaande terugknop blijft beschikbaar met bevestiging en +2 minuten straftijd.
 
 ## v6.5 — Moeilijker containerregister
-Fase 6 toont 12 containers, waaronder negen actieve zendingen. Verscheidene actieve zendingen delen de JJX-reeks, het wijzigingstijdstip 20:34 of de registratie Ongeplande overslag. Alleen JJX-2034 combineert de drie relevante eigenschappen. Het juiste antwoord en de strafminuut blijven ongewijzigd.
+Fase 6 toont 12 containers, waaronder negen actieve zendingen. Verscheidene actieve zendingen delen de JJX-reeks, het wijzigingstijdstip 20:38 of de registratie Ongeplande overslag. Alleen JJX-2034 combineert de drie relevante eigenschappen. Het juiste antwoord en de strafminuut blijven ongewijzigd.
 
 
 ## v6.6 – Bugfix overgang bewijsstukken
@@ -220,7 +220,7 @@ De knop “Ga naar het politiekanaal” accepteert “bewijs bekeken” als navi
 
 
 ## v6.7 — Herleidbare containerpuzzel
-Het geheime transportsysteem toont de nieuwe containerregistratie **JJX-reeks** naast tijdstip **20:34** en mutatie **Ongeplande overslag**. Het afzonderlijke containernummer blijft afgeschermd. In fase 6 moeten spelers die aanwijzingen combineren tot **JJX-2034**.
+Het geheime transportsysteem toont de nieuwe containerregistratie **JJX-reeks** naast tijdstip **20:38** en mutatie **Ongeplande overslag**. Het afzonderlijke containernummer blijft afgeschermd. In fase 6 moeten spelers die aanwijzingen combineren tot **JJX-2034**.
 
 ## v6.8 - Bewijspagina
 - Het blok BEWIJS VERZAMELD onder Johnnys notities is verwijderd.
