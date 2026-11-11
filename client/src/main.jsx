@@ -789,20 +789,30 @@ function OriginalContainerConfirmation({loading,feedback,submitAnswer,requestHin
 }
 
 function RotjeKnorPhase({loading,feedback,submitAnswer}) {
-  const [event,setEvent] = useState('');
-  const [who,setWho] = useState('');
-  return <section className="panel cinematic informant-panel secret-followup">
+  return <section className="panel cinematic informant-panel infiltration-briefing">
     <div className="section-label">FASE 4 · NIEUW SPOOR</div>
-    <h2>Nieuw spoor</h2>
-    <form className="answer-form" onSubmit={e=>{e.preventDefault();submitAnswer('ROTJE_KNOR',{event,who})}}>
-      <label>Wat is er met het oorspronkelijke transport gebeurd?
-        <input value={event} onChange={e=>setEvent(e.target.value)} required autoComplete="off" />
-      </label>
-      <label>Wie heeft de route gewijzigd?
-        <input value={who} onChange={e=>setWho(e.target.value)} required autoComplete="off" />
-      </label>
-      <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig conclusie'}</button>
-    </form>
+    <div className="infiltration-heading">
+      <span className="infiltration-kicker">VERTROUWELIJKE ONDERZOEKSOPDRACHT</span>
+      <h2>Het transport is verdwenen</h2>
+      <p>Jullie hebben de oorspronkelijke container geïdentificeerd. Maar volgens de laatste gegevens is de lading niet meer op de oorspronkelijke bestemming aangekomen.</p>
+      <p>Er ontbreekt belangrijke informatie over een wijziging in het transportplan.</p>
+    </div>
+    <div className="infiltration-mission">
+      <div className="infiltration-mission-head"><span className="infiltration-number">04</span><div><small>NIEUWE ONDERZOEKSOPDRACHT</small><strong>Zoek de juiste infiltrant.</strong></div></div>
+      <p>De juiste infiltrant beschikt mogelijk over informatie waarmee jullie toegang krijgen tot de geheime transportadministratie. Onderzoek jullie aanwijzingen om vast te stellen met wie je contact moet leggen.</p>
+    </div>
+    <div className="infiltration-questions">
+      <span>TE ONDERZOEKEN</span>
+      <ol>
+        <li>Wat is er met het oorspronkelijke transport gebeurd?</li>
+        <li>Wie heeft de wijziging uitgevoerd?</li>
+        <li>Welke nieuwe containerregistratie is aangemaakt?</li>
+      </ol>
+    </div>
+    <div className="infiltration-footer">
+      <p>De antwoorden hoeven jullie hier nog niet in te vullen. Verzamel eerst het bewijs; daarna gaat het onderzoek verder in het containerregister.</p>
+      <button type="button" className="primary" disabled={loading} onClick={()=>submitAnswer('ROTJE_KNOR','onderzoek gestart')}>{loading?'Openen...':'Ga verder naar het containerregister'}</button>
+    </div>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }

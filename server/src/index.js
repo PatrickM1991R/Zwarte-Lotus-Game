@@ -439,12 +439,11 @@ app.post('/api/teams/:id/answer', (req, res) => {
       return wrongGameAnswer(res,team);
     }
   } else if (phase === 'ROTJE_KNOR') {
-    const raw = req.body.answer || {};
-    const event = String(raw.event || '').trim().toLowerCase();
-    const who = String(raw.who || '').trim().toLowerCase().replace(/\s+/g,' ');
-    const eventOk = event.length > 0; // Vrije conclusie: iedere niet-lege omschrijving wordt geaccepteerd.
-    const whoOk = who === 'johnny jatwerk';
-    if(!eventOk || !whoOk) return wrongGameAnswer(res,team);
+    // Fase 4 is een onderzoeksbriefing, geen kennisvraag.
+    // De knop navigeert zonder foutantwoord of tijdstraf naar het containerregister.
+    if (String(req.body.answer || '').trim().toLowerCase() !== 'onderzoek gestart') {
+      return res.status(409).json({ error:'Lees eerst de onderzoeksopdracht.' });
+    }
   } else if (phase === 'NIEUWE_CONTAINER') {
     const raw = req.body.answer || {};
     const container = String(raw.container || '').trim().toLowerCase().replace(/\s+/g,'');
