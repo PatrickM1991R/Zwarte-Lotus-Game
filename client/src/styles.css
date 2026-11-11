@@ -746,3 +746,20 @@
 .infiltration-footer p{max-width:470px;font-size:13px;margin:0}
 .infiltration-footer button{min-height:50px;white-space:normal}
 @media(max-width:700px){.infiltration-footer{flex-direction:column;align-items:stretch}.infiltration-footer button{width:100%}.infiltration-mission,.infiltration-questions{padding:18px}.infiltration-number{width:42px;height:42px;font-size:20px}}
+
+/* V8.9 · Narratieve introductie bij het beveiligde koperskanaal */
+.buyer-mission-intro{margin:22px 0 28px;padding:clamp(18px,3vw,30px);border:1px solid rgba(201,162,39,.4);border-radius:18px;background:linear-gradient(145deg,rgba(36,24,43,.95),rgba(16,10,24,.97));box-shadow:0 18px 48px rgba(0,0,0,.18);color:#eee6ef}
+.buyer-mission-stamp{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:10px;font-weight:800;letter-spacing:.16em;color:#c9a227}
+.buyer-mission-stamp span{padding:5px 9px;border:1px solid #a75656;border-radius:4px;color:#e3a5a5;transform:rotate(-2deg)}
+.buyer-mission-intro h3{margin:16px 0 12px;font-family:Georgia,serif;font-size:clamp(21px,3vw,30px);line-height:1.18;color:#f6e8ba}
+.buyer-mission-intro>p{max-width:790px;font-size:15px;line-height:1.7}
+.buyer-device-instruction{display:grid;grid-template-columns:116px minmax(0,1fr);gap:22px;align-items:center;margin:22px 0;padding:20px;border:1px solid rgba(201,162,39,.29);border-radius:14px;background:rgba(6,4,11,.6)}
+.buyer-device-icon{display:flex;flex-direction:column;align-items:center;gap:10px;min-height:130px;padding:12px 10px;border:5px solid #39333d;border-radius:13px;background:linear-gradient(125deg,#09090b,#19151e);box-shadow:inset 0 0 0 1px #68616a,4px 7px 15px rgba(0,0,0,.35)}
+.buyer-device-light{align-self:flex-end;width:7px;height:7px;border-radius:50%;background:#c9a227;box-shadow:0 0 10px #c9a227}
+.buyer-device-screen{display:block;width:100%;padding:10px 4px;text-align:center;border:1px solid #5f6047;background:#18271b;color:#b8dcaa;font:10px/1.5 monospace;letter-spacing:.05em}
+.buyer-device-keys{font-size:13px;color:#8f8b95;letter-spacing:9px}
+.buyer-device-label{display:block;margin-bottom:7px;color:#c9a227;font-size:10px;font-weight:900;letter-spacing:.15em}
+.buyer-device-instruction strong{display:block;color:#fff;font-size:17px;line-height:1.4}
+.buyer-device-instruction p{margin:8px 0 0;line-height:1.6;color:#d8d1dc}
+.buyer-mission-warning{margin-bottom:0!important;padding:12px 15px;border-left:3px solid #bb6c53;background:rgba(140,56,42,.1)}
+@media(max-width:560px){.buyer-device-instruction{grid-template-columns:1fr}.buyer-device-icon{width:112px}}

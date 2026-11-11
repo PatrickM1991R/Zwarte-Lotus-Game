@@ -1124,8 +1124,18 @@ function JohnnyFinalOperation({team,loading,feedback,sendBuyerChat}) {
   const submit=async(e)=>{e.preventDefault();if(await sendBuyerChat(chat.stage,value,time))setValue('');};
   return <section className="panel cinematic final-operation">
     <div className="section-label">BEVEILIGD KOPERSKANAAL · V.V.-37</div>
-    <h2>Contact met Victor Valmont</h2>
-    <p className="secure-chat-intro">De politie heeft de locatie van Johnny bevestigd. Communiceer nu uitsluitend met Victor. Laat niet blijken dat Johnny is opgepakt.</p>
+    <h2>De koper moet in de val lopen</h2>
+    <div className="buyer-mission-intro">
+      <div className="buyer-mission-stamp">OPERATIE SCHADUWJACHT <span>VERTROUWELIJK</span></div>
+      <h3>Johnny is opgepakt. Nu is de koper aan de beurt.</h3>
+      <p>De politie heeft Johnny Jatwerk aangehouden, maar daarmee is de zaak nog niet opgelost. De Zwarte Lotus was bestemd voor een koper die zich verschuilt achter de codenaam <strong>V.V.-37: Victor Valmont</strong>.</p>
+      <p>Bij de bewijsstukken ligt een <strong>zwart communicatiekastje</strong>. Daarmee kunnen jullie rechtstreeks contact leggen met de koper. Hij weet nog niet dat Johnny is gearresteerd. Dat is jullie voordeel.</p>
+      <div className="buyer-device-instruction">
+        <div className="buyer-device-icon" aria-hidden="true"><span className="buyer-device-light"/><span className="buyer-device-screen">V.V.-37<br/>VERBINDING</span><span className="buyer-device-keys">● ● ●</span></div>
+        <div><span className="buyer-device-label">OPDRACHT · BEVEILIGD CONTACT</span><strong>Gebruik het zwarte kastje en neem Johnny's plaats in.</strong><p>Voer de gevonden codewoorden in, win het vertrouwen van Victor en maak een afspraak voor de overdracht. Bepaal zelf waar en wanneer de ontmoeting plaatsvindt.</p></div>
+      </div>
+      <p className="buyer-mission-warning"><strong>LET OP:</strong> Vertel Victor niet dat Johnny is opgepakt. Hij mag niets vermoeden zolang de deal nog niet rond is.</p>
+    </div>
     <div className="secure-chat new-buyer-chat">
       <div className="chat-head"><span>VERSLEUTELDE CHAT</span><strong>V.V.-37</strong><small>Verbinding beveiligd</small></div>
       <div className="chat-log" aria-live="polite">{(chat.messages||[]).map((m,i)=><div key={i} className={`chat-row ${m.from==='Team'?'outgoing':'incoming'}`}><span>{m.from}</span><p>{m.text}</p></div>)}</div>
