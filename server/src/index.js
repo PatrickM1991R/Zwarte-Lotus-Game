@@ -272,7 +272,8 @@ const previousPhase = {
   POLITIE_RESULTAAT:'POLITIE_FINALE'
 };
 const localStepAnswers = {
-  ORIGINELE_CONTAINER:{dock:['17'],arrival:['2015','20:15'],origin:['zwitserland','switzerland','ch']},
+  DOSSIER:{count:['4']},
+  ORIGINELE_CONTAINER:{dock:['17'],arrival:['2028','20:28'],origin:['zwitserland','switzerland','ch']},
   KLUIS:{riddle1:['20'],riddle2:['34'],riddle3:['09','9'],code:['203409']},
   EINDOPERATIE:{codeword1:['karaat'],codeword2:['nachtglas']}
 };
@@ -301,12 +302,17 @@ app.post('/api/teams/:id/check-step', (req,res)=>{
   const value=String(req.body.value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
   const valid=localStepAnswers[phase][step].includes(value);
   if(!valid) return wrongGameAnswer(res,team);
+  if(phase==='DOSSIER') {
+    team.completedSteps ??= {};
+    team.completedSteps.DOSSIER ??= {};
+    team.completedSteps.DOSSIER[step]=true;
+  }
   if(phase==='ORIGINELE_CONTAINER') {
     team.completedSteps ??= {};
     team.completedSteps.ORIGINELE_CONTAINER ??= {};
     team.completedSteps.ORIGINELE_CONTAINER[step]=true;
   }
-  return res.json({correct:true});
+  return res.json({correct:true,team:enrich(team)});
 });
 
 
@@ -411,6 +417,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
   }
 
   if (phase === 'DOSSIER') {
+    if (!team.completedSteps?.DOSSIER?.count) return res.status(409).json({error:'Controleer eerst het aantal hoofdverdachten.'});
     const raw = req.body.answer || {};
     const count = Number(raw.count || 0);
     const entries = Array.isArray(raw.entries) ? raw.entries : [];

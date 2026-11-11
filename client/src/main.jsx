@@ -524,7 +524,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
 
   if (['ALARM','CAMERA','KIST_OPEN'].includes(phase)) return <OpeningPuzzlePage loading={loading} feedback={feedback} submitOpening={submitOpening} startCountdown={startCountdown} requestHint={requestHint} timerStartedAt={team.timerStartedAt} />;
 
-  if (phase === 'DOSSIER') return <DossierPuzzle team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
+  if (phase === 'DOSSIER') return <DossierPuzzle team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} checkStep={checkStep} requestHint={requestHint} />;
 
   if (phase === 'ORIGINELE_CONTAINER') return <OriginalContainerPuzzle team={team} checkStep={checkStep} loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
   if (phase === 'ORIGINELE_CONTAINER_BEVESTIGEN') return <OriginalContainerConfirmation loading={loading} feedback={feedback} submitAnswer={submitAnswer} requestHint={requestHint} />;
@@ -615,9 +615,11 @@ const suspects = [
   { id:'freddy', name:'Freddy Flessentrekker', alias:'De Bonnenkoning', image:'/assets/suspects/freddy.jpg' }
 ];
 
-function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
-  const [suspectCount,setSuspectCount]=useState('');
-  const [entries,setEntries]=useState([]);
+function DossierPuzzle({team,loading,feedback,submitAnswer,checkStep,requestHint}) {
+  const [suspectCount,setSuspectCount]=useState(team.completedSteps?.DOSSIER?.count?'4':'');
+  const [countVerified,setCountVerified]=useState(Boolean(team.completedSteps?.DOSSIER?.count));
+  const [checkingCount,setCheckingCount]=useState(false);
+  const [entries,setEntries]=useState(()=>team.completedSteps?.DOSSIER?.count?Array.from({length:4},()=>({name:'',skill:''})):[]);
 
   const skillOptions=[
     {value:'techniek',label:'Techniek / beveiliging'},
@@ -631,30 +633,47 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,requestHint}) {
   ];
 
   const changeCount=(value)=>{
-    const n=Math.max(0,Math.min(8,Number(value)||0));
     setSuspectCount(value);
-    setEntries(prev=>Array.from({length:n},(_,i)=>prev[i]||{name:'',skill:''}));
+    setCountVerified(false);
+    setEntries([]);
+  };
+
+  const verifyCount=async()=>{
+    if(!/^[1-8]$/.test(String(suspectCount)))return;
+    setCheckingCount(true);
+    try {
+      const ok=await checkStep('DOSSIER','count',String(suspectCount));
+      if(ok){
+        setCountVerified(true);
+        setEntries(Array.from({length:Number(suspectCount)},()=>({name:'',skill:''})));
+      }
+    } finally {setCheckingCount(false);}
   };
 
   const updateEntry=(index,key,value)=>setEntries(prev=>prev.map((row,i)=>i===index?{...row,[key]:value}:row));
   const count=Number(suspectCount)||0;
-  const complete=count>0&&entries.length===count&&entries.every(x=>x.name.trim()&&x.skill);
+  const complete=countVerified&&count>0&&entries.length===count&&entries.every(x=>x.name.trim()&&x.skill);
   const submit=async()=>{if(!complete)return;await submitAnswer('DOSSIER',{count,entries});};
 
   return <section className="panel dossier-ready evidence-reconstruction physical-dossier-phase">
     <div className="success-seal">TOEGANG VERLEEND</div>
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
-    <div className="mission-card inspector-summons" role="note"><span><strong>DRINGEND BERICHT VAN DE INSPECTEUR</strong></span><strong>Hé, nietsnutten!</strong><p>Schiet nou eens op! Ik heb eindelijk die verdomde transportgegevens van de Douane binnengekregen waar jullie om vroegen!</p><p>Wat staan jullie daar nog te kijken? Kom die papieren onmiddellijk bij me ophalen!</p><p>En zorg dat jullie er deze keer wél iets nuttigs mee doen!</p><strong>HUP! AAN HET WERK!</strong></div>
+    <div className="mission-card inspector-summons" role="note"><span><strong>DRINGEND BERICHT VAN DE INSPECTEUR</strong></span><strong>Hé, nietsnutten!</strong><p>Ik heb eindelijk die verdomde verdachtenprofielen binnengekregen!</p><p>Wat staan jullie daar nog te kijken? Pak die dossiers erbij en analyseer ze grondig!</p><p>Bestudeer hun achtergronden, strafbladen, specialiteiten en onderlinge contacten. <strong>Ik wil weten wie de hoofdverdachten zijn in deze diamantroof!</strong></p><p>En waag het niet om zomaar wat namen te roepen. Ik verwacht dat jullie je conclusies kunnen onderbouwen!</p><strong>HUP! AAN HET WERK!</strong></div>
     <h2>Wie zijn verdacht van de roof?</h2>
     <p>Gebruik jullie gezamenlijke onderzoeksdossier. Leg de conclusie van het team hieronder vast.</p>
 
-    <div className="dossier-count-card">
-      <label>Hoeveel mensen zijn er verdacht?
-        <input type="number" min="1" max="8" inputMode="numeric" value={suspectCount} onChange={e=>changeCount(e.target.value)} />
-      </label>
+    <div className="dossier-count-card dossier-count-check">
+      <div className="dossier-count-heading"><span>ONDERZOEKSVRAAG 01</span><strong>Hoeveel hoofdverdachten zijn er?</strong><p>Analyseer de acht persoonsdossiers en bepaal hoeveel personen rechtstreeks bij de roof betrokken kunnen zijn.</p></div>
+      <div className="dossier-count-controls">
+        <label htmlFor="suspect-count-input">Aantal hoofdverdachten
+          <input id="suspect-count-input" type="number" min="1" max="8" inputMode="numeric" disabled={countVerified} value={suspectCount} onChange={e=>changeCount(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!countVerified){e.preventDefault();verifyCount();}}} />
+        </label>
+        {!countVerified?<button type="button" className="primary" disabled={checkingCount||loading||!/^[1-8]$/.test(String(suspectCount))} onClick={verifyCount}>{checkingCount?'Controleren...':'Controleer aantal'}</button>:<div className="dossier-count-success" role="status">✓ Aantal bevestigd · ga verder met de personen</div>}
+      </div>
+      {!countVerified&&<small>Let op: een onjuist antwoord levert 1 minuut tijdstraf op.</small>}
     </div>
 
-    {count>0&&<div className="physical-suspect-entry-list">
+    {countVerified&&count>0&&<div className="physical-suspect-entry-list">
       {entries.map((entry,index)=><div className="physical-suspect-entry" key={index}>
         <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
         <label>Welke verdachte?
@@ -679,12 +698,12 @@ const containerRows = [
   {container:'MBX-1120',dock:'11',arrival:'19:40',status:'Vrijgegeven'},
   {container:'MBX-2408',dock:'24',arrival:'20:08',status:'Vrijgegeven'},
   {container:'MBX-3314',dock:'33',arrival:'20:14',status:'Vertraagd'},
-  {container:'MBX-4717',dock:'17',arrival:'20:15',status:'Handmatige controle'},
+  {container:'MBX-4717',dock:'17',arrival:'20:28',status:'Handmatige controle'},
   {container:'MBX-8617',dock:'17',arrival:'19:55',status:'Vrijgegeven'},
-  {container:'MBX-7317',dock:'17',arrival:'20:15',status:'Wacht op controle'},
+  {container:'MBX-7317',dock:'17',arrival:'20:28',status:'Wacht op controle'},
   {container:'MBX-9017',dock:'17',arrival:'20:18',status:'Gesloten'},
-  {container:'MBX-2517',dock:'17',arrival:'20:15',status:'Vrijgegeven'},
-  {container:'MBX-7303',dock:'07',arrival:'20:15',status:'Technische controle'},
+  {container:'MBX-2517',dock:'17',arrival:'20:28',status:'Vrijgegeven'},
+  {container:'MBX-7303',dock:'07',arrival:'20:28',status:'Technische controle'},
   {container:'MBX-1906',dock:'19',arrival:'20:06',status:'Vrijgegeven'},
   {container:'MBX-4417',dock:'44',arrival:'20:17',status:'Vertraagd'}
 ];
@@ -706,14 +725,14 @@ function OriginalContainerPuzzle({team,loading,feedback,submitAnswer,requestHint
   const visibleRows=containerRows.filter(r=>{
     if(!dockOk) return true;
     if(!arrivalOk) return r.dock==='17';
-    if(!originOk) return r.dock==='17'&&r.arrival==='20:15';
+    if(!originOk) return r.dock==='17'&&r.arrival==='20:28';
     return r.container==='MBX-4717';
   });
 
   return <section className="panel container-puzzle transport-onepage">
     <div className="section-label">FASE 3 · OORSPRONKELIJK TRANSPORTPLAN</div>
     <h2>Reconstrueer het oorspronkelijke transport.</h2>
-    <p>Gebruik de fysieke bewijsstukken om de vrachtlijst te verkleinen. Elk correct filter haalt onmogelijke containers uit beeld. Pas wanneer alle drie de kenmerken bewezen zijn, blijft de oorspronkelijke container over.</p>
+    <p>Gebruik het onderzoeksdossier, de stadskaart en de transportgegevens om de vrachtlijst te verkleinen. Houd rekening met de reistijd tussen Maison Beaumont en de haven: een zending kan niet aankomen vóór het voertuig de afstand heeft afgelegd. Na drie bewezen kenmerken blijft de oorspronkelijke container over.</p>
 
     <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Dock</th><th>Aankomst</th><th>Status</th></tr></thead><tbody>{visibleRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.dock}</td><td>{r.arrival}</td><td>{r.status}</td></tr>)}</tbody></table></div>
     <div className="manifest-count">{visibleRows.length} {visibleRows.length===1?'container over':'containers zichtbaar'}</div>
@@ -727,9 +746,9 @@ function OriginalContainerPuzzle({team,loading,feedback,submitAnswer,requestHint
       </form>
 
       <form className={`transport-filter-card ${arrivalOk?'solved':''} ${!dockOk?'locked':''}`} onSubmit={checkArrival}>
-        <span>TIJDLIJN</span>
-        <strong>Welke aankomsttijd hoort bij de zending?</strong>
-        <small>Combineer de eerder gevonden tijden met de transportinformatie.</small>
+        <span>REISTIJD · STADSKAART</span>
+        <strong>Hoe laat kon het transport de haven bereiken?</strong>
+        <small>Neem het moment waarop de vitrine werd geopend als vertrektijd. Ga uit van een directe rit onder normale verkeersomstandigheden. Gebruik de reistijd Maison Beaumont → haven op jullie stadskaart. Vul de berekende aankomsttijd in als UU:MM.</small>
         <div className="filter-input"><input value={arrival} onChange={e=>setArrival(e.target.value)} disabled={!dockOk} required/><button className="primary" disabled={!dockOk}>{arrivalOk?'Bevestigd ✓':'Controleer'}</button></div>
       </form>
 
@@ -749,7 +768,7 @@ function OriginalContainerPuzzle({team,loading,feedback,submitAnswer,requestHint
     </div>}
 
     {localFeedback&&<div className="filter-feedback" aria-live="polite">{localFeedback}</div>}
-    <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: vergelijk de tijdlijn met de overgebleven aankomsttijden.':!originOk?'Hint: vergelijk de herkomstgegevens uit het externe transportregister met de overgebleven zendingen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint(!dockOk?'Hint: begin met de fysieke routegegevens en zoek het dock dat bij het heist-team hoort.':!arrivalOk?'Hint: zoek het tijdstip waarop de vitrine werd geopend en tel daar de reistijd op de stadskaart van Maison Beaumont naar de haven bij op.':!originOk?'Hint: vergelijk de herkomstgegevens uit het externe transportregister met de overgebleven zendingen.':'Hint: na drie correcte filters hoort er nog maar één regel over te zijn.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }

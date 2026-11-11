@@ -710,3 +710,17 @@
 .opening-redesign .opening-code-area{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,245px);gap:24px;align-items:center;margin:0 23px 23px;padding:22px;border-radius:13px;border:1px dashed rgba(201,162,39,.49);background:rgba(201,162,39,.055)}.opening-redesign .opening-code-area h4{font-family:Georgia,serif;font-size:23px;color:#f1e1bc;margin:0 0 6px}.opening-redesign .opening-code-area p{margin:0;color:#c4b9c6;font-size:13px}.opening-redesign .opening-code-field{margin:0;color:#d7c3a0;font-size:12px;font-weight:750}.opening-redesign .opening-code-field input{font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:.26em;text-align:center;margin-top:8px;height:60px;background:#0e0d15;border:1px solid #8d7446}
 .opening-redesign .opening-submit{display:flex;justify-content:space-between;align-items:center;padding:19px 5px 0;gap:18px}.opening-redesign .opening-submit .hint-link{margin:0;color:#d4c1a3}.opening-redesign .opening-submit .primary{padding:16px 24px;font-size:14px}.opening-redesign .filter-feedback,.opening-redesign .feedback{margin:15px 5px 0}
 @media(max-width:760px){.scene-page .game-topbar-refined{grid-template-columns:1fr}.game-countdown.refined-clock{width:100%;max-width:none}.game-topbar-refined .topbar-left{justify-content:flex-start}.opening-redesign .opening-briefing-refined{grid-template-columns:1fr}.opening-redesign .opening-briefing-refined .inspector-visual{min-height:220px;max-height:280px}.opening-redesign .opening-evidence-grid{grid-template-columns:1fr}.opening-redesign .opening-code-area{grid-template-columns:1fr}.opening-redesign .opening-section-header{padding:20px 18px 15px}.opening-redesign .opening-puzzles{padding:0 14px 20px}.opening-redesign .question-heading{padding:19px!important}.opening-redesign .opening-evidence-grid{padding:15px}.opening-redesign .opening-code-area{margin:0 15px 15px;padding:17px}.opening-redesign .opening-submit{flex-direction:column-reverse;align-items:stretch}.opening-redesign .opening-submit .hint-link{align-self:flex-start}}
+
+/* v8.5 — zelfstandige controlevraag: aantal hoofdverdachten */
+.physical-dossier-phase .dossier-count-check{padding:24px;background:linear-gradient(135deg,rgba(33,23,39,.96),rgba(12,9,18,.95));border-color:rgba(201,162,39,.46)}
+.dossier-count-heading{display:grid;gap:8px;margin-bottom:18px}
+.dossier-count-heading>span{font-size:11px;letter-spacing:.16em;font-weight:800;color:#c9a227}
+.dossier-count-heading>strong{font-size:clamp(19px,2.5vw,26px);line-height:1.2;color:#fff}
+.dossier-count-heading>p{margin:0;color:#cfc4d6;line-height:1.55}
+.dossier-count-controls{display:flex;align-items:end;gap:16px;flex-wrap:wrap}
+.dossier-count-controls label{flex:0 1 200px;display:block}
+.dossier-count-controls input{width:100%;max-width:200px;margin-top:9px;font-size:20px;font-weight:800;text-align:center}
+.dossier-count-controls .primary{min-height:49px;white-space:nowrap}
+.dossier-count-check>small{display:block;margin-top:15px;color:#d3bda4}
+.dossier-count-success{min-height:49px;display:flex;align-items:center;padding:12px 16px;border-radius:10px;border:1px solid rgba(201,162,39,.44);color:#eddaa4;background:rgba(201,162,39,.10);font-weight:700}
+@media(max-width:520px){.dossier-count-controls{align-items:stretch;flex-direction:column}.dossier-count-controls label{flex:auto;width:100%}.dossier-count-controls input{max-width:none}.dossier-count-controls .primary{width:100%}}
