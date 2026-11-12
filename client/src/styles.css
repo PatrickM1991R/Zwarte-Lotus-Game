@@ -830,3 +830,38 @@ a.primary.transport-contact-link { display:inline-block; padding:12px 18px; text
 .transport-registry .manifest { min-width:640px; }
 .rotje-proof .transport-contact-link { margin-top:16px; }
 @media(max-width:600px){ .transport-contact-card { padding:16px; } .transport-contact-card > strong { font-size:1.8rem; } }
+
+/* v9.9 — overzichtelijke, uitgelijnde controle verdachte + kwaliteit */
+.physical-dossier-phase .physical-suspect-entry-list{gap:16px}
+.physical-dossier-phase .physical-suspect-entry.suspect-check-card{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;background:linear-gradient(145deg,rgba(25,17,31,.95),rgba(11,9,17,.98));border:1px solid #49384f;border-radius:15px}
+.physical-dossier-phase .suspect-card-header{display:flex;align-items:center;gap:13px;padding:17px 20px;border-bottom:1px solid rgba(201,162,39,.16)}
+.physical-dossier-phase .suspect-card-heading{display:grid;gap:4px;min-width:0;flex:1}
+.physical-dossier-phase .suspect-card-heading>span{font-size:10px;font-weight:850;letter-spacing:.14em;color:#c9a227}
+.physical-dossier-phase .suspect-card-heading>strong{font-size:15px;color:#f5e8ed;line-height:1.3}
+.physical-dossier-phase .suspect-card-header .physical-suspect-number{flex:0 0 42px;width:42px;height:42px;align-self:center}
+.physical-dossier-phase .suspect-card-complete{border-radius:9px;padding:8px 10px;border:1px solid #458c62;background:rgba(36,120,68,.14);color:#a8efbd;font-size:12px;font-weight:800;white-space:nowrap}
+.physical-dossier-phase .suspect-check-line{display:grid;grid-template-columns:minmax(0,1fr) 190px;align-items:end;gap:14px;padding:15px 20px}
+.physical-dossier-phase .suspect-check-line label{display:grid;gap:9px;min-width:0;margin:0;color:#d4c7d4;font-size:12px;font-weight:750;letter-spacing:0}
+.physical-dossier-phase .suspect-check-line input,.physical-dossier-phase .suspect-check-line select{display:block;width:100%;height:50px;min-width:0;margin:0;box-sizing:border-box;border-radius:10px;padding:0 14px;font-size:15px;line-height:1.25}
+.physical-dossier-phase .suspect-check-line select{padding-right:36px;white-space:nowrap;text-overflow:ellipsis}
+.physical-dossier-phase .suspect-check-button,.physical-dossier-phase .suspect-check-feedback{width:100%;height:50px;min-height:50px;margin:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:10px;font-size:13px;font-weight:750;white-space:normal}
+.physical-dossier-phase .suspect-check-feedback{border:1px solid #469669;background:rgba(34,115,68,.17);color:#b2efc7;padding:10px}
+.physical-dossier-phase .suspect-skill-line{border-top:1px solid rgba(201,162,39,.13);background:rgba(201,162,39,.035)}
+.physical-dossier-phase .suspect-name-confirmed .suspect-card-header .physical-suspect-number{border-color:#469669;background:rgba(34,115,68,.16);color:#b2efc7}
+.physical-dossier-phase .suspect-check-line .dossier-verified-input{border-color:#469669!important;color:#bbf0cc!important;background:#102519!important;-webkit-text-fill-color:#bbf0cc;opacity:1}
+.physical-dossier-phase .suspect-fully-confirmed{border-color:#469669!important}
+@media(max-width:650px){
+  .physical-dossier-phase .suspect-card-header{padding:14px 15px;gap:10px;flex-wrap:wrap}
+  .physical-dossier-phase .suspect-card-complete{margin-left:52px}
+  .physical-dossier-phase .suspect-check-line{grid-template-columns:minmax(0,1fr);gap:10px;padding:14px 15px}
+  .physical-dossier-phase .suspect-check-button,.physical-dossier-phase .suspect-check-feedback{height:46px;min-height:46px}
+  .physical-dossier-phase .suspect-check-line select{font-size:16px}
+}
+
+/* Spelbegeleider · handmatige straftijd per team */
+.staff-penalty-control{display:flex;align-items:end;gap:8px;flex-wrap:wrap;width:100%;padding:10px 0 0;margin-top:4px;border-top:1px solid rgba(201,162,39,.35)}
+.staff-penalty-label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#eee2bd}
+.staff-penalty-label select,.staff-penalty-custom{box-sizing:border-box;min-width:120px;max-width:170px;min-height:36px;background:#f9f7fb;color:#160d21;border:1px solid #a59bb0;border-radius:7px;padding:6px 8px;font-size:13px}
+.staff-penalty-custom{min-width:76px;max-width:95px}
+.staff-actions .staff-penalty-add{min-height:36px;background:#c9a227;color:#140821;border:1px solid #c9a227;font-weight:700;padding:7px 12px}
+.staff-actions .staff-penalty-add:disabled{opacity:.45;cursor:not-allowed}

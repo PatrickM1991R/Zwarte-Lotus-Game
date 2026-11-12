@@ -535,9 +535,11 @@ app.post('/api/teams/:id/route', (req, res) => {
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
   if (team.currentPhase !== 'KEUZE') return res.status(409).json({ error: 'Deze keuze is nu niet actief.' });
   if (!team.johnnyOfferStartedAt) return res.status(409).json({error:'Luister eerst het volledige bericht van Johnny af.'});
-  if (Date.now() >= team.johnnyOfferStartedAt + 30_000) return res.status(409).json({error:'De keuzeperiode van 30 seconden is voorbij.'});
+  const returningFromPolice=Boolean(team.policeDetourPenaltyApplied && team.chosenRoute==='Politie');
+  if (!returningFromPolice && Date.now() >= team.johnnyOfferStartedAt + 30_000) return res.status(409).json({error:'De keuzeperiode van 30 seconden is voorbij.'});
   const route = String(req.body.route || '');
   if (!['Johnny','Politie'].includes(route)) return res.status(422).json({ error: 'Ongeldige routekeuze.' });
+  if (returningFromPolice && route!=='Johnny') return res.status(409).json({error:'De inspecteur heeft de politieroute afgesloten. Werk nu samen met Johnny.'});
   team.chosenRoute = route;
   team.currentPhase = route === 'Johnny' ? 'JOHNNY_ROUTE' : 'POLITIE_BRIEFING';
   if(route==='Politie'){team.policeRaidStartedAt=null;team.policeFinalStartedAt=null;team.policeProgress={};}
@@ -556,8 +558,11 @@ app.post('/api/teams/:id/police-infiltrate', (req,res)=>{
     addPenaltyMinutes(team,5);
     team.policeDetourPenaltyApplied=true;
   }
-  team.chosenRoute='Johnny';
-  team.currentPhase='JOHNNY_ROUTE';
+  // Herhaal na de politieomweg eerst Johnny's volledige video- en geldaanbod.
+  // Alleen daarna kan de speler de samenwerking daadwerkelijk accepteren.
+  team.chosenRoute='Politie';
+  team.currentPhase='KEUZE';
+  team.johnnyOfferStartedAt=null;
   res.json({ok:true,penaltySeconds:applied?300:0,team:enrich(team)});
 });
 
@@ -646,6 +651,23 @@ app.get('/api/events/:id',(req,res)=>{
   if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang tot dit evenement.'});
   res.json({event,teams:db.teams.filter(t=>t.eventId===event.id).map(teamView)});
 });
+// Spelbegeleider kan handmatig extra strafminuten toevoegen aan een gestart team.
+// Dit gebruikt exact dezelfde tijdcorrectie als foute antwoorden en routeboetes.
+app.post('/api/events/:id/teams/:teamId/penalty',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang.'});
+  const team=db.teams.find(t=>t.id===Number(req.params.teamId)&&t.eventId===event.id);
+  if(!team)return res.status(404).json({error:'Team niet gevonden.'});
+  const minutes=Number(req.body?.minutes);
+  if(!Number.isInteger(minutes)||minutes<1||minutes>120)
+    return res.status(422).json({error:'Kies een geheel aantal strafminuten tussen 1 en 120.'});
+  if(!team.timerStartedAt)
+    return res.status(409).json({error:'De timer van dit team is nog niet gestart.'});
+  addPenaltyMinutes(team,minutes);
+  team.manualActions??=[];
+  team.manualActions.push({at:Date.now(),by:staff(req).username,action:'manual-penalty',minutes});
+  return res.json({ok:true,minutes,team:teamView(team)});
+});
 // Spelbegeleider bevestigt het afhandelen van een hintverzoek.
 app.post('/api/events/:id/teams/:teamId/hints/:hintId/ack',(req,res)=>{
   const event=db.events.find(e=>e.id===Number(req.params.id));
@@ -691,9 +713,10 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
       : ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','JOHNNY_MELDEN','JOHNNY_ARRESTATIE','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
     if(team.currentPhase==='POLITIE_BRIEFING'){
       if(!team.policeDetourPenaltyApplied){addPenaltyMinutes(team,5);team.policeDetourPenaltyApplied=true;}
-      team.chosenRoute='Johnny';
-      team.currentPhase='JOHNNY_ROUTE';
-      team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action:'police-infiltrate'});
+      team.chosenRoute='Politie';
+      team.currentPhase='KEUZE';
+      team.johnnyOfferStartedAt=null;
+      team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action:'police-infiltrate-replay-offer'});
       return res.json({team:teamView(team)});
     }
     const idx=routeSequence.indexOf(team.currentPhase);

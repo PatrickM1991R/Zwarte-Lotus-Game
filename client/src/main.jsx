@@ -385,8 +385,8 @@ function App() {
             <div className="penalty-exclamation" aria-hidden="true">!</div>
             <div className="penalty-eyebrow">MISLUKTE POLITIEKEUZE</div>
             <h2>+5 MINUTEN</h2>
-            <p>De inspecteur heeft jullie teruggestuurd. Vijf strafminuten zijn toegevoegd. Zoek onmiddellijk contact met Johnny.</p>
-            <button className="primary" onClick={()=>setPolicePenaltyShown(false)}>Start de infiltratie →</button>
+            <p>De inspecteur heeft jullie teruggestuurd. Vijf strafminuten zijn toegevoegd. Beluister nu Johnny's volledige aanbod en accepteer de samenwerking.</p>
+            <button className="primary" onClick={()=>setPolicePenaltyShown(false)}>Beluister Johnny's aanbod →</button>
           </div>
         </div>}
         {penaltyShown && <div className="penalty-overlay" role="alertdialog" aria-modal="true" aria-label="Strafminuut toegevoegd">
@@ -451,6 +451,29 @@ function App() {
       </section>
     </div>
   </main>;
+}
+
+function TeamPenaltyControls({team,onApply}) {
+  const [choice,setChoice]=useState('1');
+  const [custom,setCustom]=useState('');
+  const [saving,setSaving]=useState(false);
+  const minutes=choice==='custom'?Number(custom):Number(choice);
+  const valid=Number.isInteger(minutes)&&minutes>=1&&minutes<=120;
+  async function addPenalty(){
+    if(!valid||saving)return;
+    if(!window.confirm(`Voeg ${minutes} strafminuut${minutes===1?'':'en'} toe aan team ${team.teamName}?\nDe officiële eindtijd wordt aangepast.`))return;
+    setSaving(true);
+    try{await onApply(team,minutes);}finally{setSaving(false);}
+  }
+  return <div className="staff-penalty-control" aria-label={`Straftijd toevoegen voor ${team.teamName}`}>
+    <label className="staff-penalty-label">Straftijd
+      <select value={choice} onChange={e=>setChoice(e.target.value)} disabled={saving||!team.timerStartedAt}>
+        <option value="1">1 minuut</option><option value="2">2 minuten</option><option value="5">5 minuten</option><option value="10">10 minuten</option><option value="custom">Eigen aantal…</option>
+      </select>
+    </label>
+    {choice==='custom'&&<input className="staff-penalty-custom" type="number" min="1" max="120" step="1" placeholder="Min." value={custom} onChange={e=>setCustom(e.target.value)} disabled={saving||!team.timerStartedAt} aria-label="Eigen aantal strafminuten"/>}
+    <button className="staff-penalty-add" disabled={!team.timerStartedAt||!valid||saving} onClick={addPenalty}>{saving?'Toevoegen…':'+ Straftijd'}</button>
+  </div>;
 }
 
 function StaffPortal({onExit}) {
@@ -529,6 +552,13 @@ function StaffPortal({onExit}) {
     if(['reset','stop'].includes(action)&&!confirm(`${action==='reset'?'Reset':'Stop'} ${team.teamName}?`))return;
     try{await request(`/api/events/${event.id}/teams/${team.id}/action`,{method:'POST',body:JSON.stringify({action})});await refreshEvent(event.id);}catch(e){setNotice(e.message);}
   }
+  async function addTeamPenalty(team,minutes){
+    try{
+      await request(`/api/events/${event.id}/teams/${team.id}/penalty`,{method:'POST',body:JSON.stringify({minutes})});
+      await refreshEvent(event.id);
+      setNotice(`${minutes} strafminuut${minutes===1?'':'en'} toegevoegd aan ${team.teamName}.`);
+    }catch(e){setNotice(e.message);}
+  }
   async function addFacilitator(e){
     e.preventDefault();
     const form=e.currentTarget;
@@ -552,7 +582,7 @@ function StaffPortal({onExit}) {
     {notice&&<div className="feedback" role="status">{notice}</div>}
     {tab==='events'&&!event&&<><section className="panel"><h2>Nieuw evenement</h2><form onSubmit={createEvent} className="staff-form"><label>Evenementnaam<input name="name" required/></label><button className="primary" disabled={busy}>Evenement aanmaken</button></form></section><section className="panel"><h2>Mijn evenementen</h2><div className="staff-event-grid">{events.map(e=><button key={e.id} className="staff-event-button" onClick={()=>refreshEvent(e.id).catch(x=>setNotice(x.message))}><strong>{e.name}</strong><small>{e.teamCount} teams · {e.status==='closed'?'Afgesloten':'Open'}</small></button>)}</div></section></>}
     {tab==='events'&&event&&<><section className="panel"><div className="staff-heading"><div><button className="secondary" onClick={()=>setEvent(null)}>← Evenementen</button><h2>{event.name}</h2><p>Deel deze code met alle teams. De timer start automatisch zodra een team het spel begint.</p></div><div className="staff-code"><span>EVENEMENTCODE</span><strong>{event.code}</strong><button className="secondary" onClick={()=>navigator.clipboard.writeText(event.code)}>Kopieer</button></div></div><p>Status: <strong>{event.status==='closed'?'Afgesloten':'Open voor deelname'}</strong> · {teams.length} teams</p>{event.status!=='closed'&&<button className="secondary" onClick={async()=>{if(!confirm('Evenement afsluiten? Alle nog actieve teams worden gestopt. De ranglijst en alle gegevens blijven bewaard.'))return;try{await request(`/api/events/${event.id}/close`,{method:'POST'});await refreshEvent(event.id);}catch(e){setNotice(e.message);}}}>Evenement afsluiten (resultaten bewaren)</button>}<p className="staff-retention-note">🔒 Dit evenement en de ranglijst blijven bestaan totdat jij ze handmatig verwijdert. Afsluiten verwijdert niets.</p><button className="staff-delete-event" onClick={deleteEvent}>Evenement en resultaten definitief verwijderen…</button></section>
-    <section className="panel staff-table"><h2>Live dashboard</h2><p>Openstaande hintverzoeken verschijnen direct als pop-up en blijven bewaard totdat je ze afhandelt.</p><table><thead><tr><th>Team</th><th>Fase</th><th>Route</th><th>Speeltijd</th><th>Hints</th><th>Straf</th><th>Status</th><th>Eindtijd</th><th>Bediening</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase]||t.currentPhase}</td><td>{t.chosenRoute||'—'}</td><td>{formatDuration(t.elapsedSeconds)}</td><td>{t.hintCount}{(t.hintRequests||[]).some(h=>!h.handledAt)&&<strong className="staff-hint-pending"> · 🔔 HULP GEVRAAGD</strong>}</td><td>+{t.penaltyMinutes||0} min</td><td>{t.pausedAt?'Gepauzeerd':t.status}</td><td>{localTime(t.finishedAt||t.stoppedAt)}</td><td><div className="staff-actions">{t.status!=='klaar'&&t.status!=='gestopt'&&<>{t.pausedAt?<button onClick={()=>teamAction(t,'resume')}>Hervat</button>:<button onClick={()=>teamAction(t,'pause')}>Pauzeer</button>}<button onClick={()=>teamAction(t,'previous')} disabled={t.currentPhase==='START'}>← Vorige fase</button><button onClick={()=>teamAction(t,'next')}>Volgende fase →</button><button onClick={()=>teamAction(t,'stop')}>Stop</button></>}<button onClick={()=>teamAction(t,'reset')}>Reset</button></div></td></tr>)}</tbody></table>{teams.length===0&&<p>Er zijn nog geen teams ingelogd.</p>}</section>
+    <section className="panel staff-table"><h2>Live dashboard</h2><p>Openstaande hintverzoeken verschijnen direct als pop-up en blijven bewaard totdat je ze afhandelt.</p><table><thead><tr><th>Team</th><th>Fase</th><th>Route</th><th>Speeltijd</th><th>Hints</th><th>Straf</th><th>Status</th><th>Eindtijd</th><th>Bediening</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase]||t.currentPhase}</td><td>{t.chosenRoute||'—'}</td><td>{formatDuration(t.elapsedSeconds)}</td><td>{t.hintCount}{(t.hintRequests||[]).some(h=>!h.handledAt)&&<strong className="staff-hint-pending"> · 🔔 HULP GEVRAAGD</strong>}</td><td>+{t.penaltyMinutes||0} min</td><td>{t.pausedAt?'Gepauzeerd':t.status}</td><td>{localTime(t.finishedAt||t.stoppedAt)}</td><td><div className="staff-actions">{t.status!=='klaar'&&t.status!=='gestopt'&&<>{t.pausedAt?<button onClick={()=>teamAction(t,'resume')}>Hervat</button>:<button onClick={()=>teamAction(t,'pause')}>Pauzeer</button>}<button onClick={()=>teamAction(t,'previous')} disabled={t.currentPhase==='START'}>← Vorige fase</button><button onClick={()=>teamAction(t,'next')}>Volgende fase →</button><button onClick={()=>teamAction(t,'stop')}>Stop</button></>}<button onClick={()=>teamAction(t,'reset')}>Reset</button><TeamPenaltyControls team={t} onApply={addTeamPenalty}/></div></td></tr>)}</tbody></table>{teams.length===0&&<p>Er zijn nog geen teams ingelogd.</p>}</section>
     <section className="panel staff-leaderboard"><div className="staff-leaderboard-head"><div><span>OFFICIËLE EINDSTAND</span><h2>🏆 Leaderboard</h2><p>Rangschikking op totale eindtijd, inclusief strafminuten. De ranglijst blijft beschikbaar na afloop en na afsluiten van het evenement.</p></div><strong>{finishedTeams.length} / {teams.length} teams klaar</strong></div>{finishedTeams.length===0?<p className="leaderboard-empty">Nog geen afgeronde teams. Resultaten verschijnen hier automatisch zodra een team het spel voltooit.</p>:<div className="leaderboard-scroll"><table className="leaderboard-table"><thead><tr><th>Plaats</th><th>Team</th><th>Speeltijd</th><th>Straf</th><th>Eindtijd inclusief straf</th></tr></thead><tbody>{finishedTeams.map((t,i)=><tr key={t.id}><td><span className={`leaderboard-rank ${i<3?'podium':''}`}>{i+1}</span></td><td><strong>{t.teamName}</strong><small>{t.chosenRoute||'Route onbekend'}</small></td><td>{formatDuration(Math.max(0,t.elapsedSeconds-(t.penaltyMinutes||0)*60))}</td><td>+{t.penaltyMinutes||0} min</td><td><strong>{formatDuration(t.elapsedSeconds)}</strong></td></tr>)}</tbody></table></div>}</section></>}
     {tab==='staff'&&user.role==='admin'&&<><section className="panel"><h2>Spelbegeleider aanmaken</h2><form className="staff-form" onSubmit={addFacilitator}><label>Gebruikersnaam<input name="username" required/></label><label>Wachtwoord (minimaal 12 tekens)<input name="password" type="password" minLength={12} required/></label><button className="primary">Account aanmaken</button></form></section><section className="panel"><h2>Accounts</h2>{staffUsers.map(u=><p key={u.id}>{u.username} · {u.role}</p>)}</section></>}
     {tab==='editor'&&user.role==='admin'&&editor&&<section className="panel"><h2>Spel-editor · antwoordcontrole</h2><p>Je kunt hier de geaccepteerde antwoorden voor de basispuzzels en aanvullende instructies instellen. Complexe routes en verhaalscènes staan nog in de broncode.</p><form onSubmit={saveEditor} className="staff-form"><label>Puzzel<select value={editPhase} onChange={e=>selectPhase(e.target.value)}>{editor.phases.map(p=><option key={p} value={p}>{phaseLabels[p]||p}</option>)}</select></label><label>Geaccepteerde antwoorden (één per regel)<textarea rows={7} value={answers} onChange={e=>setAnswers(e.target.value)} required/></label><label>Aanvullende instructie voor spelers (optioneel)<textarea rows={4} value={note} onChange={e=>setNote(e.target.value)}/></label><button className="primary">Opslaan</button></form></section>}
@@ -752,18 +782,26 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,checkStep,requestHint
     {countVerified&&count>0&&<div className="physical-suspect-entry-list">
       <h3>ONDERZOEKSVRAAG 02 · Identificeer de verdachten en hun specialismen</h3>
       <p>Controleer eerst per persoon of deze tot de vier hoofdverdachten behoort. Na een juiste naam wordt deze groen en kun je de bijbehorende kwaliteit controleren. Ook de juiste kwaliteit kleurt groen.</p>
-      {entries.map((entry,index)=><div className="physical-suspect-entry" key={index}>
-        <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
-        <label>Welke verdachte?
-          <input className={entry.nameOk?'dossier-verified-input':''} value={entry.name} disabled={entry.nameOk} onChange={e=>updateEntry(index,'name',e.target.value)} autoComplete="off" placeholder="Voor- en achternaam" />
-        </label>
-        {entry.nameOk?<div className="dossier-row-ok" role="status">✓ Verdachte correct</div>:<button type="button" className="secondary" disabled={loading||Boolean(checkingRow)||!entry.name.trim()||entries.some((row,i)=>i!==index&&row.nameOk&&row.name.trim().toLowerCase()===entry.name.trim().toLowerCase())} onClick={()=>verifyName(index)}>{checkingRow===`name-${index}`?'Controleren...':'Controleer verdachte'}</button>}
-        {entry.nameOk&&<label>Welke kwaliteit maakt deze persoon relevant?
-          <select className={entry.skillOk?'dossier-verified-input':''} value={entry.skill} disabled={entry.skillOk} onChange={e=>updateEntry(index,'skill',e.target.value)}>
-            <option value="">Kies vaardigheid…</option>{skillOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </label>}
-        {entry.nameOk&&(entry.skillOk?<div className="dossier-row-ok" role="status">✓ Kwaliteit correct</div>:<button type="button" className="secondary" disabled={loading||Boolean(checkingRow)||!entry.skill} onClick={()=>verifySkill(index)}>{checkingRow===`skill-${index}`?'Controleren...':'Controleer kwaliteit'}</button>)}
+      {entries.map((entry,index)=><div className={`physical-suspect-entry suspect-check-card${entry.nameOk?' suspect-name-confirmed':''}${entry.skillOk?' suspect-fully-confirmed':''}`} key={index}>
+        <div className="suspect-card-header">
+          <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
+          <div className="suspect-card-heading"><span>HOOFDVERDACHTE {String(index+1).padStart(2,'0')}</span><strong>{entry.skillOk?'Verdachte en kwaliteit bevestigd':entry.nameOk?'Verdachte bevestigd · controleer de kwaliteit':'Identificeer de verdachte'}</strong></div>
+          {entry.skillOk&&<span className="suspect-card-complete" role="status">✓ Compleet</span>}
+        </div>
+        <div className="suspect-check-line">
+          <label htmlFor={`suspect-name-${index}`}>Welke verdachte?
+            <input id={`suspect-name-${index}`} className={entry.nameOk?'dossier-verified-input':''} value={entry.name} disabled={entry.nameOk} onChange={e=>updateEntry(index,'name',e.target.value)} autoComplete="off" placeholder="Voor- en achternaam" />
+          </label>
+          {entry.nameOk?<div className="dossier-row-ok suspect-check-feedback" role="status">✓ Verdachte correct</div>:<button type="button" className="secondary suspect-check-button" disabled={loading||Boolean(checkingRow)||!entry.name.trim()||entries.some((row,i)=>i!==index&&row.nameOk&&row.name.trim().toLowerCase()===entry.name.trim().toLowerCase())} onClick={()=>verifyName(index)}>{checkingRow===`name-${index}`?'Controleren...':'Controleer verdachte'}</button>}
+        </div>
+        {entry.nameOk&&<div className="suspect-check-line suspect-skill-line">
+          <label htmlFor={`suspect-skill-${index}`}>Welke kwaliteit maakt deze persoon relevant?
+            <select id={`suspect-skill-${index}`} className={entry.skillOk?'dossier-verified-input':''} value={entry.skill} disabled={entry.skillOk} onChange={e=>updateEntry(index,'skill',e.target.value)}>
+              <option value="">Kies vaardigheid…</option>{skillOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+          {entry.skillOk?<div className="dossier-row-ok suspect-check-feedback" role="status">✓ Kwaliteit correct</div>:<button type="button" className="secondary suspect-check-button" disabled={loading||Boolean(checkingRow)||!entry.skill} onClick={()=>verifySkill(index)}>{checkingRow===`skill-${index}`?'Controleren...':'Controleer kwaliteit'}</button>}
+        </div>}
       </div>)}
     </div>}
 
@@ -942,6 +980,7 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
 
 function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
   const startedAt = team.johnnyOfferStartedAt ? Number(team.johnnyOfferStartedAt) : null;
+  const returningFromPolice = Boolean(team.policeDetourPenaltyApplied && team.chosenRoute==='Politie');
   const [now,setNow] = useState(Date.now());
   const [audioStarted,setAudioStarted] = useState(false);
   const [audioError,setAudioError] = useState(false);
@@ -952,16 +991,17 @@ function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
     return ()=>clearInterval(id);
   },[startedAt]);
   const seconds=startedAt ? Math.max(0,Math.ceil((startedAt+30000-now)/1000)) : 30;
-  const expired=!!startedAt && seconds===0;
+  const expired=!!startedAt && seconds===0 && !returningFromPolice;
   const choose = async(route)=>{
-    if(!startedAt || expired || choiceSubmitted || loading)return;
+    if(!startedAt || expired || choiceSubmitted || loading || (returningFromPolice && route!=='Johnny'))return;
     setChoiceSubmitted(true);
     await chooseRoute(route);
     setChoiceSubmitted(false);
   };
   return <section className="panel cinematic johnny-choice johnny-transmission">
     <div className="section-label">VERSLEUTELDE VERBINDING · J.J.</div>
-    <h2>Johnny Jatwerk neemt contact op.</h2>
+    <h2>{returningFromPolice?'Johnny Jatwerk neemt opnieuw contact op.':'Johnny Jatwerk neemt contact op.'}</h2>
+    {returningFromPolice&&<p>De inspecteur heeft jullie teruggestuurd om te infiltreren. Luister eerst Johnny's aanbod opnieuw. De vijf strafminuten zijn al toegevoegd; jullie kunnen daarna rechtstreeks akkoord gaan met zijn voorstel.</p>}
     <div className={`johnny-film ${audioStarted&&!startedAt?'speaking':''}`}>
       <img src="/assets/story/johnny-jatwerk-offer.png" alt="Johnny Jatwerk in een duistere videoverbinding" />
       <div className="johnny-film-grain" aria-hidden="true" />
@@ -984,10 +1024,10 @@ function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
         <p>De Zwarte Lotus is verkocht voor <strong>€ 37.000.000</strong>. Ik bied jullie <strong>30 procent</strong>: <strong>€ 11.100.000</strong>.</p>
         <p>Jullie hebben dertig seconden. Werken jullie met mij samen, of lichten jullie nog wat andere sukkeltjes met blauwe petjes in? Dan zien jullie mij en De Zwarte Lotus nooit meer terug.</p>
       </div>
-      <div className={`choice-timer ${seconds<=10?'urgent':''}`} role="timer" aria-label={`Nog ${seconds} seconden`}>
+      {!returningFromPolice&&<div className={`choice-timer ${seconds<=10?'urgent':''}`} role="timer" aria-label={`Nog ${seconds} seconden`}>
         <span>TIJD OVER</span><strong>{String(seconds).padStart(2,'0')}</strong>
-      </div>
-      <div className="choice-grid"><button className="choice-card criminal" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Johnny')}><span>OPTIE 1</span><strong>Werk samen met Jatwerk</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button><button className="choice-card police" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Vraag de inspecteur om hulp. Wat zal hij ervan vinden?</small></button></div>
+      </div>}
+      <div className="choice-grid"><button className="choice-card criminal" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Johnny')}><span>{returningFromPolice?'INFILTRATIE':'OPTIE 1'}</span><strong>{returningFromPolice?'Accepteer Johnny’s aanbod':'Werk samen met Jatwerk'}</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button>{!returningFromPolice&&<button className="choice-card police" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Vraag de inspecteur om hulp. Wat zal hij ervan vinden?</small></button>}</div>
       {expired&&<div className="feedback">De 30 seconden zijn voorbij. Vraag de spelbegeleider om deze testfase opnieuw te starten.</div>}
     </>}
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
