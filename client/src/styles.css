@@ -804,3 +804,29 @@
 .police-detour-warning strong { display:block; color: #e5c15a; letter-spacing: .04em; font-size: .86rem; }
 .police-detour-warning p { margin: 8px 0 0; line-height: 1.55; }
 .police-route-panel .inspector-final-briefing .final-inspector-message p { line-height: 1.7; }
+
+/* v9.7: gecontroleerde dossier-antwoorden en hintverzoeken */
+.dossier-verified-input { border:2px solid #2d9753 !important; background:#e4f7e9 !important; color:#174d2c !important; }
+.dossier-row-ok { display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:8px;background:#e4f7e9;color:#14532d;font-weight:700;border:1px solid #86cf9f; }
+.staff-hint-pending {color:#d69c27;display:block;font-size:12px;white-space:nowrap;}
+.staff-hint-backdrop {position:fixed;inset:0;background:rgba(9,5,15,.76);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.staff-hint-modal {width:min(480px,100%);background:#190e29;border:2px solid #c9a227;border-radius:16px;box-shadow:0 25px 80px rgba(0,0,0,.7);padding:30px;color:#fff;}
+.staff-hint-modal>span {color:#c9a227;font-weight:800;letter-spacing:.06em;}
+.staff-hint-modal h2 {margin:12px 0;color:#fff;font-size:28px;}
+.staff-hint-modal p {color:#eee;line-height:1.5;}
+.staff-hint-modal button {margin-top:14px;}
+
+/* v9.8 — Infiltrant en digitaal containerregister */
+.transport-contact-card { margin:18px 0 22px; padding:22px; border-radius:14px; border:1px solid #c9a227; background:#21152e; display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
+.transport-contact-card > span { color:#c9a227; font-size:.76rem; letter-spacing:.12em; font-weight:700; }
+.transport-contact-card > strong { color:#fff; font-size:2.2rem; letter-spacing:.12em; }
+.transport-contact-card > p { color:#d3c7dd; margin:0; font-size:.9rem; }
+a.primary.transport-contact-link { display:inline-block; padding:12px 18px; text-decoration:none; text-align:center; border-radius:10px; background:#c9a227; color:#140821; font-weight:800; }
+.transport-registry { margin-top:28px; }
+.transport-registry-heading { margin-bottom:12px; }
+.transport-registry-heading span { color:#c9a227; font-size:.8rem; font-weight:700; letter-spacing:.1em; }
+.transport-registry-heading h2 { margin:8px 0; }
+.transport-registry .manifest-wrap { overflow-x:auto; max-width:100%; }
+.transport-registry .manifest { min-width:640px; }
+.rotje-proof .transport-contact-link { margin-top:16px; }
+@media(max-width:600px){ .transport-contact-card { padding:16px; } .transport-contact-card > strong { font-size:1.8rem; } }

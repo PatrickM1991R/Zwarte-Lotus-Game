@@ -290,6 +290,20 @@ app.post('/api/teams/:id/check-step', (req,res)=>{
   if(!team) return res.status(404).json({error:'Team niet gevonden'});
   const phase=String(req.body.phase||'').toUpperCase();
   const step=String(req.body.step||'');
+  if(phase==='DOSSIER' && ['suspect_name','suspect_skill'].includes(step)) {
+    if(team.currentPhase!=='DOSSIER'||!team.completedSteps?.DOSSIER?.count)
+      return res.status(409).json({error:'Controleer eerst het aantal hoofdverdachten.'});
+    const expected=new Map([['johnny jatwerk','transport'],['don diamantini','koper'],['freddy flessentrekker','documenten'],['carla kraak','techniek']]);
+    const normalize=v=>String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+    if(step==='suspect_name'){
+      if(!expected.has(normalize(req.body.value)))return wrongGameAnswer(res,team);
+      return res.json({correct:true,team:enrich(team)});
+    }
+    let data;
+    try {data=JSON.parse(String(req.body.value||''));}catch{return res.status(422).json({error:'Ongeldige invoer.'});}
+    if(expected.get(normalize(data.name))!==normalize(data.skill))return wrongGameAnswer(res,team);
+    return res.json({correct:true,team:enrich(team)});
+  }
   if(team.currentPhase!==phase || !Object.hasOwn(localStepAnswers[phase]||{},step))
     return res.status(409).json({error:'Deze puzzelstap is niet actief.'});
   const value=String(req.body.value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
@@ -371,7 +385,7 @@ app.post('/api/team-login', (req,res)=>{
   if(!name)return res.status(422).json({error:'Vul een teamnaam in.'});
   let team=db.teams.find(t=>t.eventId===event.id && t.teamName.toLowerCase()===name.toLowerCase());
   if(!team){
-    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0,policeDetourPenaltyApplied:false};
+    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0,policeDetourPenaltyApplied:false};
     db.teams.push(team);
   }
   res.json({team:enrich(team),token:sign({type:'team',id:team.id})});
@@ -498,8 +512,12 @@ app.post('/api/teams/:id/timer-start', (req, res) => {
 app.post('/api/teams/:id/hint', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if(team.status==='klaar'||team.status==='gestopt')return res.status(409).json({error:'Dit team speelt niet meer.'});
   team.hintCount += 1;
-  res.json({ team: enrich(team) });
+  team.hintRequests ??= [];
+  const request={id:randomBytes(8).toString('hex'),at:Date.now(),phase:team.currentPhase,handledAt:null};
+  team.hintRequests.push(request);
+  res.json({ team: enrich(team),hintRequest:request });
 });
 
 // Johnny spreekt eerst zijn hele bericht uit. De server start de keuzeperiode
@@ -628,6 +646,17 @@ app.get('/api/events/:id',(req,res)=>{
   if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang tot dit evenement.'});
   res.json({event,teams:db.teams.filter(t=>t.eventId===event.id).map(teamView)});
 });
+// Spelbegeleider bevestigt het afhandelen van een hintverzoek.
+app.post('/api/events/:id/teams/:teamId/hints/:hintId/ack',(req,res)=>{
+  const event=db.events.find(e=>e.id===Number(req.params.id));
+  if(!permittedEvent(req,event))return res.status(403).json({error:'Geen toegang.'});
+  const team=db.teams.find(t=>t.id===Number(req.params.teamId)&&t.eventId===event.id);
+  if(!team)return res.status(404).json({error:'Team niet gevonden.'});
+  const hint=(team.hintRequests||[]).find(h=>h.id===req.params.hintId);
+  if(!hint)return res.status(404).json({error:'Hintverzoek niet gevonden.'});
+  if(!hint.handledAt){hint.handledAt=Date.now();hint.handledBy=staff(req).username;}
+  res.json({ok:true});
+});
 // Evenementen blijven, ook na afloop van alle teams, bewaard.
 // Alleen een bevoegde spelbegeleider/beheerder kan ze bewust verwijderen.
 app.delete('/api/events/:id',(req,res)=>{
@@ -705,7 +734,7 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
       // Geen reset van timer, hints of strafminuten.
     }
   } else if(action==='reset'){
-    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+    Object.assign(team,{currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
   } else if(!['pause','resume','stop','next','previous','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
   team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
   res.json({team:teamView(team)});

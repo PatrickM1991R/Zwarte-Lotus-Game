@@ -102,14 +102,29 @@ function RotjeSecretPage() {
   if(!verified) return <main className="infiltrant-page denied"><section className="infiltrant-card"><div className="section-label">TOEGANG GEWEIGERD</div><h1>Onbekend contactkanaal</h1><p>De dossierverwijzing is niet geldig.</p></section></main>;
   return <main className="infiltrant-page rotje-secret-page"><section className="infiltrant-card">
     <div className="infiltrant-status"><span></span> VERTROUWELIJKE VERBINDING</div>
-    <div className="section-label">ALLEEN VOOR DE AANGEWEZEN RECHERCHEUR</div>
+    <div className="section-label">VERTROUWELIJK · RECHERCHETEAM</div>
     <h1>Een bericht van Rotje Knor</h1>
     <p className="infiltrant-copy">Luister de volledige opname af. Bespreek de informatie daarna met je team.</p>
     <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/rotje-knor.mp3" onEnded={()=>setCompleted(true)} />
     {!completed?<div className="infiltrant-locked"><span>VOLLEDIG AFSPELEN OM HET BERICHT TE BEVESTIGEN</span></div>:
-      <div className="rotje-proof"><span>VERTROUWELIJKE TOEGANGSCODE</span><h2>Toegang tot de transportadministratie</h2><strong>RK-7318</strong><p>Gebruik deze code in het aparte transportsysteem waarvan de inloggegevens in jullie fysieke dossier staan.</p></div>}
+      <div className="rotje-proof"><span>VERTROUWELIJKE TOEGANGSCODE</span><h2>Toegang tot de transportadministratie</h2><strong>RK-7318</strong><p>Gebruik deze autorisatiecode om het beveiligde transportsysteem te openen. Raadpleeg daar het containerregister.</p><a className="primary transport-contact-link" href="#/transport-systeem" target="_blank" rel="noopener noreferrer">Open transportsysteem</a></div>}
   </section></main>;
 }
+
+const johnnyRows = [
+  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere afvoer',status:'Actief'},
+  {container:'JJX-2034',series:'JJX',time:'20:38',route:'Ongeplande overslag',status:'Actief'},
+  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wacht op vrijgave',status:'Actief'},
+  {container:'JJX-2047',series:'JJX',time:'20:38',route:'Chauffeurswissel',status:'Actief'},
+  {container:'JJX-7334',series:'JJX',time:'20:38',route:'Verplaatsing opslagvak',status:'Actief'},
+  {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retourzending',status:'Afgerond'},
+  {container:'RDX-2034',series:'RDX',time:'20:38',route:'Reguliere overslag',status:'Actief'},
+  {container:'MBX-2034',series:'MBX',time:'20:38',route:'Oude route',status:'Geannuleerd'},
+  {container:'JJX-2088',series:'JJX',time:'20:38',route:'Extra transportorder',status:'Actief'},
+  {container:'JJX-2147',series:'JJX',time:'21:47',route:'Ongeplande overslag',status:'Actief'},
+  {container:'RDX-2041',series:'RDX',time:'20:38',route:'Ongeplande overslag',status:'Actief'},
+  {container:'JJX-2234',series:'JJX',time:'22:34',route:'Spoedmutatie',status:'Actief'}
+];
 
 function TransportSystemPage() {
   const [code,setCode]=useState('');
@@ -150,7 +165,12 @@ function TransportSystemPage() {
         <tr><th>Nieuwe containerregistratie</th><td>{record.newContainerSeries}</td></tr>
         <tr><th>Mutatie</th><td>{record.action}</td></tr>
       </tbody></table>
-      <p className="transport-record-foot">Dit is een registratie uit het transportsysteem. Het vervangende containernummer is hier niet vrijgegeven.</p>
+      <div className="transport-registry">
+        <div className="transport-registry-heading"><span>BIJLAGE · CONTAINERREGISTER</span><h2>Gewijzigde zendingen in de haven</h2><p>Vergelijk de wijzigingstijd, de containerreeks en het type handeling. Niet elke registratie van 20:38 betreft een ongeplande fysieke overslag.</p></div>
+        <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Registratie</th><th>Status</th></tr></thead><tbody>{johnnyRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
+        <p className="manifest-count">{johnnyRows.length} containers in het register. Identificeer de juiste zending en geef het containernummer door in jullie lopende onderzoek.</p>
+      </div>
+      <p className="transport-record-foot">De bronregistratie vermeldt geen individueel containernummer. Dat bepalen jullie aan de hand van het register en jullie overige aanwijzingen.</p>
     </div>}
   </section></main>;
 }
@@ -256,11 +276,16 @@ function App() {
   };
 
   const requestHint = async (text) => {
-    setFeedback(text);
     try {
-      const r = await apiFetch(`${API}/api/teams/${team.id}/hint`, { method:'POST' });
-      const j = await r.json(); if (r.ok) setTeam(j.team);
-    } catch {}
+      const r = await apiFetch(`${API}/api/teams/${team.id}/hint`, {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({requestedHint:text})
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Hint aanvragen is mislukt.');
+      setTeam(j.team);
+      setFeedback('Hintverzoek verstuurd naar de spelbegeleider. Deze ziet jullie team en spelfase in het live dashboard.');
+    } catch (e) {setFeedback(e.message || 'Verbinding met de spelbegeleider mislukt.');}
   };
 
   const startJohnnyOffer = async () => {
@@ -434,6 +459,7 @@ function StaffPortal({onExit}) {
   const [event,setEvent]=useState(null);
   const [teams,setTeams]=useState([]);
   const [notice,setNotice]=useState('');
+  const [activeHint,setActiveHint]=useState(null);
   const [busy,setBusy]=useState(false);
   const [staffUsers,setStaffUsers]=useState([]);
   const [editor,setEditor]=useState(null);
@@ -448,7 +474,18 @@ function StaffPortal({onExit}) {
     return data;
   }
   async function refreshEvents(){const data=await request('/api/events');setEvents(data.events);}
-  async function refreshEvent(id){const data=await request(`/api/events/${id}`);setEvent(data.event);setTeams(data.teams);}
+  async function refreshEvent(id){
+    const data=await request(`/api/events/${id}`);setEvent(data.event);setTeams(data.teams);
+    const waiting=data.teams.flatMap(t=>(t.hintRequests||[]).filter(h=>!h.handledAt).map(h=>({...h,teamId:t.id,teamName:t.teamName}))).sort((a,b)=>a.at-b.at);
+    setActiveHint(waiting[0]||null);
+  }
+  async function acknowledgeHint(){
+    if(!activeHint||!event)return;
+    try {
+      await request(`/api/events/${event.id}/teams/${activeHint.teamId}/hints/${activeHint.id}/ack`,{method:'POST'});
+      await refreshEvent(event.id);
+    } catch(e){setNotice(e.message);}
+  }
   useEffect(()=>{
     if(!localStorage.getItem('lotus_staff_token'))return;
     request('/api/auth/me').then(j=>{setUser(j.user);refreshEvents().catch(()=>{});}).catch(()=>localStorage.removeItem('lotus_staff_token'));
@@ -511,10 +548,11 @@ function StaffPortal({onExit}) {
   return <main className="scene-page staff-scene"><div className="app-shell wide">
     <section className="topbar"><div><span className="chip">DE ZWARTE LOTUS · {user.role==='admin'?'BEHEERDER':'SPELBEGELEIDER'}</span><h1>Spelbeheer</h1></div><button className="secondary" onClick={()=>{localStorage.removeItem('lotus_staff_token');setUser(null);onExit();}}>Uitloggen</button></section>
     <div className="staff-nav"><button className="secondary" onClick={()=>{setTab('events');setEvent(null);refreshEvents().catch(e=>setNotice(e.message));}}>Mijn evenementen</button>{user.role==='admin'&&<><button className="secondary" onClick={loadEditor}>Spel-editor</button><button className="secondary" onClick={async()=>{try{const j=await request('/api/admin/facilitators');setStaffUsers(j.users);setTab('staff');}catch(e){setNotice(e.message);}}}>Accounts</button></>}</div>
+    {activeHint&&event&&<div className="staff-hint-backdrop" role="presentation"><div className="staff-hint-modal" role="alertdialog" aria-modal="true" aria-label="Nieuw hintverzoek"><span>🔔 NIEUW HINTVERZOEK</span><h2>{activeHint.teamName}</h2><p>Fase: {phaseLabels[activeHint.phase]||activeHint.phase}</p><p>Het team vraagt om hulp. Ga naar het team en geef de hint persoonlijk.</p><button className="primary" onClick={acknowledgeHint}>Hintverzoek afhandelen</button></div></div>}
     {notice&&<div className="feedback" role="status">{notice}</div>}
     {tab==='events'&&!event&&<><section className="panel"><h2>Nieuw evenement</h2><form onSubmit={createEvent} className="staff-form"><label>Evenementnaam<input name="name" required/></label><button className="primary" disabled={busy}>Evenement aanmaken</button></form></section><section className="panel"><h2>Mijn evenementen</h2><div className="staff-event-grid">{events.map(e=><button key={e.id} className="staff-event-button" onClick={()=>refreshEvent(e.id).catch(x=>setNotice(x.message))}><strong>{e.name}</strong><small>{e.teamCount} teams · {e.status==='closed'?'Afgesloten':'Open'}</small></button>)}</div></section></>}
     {tab==='events'&&event&&<><section className="panel"><div className="staff-heading"><div><button className="secondary" onClick={()=>setEvent(null)}>← Evenementen</button><h2>{event.name}</h2><p>Deel deze code met alle teams. De timer start automatisch zodra een team het spel begint.</p></div><div className="staff-code"><span>EVENEMENTCODE</span><strong>{event.code}</strong><button className="secondary" onClick={()=>navigator.clipboard.writeText(event.code)}>Kopieer</button></div></div><p>Status: <strong>{event.status==='closed'?'Afgesloten':'Open voor deelname'}</strong> · {teams.length} teams</p>{event.status!=='closed'&&<button className="secondary" onClick={async()=>{if(!confirm('Evenement afsluiten? Alle nog actieve teams worden gestopt. De ranglijst en alle gegevens blijven bewaard.'))return;try{await request(`/api/events/${event.id}/close`,{method:'POST'});await refreshEvent(event.id);}catch(e){setNotice(e.message);}}}>Evenement afsluiten (resultaten bewaren)</button>}<p className="staff-retention-note">🔒 Dit evenement en de ranglijst blijven bestaan totdat jij ze handmatig verwijdert. Afsluiten verwijdert niets.</p><button className="staff-delete-event" onClick={deleteEvent}>Evenement en resultaten definitief verwijderen…</button></section>
-    <section className="panel staff-table"><h2>Live dashboard</h2><table><thead><tr><th>Team</th><th>Fase</th><th>Route</th><th>Speeltijd</th><th>Hints</th><th>Straf</th><th>Status</th><th>Eindtijd</th><th>Bediening</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase]||t.currentPhase}</td><td>{t.chosenRoute||'—'}</td><td>{formatDuration(t.elapsedSeconds)}</td><td>{t.hintCount}</td><td>+{t.penaltyMinutes||0} min</td><td>{t.pausedAt?'Gepauzeerd':t.status}</td><td>{localTime(t.finishedAt||t.stoppedAt)}</td><td><div className="staff-actions">{t.status!=='klaar'&&t.status!=='gestopt'&&<>{t.pausedAt?<button onClick={()=>teamAction(t,'resume')}>Hervat</button>:<button onClick={()=>teamAction(t,'pause')}>Pauzeer</button>}<button onClick={()=>teamAction(t,'previous')} disabled={t.currentPhase==='START'}>← Vorige fase</button><button onClick={()=>teamAction(t,'next')}>Volgende fase →</button><button onClick={()=>teamAction(t,'stop')}>Stop</button></>}<button onClick={()=>teamAction(t,'reset')}>Reset</button></div></td></tr>)}</tbody></table>{teams.length===0&&<p>Er zijn nog geen teams ingelogd.</p>}</section>
+    <section className="panel staff-table"><h2>Live dashboard</h2><p>Openstaande hintverzoeken verschijnen direct als pop-up en blijven bewaard totdat je ze afhandelt.</p><table><thead><tr><th>Team</th><th>Fase</th><th>Route</th><th>Speeltijd</th><th>Hints</th><th>Straf</th><th>Status</th><th>Eindtijd</th><th>Bediening</th></tr></thead><tbody>{teams.map(t=><tr key={t.id}><td><strong>{t.teamName}</strong></td><td>{phaseLabels[t.currentPhase]||t.currentPhase}</td><td>{t.chosenRoute||'—'}</td><td>{formatDuration(t.elapsedSeconds)}</td><td>{t.hintCount}{(t.hintRequests||[]).some(h=>!h.handledAt)&&<strong className="staff-hint-pending"> · 🔔 HULP GEVRAAGD</strong>}</td><td>+{t.penaltyMinutes||0} min</td><td>{t.pausedAt?'Gepauzeerd':t.status}</td><td>{localTime(t.finishedAt||t.stoppedAt)}</td><td><div className="staff-actions">{t.status!=='klaar'&&t.status!=='gestopt'&&<>{t.pausedAt?<button onClick={()=>teamAction(t,'resume')}>Hervat</button>:<button onClick={()=>teamAction(t,'pause')}>Pauzeer</button>}<button onClick={()=>teamAction(t,'previous')} disabled={t.currentPhase==='START'}>← Vorige fase</button><button onClick={()=>teamAction(t,'next')}>Volgende fase →</button><button onClick={()=>teamAction(t,'stop')}>Stop</button></>}<button onClick={()=>teamAction(t,'reset')}>Reset</button></div></td></tr>)}</tbody></table>{teams.length===0&&<p>Er zijn nog geen teams ingelogd.</p>}</section>
     <section className="panel staff-leaderboard"><div className="staff-leaderboard-head"><div><span>OFFICIËLE EINDSTAND</span><h2>🏆 Leaderboard</h2><p>Rangschikking op totale eindtijd, inclusief strafminuten. De ranglijst blijft beschikbaar na afloop en na afsluiten van het evenement.</p></div><strong>{finishedTeams.length} / {teams.length} teams klaar</strong></div>{finishedTeams.length===0?<p className="leaderboard-empty">Nog geen afgeronde teams. Resultaten verschijnen hier automatisch zodra een team het spel voltooit.</p>:<div className="leaderboard-scroll"><table className="leaderboard-table"><thead><tr><th>Plaats</th><th>Team</th><th>Speeltijd</th><th>Straf</th><th>Eindtijd inclusief straf</th></tr></thead><tbody>{finishedTeams.map((t,i)=><tr key={t.id}><td><span className={`leaderboard-rank ${i<3?'podium':''}`}>{i+1}</span></td><td><strong>{t.teamName}</strong><small>{t.chosenRoute||'Route onbekend'}</small></td><td>{formatDuration(Math.max(0,t.elapsedSeconds-(t.penaltyMinutes||0)*60))}</td><td>+{t.penaltyMinutes||0} min</td><td><strong>{formatDuration(t.elapsedSeconds)}</strong></td></tr>)}</tbody></table></div>}</section></>}
     {tab==='staff'&&user.role==='admin'&&<><section className="panel"><h2>Spelbegeleider aanmaken</h2><form className="staff-form" onSubmit={addFacilitator}><label>Gebruikersnaam<input name="username" required/></label><label>Wachtwoord (minimaal 12 tekens)<input name="password" type="password" minLength={12} required/></label><button className="primary">Account aanmaken</button></form></section><section className="panel"><h2>Accounts</h2>{staffUsers.map(u=><p key={u.id}>{u.username} · {u.role}</p>)}</section></>}
     {tab==='editor'&&user.role==='admin'&&editor&&<section className="panel"><h2>Spel-editor · antwoordcontrole</h2><p>Je kunt hier de geaccepteerde antwoorden voor de basispuzzels en aanvullende instructies instellen. Complexe routes en verhaalscènes staan nog in de broncode.</p><form onSubmit={saveEditor} className="staff-form"><label>Puzzel<select value={editPhase} onChange={e=>selectPhase(e.target.value)}>{editor.phases.map(p=><option key={p} value={p}>{phaseLabels[p]||p}</option>)}</select></label><label>Geaccepteerde antwoorden (één per regel)<textarea rows={7} value={answers} onChange={e=>setAnswers(e.target.value)} required/></label><label>Aanvullende instructie voor spelers (optioneel)<textarea rows={4} value={note} onChange={e=>setNote(e.target.value)}/></label><button className="primary">Opslaan</button></form></section>}
@@ -622,7 +660,7 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
 
     <form className={`opening-puzzles evidence-board ${briefingDone?'unlocked':'locked'}`} onSubmit={submit}>
       <article className="opening-puzzle-card evidence-card opening-reconstruction">
-        <div className="opening-section-header question-heading"><span className="opening-step-index">02</span><div><span className="opening-overline">ONDERZOEK · BEVEILIGDE TOEGANG</span><h3>Reconstrueer de code van het onderzoek.</h3><p>Gebruik van beide bewijsstukken de laatste twee cijfers. Neem twee cijfers uit de camerabeelden en twee uit het alarmbandje. Combineer ze tot de viercijferige onderzoekscode.</p></div></div>
+        <div className="opening-section-header question-heading"><span className="opening-step-index">02</span><div><span className="opening-overline">ONDERZOEK · BEVEILIGDE TOEGANG</span><h3>Reconstrueer de code van het onderzoek.</h3><p>Gebruik van beide bewijsstukken de laatste twee cijfers. Neem twee cijfers uit de camerabeelden en twee uit het alarmbandje. Combineer ze tot de viercijferige onderzoekscode. De volgorde waarin de bewijsstukken worden aangeboden, hoeft niet de volgorde van de code te zijn.</p></div></div>
         <div className="opening-evidence-grid">
           <div className="opening-evidence-reference"><span className="evidence-number">BEWIJSSTUK 01</span><span className="evidence-symbol" aria-hidden="true">▣</span><strong>Camerabeelden</strong><p>Raadpleeg de beelden die jullie via het onderzoek hebben ontvangen.</p><small>Te vinden in jullie onderzoeksdossier</small></div>
           <div className="opening-alarm-evidence"><div className="opening-alarm-evidence-head"><span>BEWIJSSTUK 02 · AUDIO</span><strong>Alarmregistratie Maison Beaumont</strong><small>Beluister het beveiligingsbericht. Je kunt het zo vaak opnieuw afspelen als nodig.</small></div><audio controls preload="metadata" src="/assets/alarmfragment.mp3" aria-label="Alarmfragment Maison Beaumont" /></div>
@@ -652,12 +690,13 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,checkStep,requestHint
   const [suspectCount,setSuspectCount]=useState(team.completedSteps?.DOSSIER?.count?'4':'');
   const [countVerified,setCountVerified]=useState(Boolean(team.completedSteps?.DOSSIER?.count));
   const [checkingCount,setCheckingCount]=useState(false);
-  const [entries,setEntries]=useState(()=>team.completedSteps?.DOSSIER?.count?Array.from({length:4},()=>({name:'',skill:''})):[]);
+  const [entries,setEntries]=useState(()=>team.completedSteps?.DOSSIER?.count?Array.from({length:4},()=>({name:'',skill:'',nameOk:false,skillOk:false})):[]);
+  const [checkingRow,setCheckingRow]=useState('');
 
   const skillOptions=[
     {value:'techniek',label:'Techniek / beveiliging'},
     {value:'documenten',label:'Documenten / vervalsing'},
-    {value:'koper',label:'Koper / afzet'},
+    {value:'koper',label:'Handel / koper / afzet'},
     {value:'transport',label:'Transport / smokkel'},
     {value:'afleiding',label:'Afleiding / zakkenrollen'},
     {value:'identiteit',label:'Identiteit / vermomming'},
@@ -665,64 +704,71 @@ function DossierPuzzle({team,loading,feedback,submitAnswer,checkStep,requestHint
     {value:'financien',label:'Financiën / geldstromen'}
   ];
 
-  const changeCount=(value)=>{
-    setSuspectCount(value);
-    setCountVerified(false);
-    setEntries([]);
-  };
-
+  const changeCount=(value)=>{setSuspectCount(value);setCountVerified(false);setEntries([]);};
   const verifyCount=async()=>{
     if(!/^[1-8]$/.test(String(suspectCount)))return;
     setCheckingCount(true);
     try {
       const ok=await checkStep('DOSSIER','count',String(suspectCount));
-      if(ok){
-        setCountVerified(true);
-        setEntries(Array.from({length:Number(suspectCount)},()=>({name:'',skill:''})));
-      }
+      if(ok){setCountVerified(true);setEntries(Array.from({length:Number(suspectCount)},()=>({name:'',skill:'',nameOk:false,skillOk:false})));}
     } finally {setCheckingCount(false);}
   };
-
-  const updateEntry=(index,key,value)=>setEntries(prev=>prev.map((row,i)=>i===index?{...row,[key]:value}:row));
+  const updateEntry=(index,key,value)=>setEntries(prev=>prev.map((row,i)=>i===index?{
+    ...row,[key]:value,...(key==='name'?{nameOk:false,skill:'',skillOk:false}:{skillOk:false})
+  }:row));
+  const verifyName=async(index)=>{
+    const entry=entries[index];if(!entry?.name.trim())return;
+    if(entries.some((row,i)=>i!==index && row.nameOk && row.name.trim().toLowerCase()===entry.name.trim().toLowerCase()))return;
+    setCheckingRow(`name-${index}`);
+    try {const ok=await checkStep('DOSSIER','suspect_name',entry.name);if(ok)setEntries(rows=>rows.map((row,i)=>i===index?{...row,nameOk:true}:row));}
+    finally {setCheckingRow('');}
+  };
+  const verifySkill=async(index)=>{
+    const entry=entries[index];if(!entry?.nameOk||!entry.skill)return;
+    setCheckingRow(`skill-${index}`);
+    try {const ok=await checkStep('DOSSIER','suspect_skill',JSON.stringify({name:entry.name,skill:entry.skill}));if(ok)setEntries(rows=>rows.map((row,i)=>i===index?{...row,skillOk:true}:row));}
+    finally {setCheckingRow('');}
+  };
   const count=Number(suspectCount)||0;
-  const complete=countVerified&&count>0&&entries.length===count&&entries.every(x=>x.name.trim()&&x.skill);
-  const submit=async()=>{if(!complete)return;await submitAnswer('DOSSIER',{count,entries});};
+  const complete=countVerified&&entries.length===count&&entries.every(x=>x.nameOk&&x.skillOk);
+  const submit=async()=>{if(complete)await submitAnswer('DOSSIER',{count,entries:entries.map(({name,skill})=>({name,skill}))});};
 
   return <section className="panel dossier-ready evidence-reconstruction physical-dossier-phase">
     <div className="success-seal">TOEGANG VERLEEND</div>
     <div className="section-label">FASE 2 · RECONSTRUCTIE</div>
     <div className="mission-card inspector-summons" role="note"><span><strong>DRINGEND BERICHT VAN DE INSPECTEUR</strong></span><strong>Hé, nietsnutten!</strong><p>Ik heb eindelijk die verdomde verdachtenprofielen binnengekregen!</p><p>Wat staan jullie daar nog te kijken? Pak die dossiers erbij en analyseer ze grondig!</p><p>Bestudeer hun achtergronden, strafbladen, specialiteiten en onderlinge contacten. <strong>Ik wil weten wie de hoofdverdachten zijn in deze diamantroof!</strong></p><p>En waag het niet om zomaar wat namen te roepen. Ik verwacht dat jullie je conclusies kunnen onderbouwen!</p><strong>HUP! AAN HET WERK!</strong></div>
-    <h2>Wie zijn verdacht van de roof?</h2>
-    <p>Gebruik jullie gezamenlijke onderzoeksdossier. Leg de conclusie van het team hieronder vast.</p>
+    <h2>Wie beschikken over de kwaliteiten om deze roof uit te voeren?</h2>
+    <p>Een diamantroof vereist verschillende vaardigheden: de beveiliging omzeilen, documenten of toegang regelen, de buit vervoeren en de diamant vervolgens verhandelen en verkopen. Vergelijk de acht persoonsdossiers. Zoek de verdachten die samen over de benodigde kwaliteiten beschikken. Niet iedereen met een strafblad hoeft betrokken te zijn.</p>
 
     <div className="dossier-count-card dossier-count-check">
-      <div className="dossier-count-heading"><span>ONDERZOEKSVRAAG 01</span><strong>Hoeveel hoofdverdachten zijn er?</strong><p>Analyseer de acht persoonsdossiers en bepaal hoeveel personen rechtstreeks bij de roof betrokken kunnen zijn.</p></div>
-      <div className="dossier-count-controls">
-        <label htmlFor="suspect-count-input">Aantal hoofdverdachten
-          <input id="suspect-count-input" type="number" min="1" max="8" inputMode="numeric" disabled={countVerified} value={suspectCount} onChange={e=>changeCount(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!countVerified){e.preventDefault();verifyCount();}}} />
-        </label>
-        {!countVerified?<button type="button" className="primary" disabled={checkingCount||loading||!/^[1-8]$/.test(String(suspectCount))} onClick={verifyCount}>{checkingCount?'Controleren...':'Controleer aantal'}</button>:<div className="dossier-count-success" role="status">✓ Aantal bevestigd · ga verder met de personen</div>}
-      </div>
-      {!countVerified&&<small>Let op: een onjuist antwoord levert 1 minuut tijdstraf op.</small>}
+      <div className="dossier-count-heading"><span>ONDERZOEKSVRAAG 01</span><strong>Hoeveel hoofdverdachten beschikken samen over deze kwaliteiten?</strong><p>Bepaal eerst hoeveel personen je nodig acht voor de uitvoering, het vervoer en de afzet van de diamant.</p></div>
+      <div className="dossier-count-controls"><label htmlFor="suspect-count-input">Aantal hoofdverdachten
+        <input id="suspect-count-input" type="number" min="1" max="8" inputMode="numeric" disabled={countVerified} value={suspectCount} onChange={e=>changeCount(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!countVerified){e.preventDefault();verifyCount();}}} />
+      </label>
+      {!countVerified?<button type="button" className="primary" disabled={checkingCount||loading||!/^[1-8]$/.test(String(suspectCount))} onClick={verifyCount}>{checkingCount?'Controleren...':'Controleer aantal'}</button>:<div className="dossier-count-success" role="status">✓ Aantal bevestigd · ga verder met de personen</div>}</div>
+      {!countVerified&&<small>Een onjuist antwoord levert 1 minuut tijdstraf op.</small>}
     </div>
 
     {countVerified&&count>0&&<div className="physical-suspect-entry-list">
+      <h3>ONDERZOEKSVRAAG 02 · Identificeer de verdachten en hun specialismen</h3>
+      <p>Controleer eerst per persoon of deze tot de vier hoofdverdachten behoort. Na een juiste naam wordt deze groen en kun je de bijbehorende kwaliteit controleren. Ook de juiste kwaliteit kleurt groen.</p>
       {entries.map((entry,index)=><div className="physical-suspect-entry" key={index}>
         <div className="physical-suspect-number">{String(index+1).padStart(2,'0')}</div>
         <label>Welke verdachte?
-          <input value={entry.name} onChange={e=>updateEntry(index,'name',e.target.value)} autoComplete="off" />
+          <input className={entry.nameOk?'dossier-verified-input':''} value={entry.name} disabled={entry.nameOk} onChange={e=>updateEntry(index,'name',e.target.value)} autoComplete="off" placeholder="Voor- en achternaam" />
         </label>
-        <label>Door welke vaardigheid is deze persoon verdacht?
-          <select value={entry.skill} onChange={e=>updateEntry(index,'skill',e.target.value)}>
-            <option value="">Kies vaardigheid…</option>
-            {skillOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        {entry.nameOk?<div className="dossier-row-ok" role="status">✓ Verdachte correct</div>:<button type="button" className="secondary" disabled={loading||Boolean(checkingRow)||!entry.name.trim()||entries.some((row,i)=>i!==index&&row.nameOk&&row.name.trim().toLowerCase()===entry.name.trim().toLowerCase())} onClick={()=>verifyName(index)}>{checkingRow===`name-${index}`?'Controleren...':'Controleer verdachte'}</button>}
+        {entry.nameOk&&<label>Welke kwaliteit maakt deze persoon relevant?
+          <select className={entry.skillOk?'dossier-verified-input':''} value={entry.skill} disabled={entry.skillOk} onChange={e=>updateEntry(index,'skill',e.target.value)}>
+            <option value="">Kies vaardigheid…</option>{skillOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-        </label>
+        </label>}
+        {entry.nameOk&&(entry.skillOk?<div className="dossier-row-ok" role="status">✓ Kwaliteit correct</div>:<button type="button" className="secondary" disabled={loading||Boolean(checkingRow)||!entry.skill} onClick={()=>verifySkill(index)}>{checkingRow===`skill-${index}`?'Controleren...':'Controleer kwaliteit'}</button>)}
       </div>)}
     </div>}
 
     <div className="dossier-submit-footer simple"><button className="primary" type="button" disabled={loading||!complete} onClick={submit}>{loading?'Controleren...':'Bevestig conclusie'}</button></div>
-    <button className="hint-link" onClick={()=>requestHint('Hint: kijk niet alleen naar wat iemand gedaan kan hebben, maar welke verschillende vaardigheden noodzakelijk waren om de roof uit te voeren.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint('Hint: kijk naar de combinatie van beveiliging, documenten, transport en handel in de gestolen diamant.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
@@ -864,20 +910,6 @@ function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
   </section>;
 }
 
-const johnnyRows = [
-  {container:'JJX-1841',series:'JJX',time:'18:41',route:'Reguliere afvoer',status:'Actief'},
-  {container:'JJX-2034',series:'JJX',time:'20:38',route:'Ongeplande overslag',status:'Actief'},
-  {container:'JJX-2134',series:'JJX',time:'21:34',route:'Wacht op vrijgave',status:'Actief'},
-  {container:'JJX-2047',series:'JJX',time:'20:38',route:'Chauffeurswissel',status:'Actief'},
-  {container:'JJX-7334',series:'JJX',time:'20:38',route:'Verplaatsing opslagvak',status:'Actief'},
-  {container:'JJX-1907',series:'JJX',time:'19:07',route:'Retourzending',status:'Afgerond'},
-  {container:'RDX-2034',series:'RDX',time:'20:38',route:'Reguliere overslag',status:'Actief'},
-  {container:'MBX-2034',series:'MBX',time:'20:38',route:'Oude route',status:'Geannuleerd'},
-  {container:'JJX-2088',series:'JJX',time:'20:38',route:'Extra transportorder',status:'Actief'},
-  {container:'JJX-2147',series:'JJX',time:'21:47',route:'Ongeplande overslag',status:'Actief'},
-  {container:'RDX-2041',series:'RDX',time:'20:38',route:'Ongeplande overslag',status:'Actief'},
-  {container:'JJX-2234',series:'JJX',time:'22:34',route:'Spoedmutatie',status:'Actief'}
-];
 
 function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   const [container,setContainer]=useState('');
@@ -885,21 +917,25 @@ function JohnnyContainerPuzzle({loading,feedback,submitAnswer,requestHint}) {
   return <section className="panel container-puzzle">
     <div className="section-label">FASE 6 · GEWIJZIGDE ZENDING</div>
     <div className="johnny-transport-story">
-      <span className="johnny-transport-kicker">VERTROUWELIJKE RECHERCHEBRIEFING · TRANSPORTFRAUDE</span>
-      <h2>De oorspronkelijke zending is verdwenen.</h2>
-      <p>Jullie hebben het oorspronkelijke transportplan gereconstrueerd. Toch klopt er iets niet: de lading bevindt zich niet meer op de plek die in de transportdocumenten staat. In de administratie duiken tegenstrijdige registraties op.</p>
-      <p>Volgens jullie eerdere onderzoek kon de zending om <strong>20:28</strong> de haven bereiken. Kort daarna is de oorspronkelijke route gewijzigd. Wie daarvoor verantwoordelijk is en waar de lading naartoe is gebracht, is nog onbekend.</p>
-      <div className="johnny-transport-dispatch"><span>BERICHT VAN DE INSPECTEUR</span><strong>“Luister goed, nietsnutten! De oorspronkelijke zending is spoorloos. Er is aan de transportadministratie gesleuteld, maar door wie? Zoek uit onder welke nieuwe registratie de lading is verdwenen. En ik wil bewijs, geen wilde gok!”</strong></div>
-      <div className="johnny-transport-mission"><span>JULLIE OPDRACHT</span><h3>Waar is De Zwarte Lotus naartoe verplaatst?</h3><p>Vergelijk de wijzigingstijd in het beveiligde transportsysteem met het containerregister hieronder. Zoek de registratie die past bij de afwijkende overslag en bepaal het nieuwe containernummer.</p></div>
+      <span className="johnny-transport-kicker">DRINGEND BERICHT · HOOFDINSPECTEUR</span>
+      <h2>De zending is spoorloos.</h2>
+      <p>Het oorspronkelijke transport is gereconstrueerd, maar de lading is verdwenen. De reguliere havenadministratie levert geen sluitend antwoord op. Jullie moeten achterhalen onder welk nieuw containernummer de zending verder is gegaan.</p>
+      <div className="johnny-transport-dispatch"><span>DE INSPECTEUR</span><strong>“Luister goed, nietsnutten! Ik kan jullie geen bruikbaar containerregister geven. Zoek contact met de infiltrant. Die kan jullie toegang verschaffen tot de afgeschermde transportadministratie. Daar moet het bewijs te vinden zijn. En kom niet terug met een gok!”</strong></div>
+      <div className="johnny-transport-mission"><span>JULLIE OPDRACHT</span><h3>Neem contact op met de infiltrant</h3><p>Gebruik de contactcode hieronder om zijn beveiligde bericht te openen. Luister het bericht volledig af en gebruik de ontvangen autorisatiecode voor het transportsysteem. In dat systeem vinden jullie het containerregister.</p></div>
     </div>
-    <div className="manifest-wrap"><table className="manifest"><thead><tr><th>Container</th><th>Reeks</th><th>Wijziging</th><th>Registratie</th><th>Status</th></tr></thead><tbody>{johnnyRows.map(r=><tr key={r.container}><td><strong>{r.container}</strong></td><td>{r.series}</td><td>{r.time}</td><td>{r.route}</td><td>{r.status}</td></tr>)}</tbody></table></div>
-    <div className="manifest-count">{johnnyRows.length} containers in het register</div>
+    <div className="transport-contact-card">
+      <span>BEVEILIGD INFILTRANTENKANAAL · CONTACTCODE</span>
+      <strong>CK-842</strong>
+      <a className="primary transport-contact-link" href="#/rotje?code=CK-842" target="_blank" rel="noopener noreferrer">Open contact met de infiltrant</a>
+      <p>Deze link opent een apart tabblad. Laat de onderzoekspagina open staan om straks de conclusie in te voeren.</p>
+    </div>
     <form className="final-confirm" onSubmit={finalSubmit}>
-      <span>CONCLUSIE</span><h3>Welk containernummer hoort bij de gewijzigde zending?</h3>
+      <span>CONCLUSIE · NA ONDERZOEK</span><h3>Onder welk containernummer is de zending verdergegaan?</h3>
+      <p>Vul hier het containernummer in dat jullie uit de gegevens van de infiltrant en het beveiligde transportsysteem hebben afgeleid.</p>
       <label>Containernummer<input value={container} onChange={e=>setContainer(e.target.value)} autoComplete="off" required/></label>
       <button className="primary" disabled={loading}>{loading?'Controleren...':'Bevestig containernummer'}</button>
     </form>
-    <button className="hint-link" onClick={()=>requestHint('Hint: vergelijk de mutatietijd en transportregistratie uit het afgeschermde transportsysteem met de volledige containerlijst.')}>Hint aanvragen</button>
+    <button className="hint-link" onClick={()=>requestHint('Hint: neem contact op met de infiltrant met CK-842. Gebruik daarna zijn autorisatiecode om het containerregister in het transportsysteem te raadplegen. Vergelijk de gewijzigde reeks, de tijd en het soort overslag.')}>Hint aanvragen</button>
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
 }
