@@ -784,3 +784,23 @@
 .leaderboard-rank.podium{background:rgba(201,162,39,.14);border-color:#c9a227;color:#f2ce72}
 .leaderboard-empty{padding:20px;border:1px dashed #5d4c5a;border-radius:10px;color:#d3c1d3}
 @media(max-width:700px){.staff-leaderboard-head{flex-direction:column}}
+
+/* v9.4 · Verhaalintroductie bij Johnny's gewijzigde container */
+.johnny-transport-story{margin:12px 0 25px;max-width:850px}
+.johnny-transport-kicker{display:block;margin-bottom:12px;color:#c9a227;font-size:10px;font-weight:900;letter-spacing:.18em}
+.johnny-transport-story>h2{font-family:Georgia,serif;color:#f0dfad;font-size:clamp(29px,4.4vw,44px);line-height:1.13;margin:0 0 18px}
+.johnny-transport-story>p{max-width:760px;font-size:15px;line-height:1.75;color:#d5cbd7;margin:0 0 13px}
+.johnny-transport-story>p strong{color:#f1d98b}
+.johnny-transport-dispatch{display:grid;gap:9px;margin:22px 0;padding:20px 22px;border-left:4px solid #c9a227;border-radius:13px;background:#0b0910;border-top:1px solid #3c3141;border-right:1px solid #3c3141;border-bottom:1px solid #3c3141}
+.johnny-transport-dispatch span,.johnny-transport-mission>span{color:#c9a227;font-size:10px;letter-spacing:.16em;font-weight:900}
+.johnny-transport-dispatch strong{font-weight:650;font-size:16px;line-height:1.65;color:#f0e4ed}
+.johnny-transport-mission{padding:20px 22px;border:1px solid rgba(201,162,39,.37);border-radius:14px;background:rgba(201,162,39,.055)}
+.johnny-transport-mission h3{margin:8px 0;color:#f0dfad;font-family:Georgia,serif;font-size:25px}
+.johnny-transport-mission p{margin:0;line-height:1.7;color:#ccc1d0}
+@media(max-width:640px){.johnny-transport-dispatch,.johnny-transport-mission{padding:16px}}
+
+/* v9.6: duidelijke, leesbare strafmelding bij overstap naar infiltratie. */
+.police-detour-warning { margin: 20px 0; border: 1px solid #c9a227; border-radius: 12px; background: rgba(201,162,39,.1); padding: 18px 20px; }
+.police-detour-warning strong { display:block; color: #e5c15a; letter-spacing: .04em; font-size: .86rem; }
+.police-detour-warning p { margin: 8px 0 0; line-height: 1.55; }
+.police-route-panel .inspector-final-briefing .final-inspector-message p { line-height: 1.7; }

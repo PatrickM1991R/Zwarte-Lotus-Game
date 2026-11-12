@@ -192,14 +192,6 @@ const phaseNext = {
   KLUIS: 'LOTUS_GEVONDEN',
   LOTUS_GEVONDEN: 'JOHNNY_MELDEN',
   EINDOPERATIE: 'RESULTAAT',
-  POLITIE_BRIEFING: 'POLITIE_CAMERA',
-  POLITIE_CAMERA: 'POLITIE_LEK',
-  POLITIE_LEK: 'POLITIE_INVAL',
-  POLITIE_INVAL: 'POLITIE_COMMUNICATIE',
-  POLITIE_COMMUNICATIE: 'POLITIE_DIAMANT',
-  POLITIE_DIAMANT: 'POLITIE_COORDINATIE',
-  POLITIE_COORDINATIE: 'POLITIE_FINALE',
-  POLITIE_FINALE: 'POLITIE_RESULTAAT'
 };
 
 const FINAL_DECISION_MS = 3 * 60 * 1000;
@@ -224,7 +216,17 @@ function enforceFinalDeadline(team) {
     persist();
   }
 }
+const RETIRED_POLICE_PHASES = new Set(['POLITIE_CAMERA','POLITIE_LEK','POLITIE_INVAL',
+  'POLITIE_COMMUNICATIE','POLITIE_DIAMANT','POLITIE_COORDINATIE','POLITIE_FINALE']);
+// Bestaande, actieve politieteams mogen na deploy niet vastlopen in vervallen fases.
+function retireOldPolicePhase(team) {
+  if(team.chosenRoute==='Politie' && team.status!=='klaar' && team.status!=='gestopt' && RETIRED_POLICE_PHASES.has(team.currentPhase)) {
+    team.currentPhase='POLITIE_BRIEFING';
+    persist();
+  }
+}
 const enrich = (team) => {
+  retireOldPolicePhase(team);
   enforceFinalDeadline(team);
   return { ...teamView(team), editorNote:db.config.playerNotes?.[team.currentPhase]||'', locationName: db.events.find(e=>e.id===team.eventId)?.name || '', eventName: db.events.find(e=>e.id===team.eventId)?.name || '' };
 };
@@ -261,15 +263,6 @@ const previousPhase = {
   EINDOPERATIE:'JOHNNY_ARRESTATIE',
   KOPER_KEUZE:'EINDOPERATIE',
   RESULTAAT:'KOPER_KEUZE',
-  POLITIE_BRIEFING:'KEUZE',
-  POLITIE_CAMERA:'POLITIE_BRIEFING',
-  POLITIE_LEK:'POLITIE_CAMERA',
-  POLITIE_INVAL:'POLITIE_LEK',
-  POLITIE_COMMUNICATIE:'POLITIE_INVAL',
-  POLITIE_DIAMANT:'POLITIE_COMMUNICATIE',
-  POLITIE_COORDINATIE:'POLITIE_DIAMANT',
-  POLITIE_FINALE:'POLITIE_COORDINATIE',
-  POLITIE_RESULTAAT:'POLITIE_FINALE'
 };
 const localStepAnswers = {
   DOSSIER:{count:['4']},
@@ -378,7 +371,7 @@ app.post('/api/team-login', (req,res)=>{
   if(!name)return res.status(422).json({error:'Vul een teamnaam in.'});
   let team=db.teams.find(t=>t.eventId===event.id && t.teamName.toLowerCase()===name.toLowerCase());
   if(!team){
-    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0};
+    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0,policeDetourPenaltyApplied:false};
     db.teams.push(team);
   }
   res.json({team:enrich(team),token:sign({type:'team',id:team.id})});
@@ -474,32 +467,7 @@ app.post('/api/teams/:id/answer', (req, res) => {
     team.currentPhase='EINDOPERATIE';
     return res.json({correct:true,team:enrich(team)});
   } else if (phase.startsWith('POLITIE_')) {
-    if(team.chosenRoute !== 'Politie') return res.status(409).json({error:'Deze verhaallijn is niet actief.'});
-    const input = req.body.answer || {};
-    const normalized = x => String(x||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'');
-    const matches = (field, expected) => normalized(input[field])===normalized(expected);
-    let valid = false;
-    if(phase==='POLITIE_BRIEFING') valid=String(input).toLowerCase()==='onderzoek starten';
-    if(phase==='POLITIE_CAMERA') valid=matches('camera','06') && matches('exit','west');
-    if(phase==='POLITIE_LEK') {
-      const proof=normalized(input.proof);
-      const cloneEvidence=['gekloondetoegangspas','toegangspasgekloond','gekloondepas','pasgekloond','dubbelepasregistratie','onmogelijkegelijktijdigeaanwezigheid','onmogelijkepasregistratie','pasoptweeplekken','pasoptweeplaatsen','dubbelelocatie','zelfdepasoptweelocaties','vervalstetoegangspas'];
-      valid=matches('suspect','Freddy Flessentrekker') && matches('access','FF27') && cloneEvidence.some(v=>proof.includes(v));
-    }
-    if(phase==='POLITIE_INVAL') valid=String(input).toLowerCase()==='inval afronden' && team.policeRaidStartedAt && (Date.now()-team.policeRaidStartedAt)>=11000;
-    if(phase==='POLITIE_COMMUNICATIE') valid=matches('channel','VV37') && matches('time','2310') && matches('location','Perron 3');
-    if(phase==='POLITIE_DIAMANT') valid=['b12','koelcelb12'].includes(normalized(input.location)) && matches('seal','ZL09');
-    if(phase==='POLITIE_COORDINATIE') valid=matches('code','SCHADUW27') && matches('buyer','Victor Valmont');
-    if(phase==='POLITIE_FINALE') valid=String(input).toLowerCase()==='operatie afronden' && team.policeFinalStartedAt && (Date.now()-team.policeFinalStartedAt)>=16000;
-    if(!valid) {
-      if(['POLITIE_BRIEFING','POLITIE_INVAL','POLITIE_FINALE'].includes(phase)) return res.status(409).json({error:'De operatie kan nog niet worden voortgezet.'});
-      return wrongGameAnswer(res,team);
-    }
-    if(phase==='POLITIE_LEK') team.policeRaidStartedAt=Date.now();
-    if(phase==='POLITIE_COORDINATIE') team.policeFinalStartedAt=Date.now();
-    if(phase==='POLITIE_FINALE') finishTeam(team);
-    team.currentPhase=phaseNext[phase];
-    return res.json({correct:true,team:enrich(team)});
+    return res.status(409).json({error:'De oude politieroute is vervallen. Gebruik het inspecteursscherm om bij Johnny te infiltreren.'});
   } else if (phase === 'EINDOPERATIE') {
     return res.status(409).json({error:'Gebruik het beveiligde koperskanaal.'});
   } else {
@@ -556,6 +524,23 @@ app.post('/api/teams/:id/route', (req, res) => {
   team.currentPhase = route === 'Johnny' ? 'JOHNNY_ROUTE' : 'POLITIE_BRIEFING';
   if(route==='Politie'){team.policeRaidStartedAt=null;team.policeFinalStartedAt=null;team.policeProgress={};}
   res.json({ team: enrich(team) });
+});
+
+// De keuze om de politie in te lichten leidt uitsluitend naar de boze inspecteur.
+// Na bevestiging infiltreert het team alsnog via Johnny, met éénmalig vijf strafminuten.
+app.post('/api/teams/:id/police-infiltrate', (req,res)=>{
+  const team=db.teams.find(t=>t.id===Number(req.params.id));
+  if(!team)return res.status(404).json({error:'Team niet gevonden'});
+  if(team.currentPhase!=='POLITIE_BRIEFING' || team.chosenRoute!=='Politie')
+    return res.status(409).json({error:'Deze overstap is momenteel niet beschikbaar.'});
+  const applied=!team.policeDetourPenaltyApplied;
+  if(applied){
+    addPenaltyMinutes(team,5);
+    team.policeDetourPenaltyApplied=true;
+  }
+  team.chosenRoute='Johnny';
+  team.currentPhase='JOHNNY_ROUTE';
+  res.json({ok:true,penaltySeconds:applied?300:0,team:enrich(team)});
 });
 
 app.get('/api/teams/:id/final-status', (req,res)=>{
@@ -673,8 +658,15 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
   else if(action==='stop' && team.status!=='klaar'){team.stoppedAt=Date.now();team.status='gestopt';}
   else if(action==='next' && team.status!=='klaar' && team.status!=='gestopt'){
     const routeSequence=team.chosenRoute==='Politie'
-      ? ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','POLITIE_BRIEFING','POLITIE_CAMERA','POLITIE_LEK','POLITIE_INVAL','POLITIE_COMMUNICATIE','POLITIE_DIAMANT','POLITIE_COORDINATIE','POLITIE_FINALE','POLITIE_RESULTAAT']
+      ? ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','POLITIE_BRIEFING']
       : ['START','ALARM','DOSSIER','ORIGINELE_CONTAINER','ORIGINELE_CONTAINER_BEVESTIGEN','ROTJE_KNOR','NIEUWE_CONTAINER','KEUZE','JOHNNY_ROUTE','KLUIS','LOTUS_GEVONDEN','JOHNNY_MELDEN','JOHNNY_ARRESTATIE','EINDOPERATIE','KOPER_KEUZE','RESULTAAT'];
+    if(team.currentPhase==='POLITIE_BRIEFING'){
+      if(!team.policeDetourPenaltyApplied){addPenaltyMinutes(team,5);team.policeDetourPenaltyApplied=true;}
+      team.chosenRoute='Johnny';
+      team.currentPhase='JOHNNY_ROUTE';
+      team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action:'police-infiltrate'});
+      return res.json({team:teamView(team)});
+    }
     const idx=routeSequence.indexOf(team.currentPhase);
     const nextPhase=routeSequence[idx+1]||phaseNext[team.currentPhase];
     if(!nextPhase)return res.status(409).json({error:'Geen volgende fase beschikbaar.'});
@@ -684,9 +676,37 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
     if(nextPhase==='JOHNNY_ARRESTATIE')team.johnnyArrestStartedAt=Date.now();
     team.currentPhase=nextPhase;
     if(nextPhase==='RESULTAAT'||nextPhase==='POLITIE_RESULTAAT')finishTeam(team);
+  } else if(action==='previous' && team.status!=='klaar' && team.status!=='gestopt'){
+    // Spelbegeleider: zet een team precies een stap terug binnen de gekozen verhaallijn.
+    // De speeltijd en bestaande strafminuten blijven intact.
+    const target=previousPhase[team.currentPhase];
+    if(!target)return res.status(409).json({error:'Dit team staat al aan het begin van het spel.'});
+    const oldPhase=team.currentPhase;
+    team.currentPhase=target;
+    // Heropen de teruggezette puzzel zonder oude deelantwoorden of verlopen klokjes.
+    if(team.completedSteps)delete team.completedSteps[target];
+    if(target==='KEUZE'){
+      team.chosenRoute=null;
+      team.johnnyOfferStartedAt=null;
+      team.policeProgress={};
+      team.policeRaidStartedAt=null;
+      team.policeFinalStartedAt=null;
+    }
+    if(target==='POLITIE_INVAL')team.policeRaidStartedAt=Date.now();
+    if(target==='POLITIE_FINALE')team.policeFinalStartedAt=Date.now();
+    if(target==='JOHNNY_ARRESTATIE')team.johnnyArrestStartedAt=Date.now();
+    if(target==='EINDOPERATIE' && oldPhase==='KOPER_KEUZE'){
+      team.buyerChat=initialBuyerChat();
+      team.finalDecisionStartedAt=null;
+    }
+    if(target==='KOPER_KEUZE')team.finalDecisionStartedAt=Date.now();
+    if(target==='START'){
+      // Een teruggezet team start de briefing opnieuw, niet de wedstrijdfinish.
+      // Geen reset van timer, hints of strafminuten.
+    }
   } else if(action==='reset'){
-    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
-  } else if(!['pause','resume','stop','next','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
+    Object.assign(team,{currentPhase:'START',hintCount:0,chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+  } else if(!['pause','resume','stop','next','previous','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
   team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
   res.json({team:teamView(team)});
 });
