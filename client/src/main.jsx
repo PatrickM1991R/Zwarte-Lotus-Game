@@ -939,8 +939,14 @@ function JohnnyIdentifyPuzzle({loading,feedback,submitAnswer,requestHint}) {
   return <section className="panel dossier-ready">
     <div className="section-label">FASE 5 · LAATSTE WIJZIGING</div>
     <h2>Wie heeft het transportplan aangepast?</h2>
-    <p>Gebruik het <strong>fysieke transportlog</strong> dat jullie nu van de spelbegeleider hebben ontvangen. Vergelijk dit document met het bericht van Rotje Knor. De wijziging is uitgevoerd nadat de andere drie rollen al klaar waren.</p>
-    <div className="mission-card"><span>BEWIJSMATERIAAL</span><strong>Transportlog – Laatste wijziging</strong><small>Wordt fysiek uitgereikt door de spelbegeleider.</small></div>
+    <p>De oorspronkelijke zending is administratief gewijzigd. Wie heeft die wijziging uitgevoerd? Raadpleeg de gegevens in het beveiligde transportsysteem van de infiltrant en vergelijk de vermelde initialen en functie met jullie verdachtendossiers. Er wordt voor deze opdracht geen fysiek transportlog uitgereikt.</p>
+    <div className="mission-card">
+      <span>DIGITAAL BEWIJSMATERIAAL</span>
+      <strong>Beveiligde transportadministratie</strong>
+      <small>Hebben jullie de autorisatiecode nog niet? Open eerst het contact met de infiltrant met contactcode CK-842 en beluister zijn bericht.</small>
+      <a className="primary transport-contact-link" href="#/rotje?code=CK-842" target="_blank" rel="noopener noreferrer">Open contact met de infiltrant</a>
+      <a className="primary transport-contact-link" href="#/transport-systeem" target="_blank" rel="noopener noreferrer">Open het transportsysteem</a>
+    </div>
     <div className="single-suspect-grid">{suspects.map(s=><button key={s.id} type="button" className={`mini-suspect ${selected===s.id?'selected':''}`} onClick={()=>setSelected(s.id)} aria-pressed={selected===s.id}><img src={s.image} alt=""/><span><strong>{s.name}</strong><small>{s.alias}</small></span></button>)}</div>
     <div className="selection-footer"><span>{selected?'1 verdachte geselecteerd':'Selecteer de verdachte die bij J.J. past'}</span><button className="primary" disabled={loading||!selected} onClick={()=>submitAnswer('JOHNNY_ONTMASKERD',selected)}>{loading?'Controleren...':'Ontmasker J.J.'}</button></div>
     <button className="hint-link" onClick={()=>requestHint('Hint: combineer de initialen J.J., het signalement, de transportmap en de rol van de chauffeur.')}>Hint aanvragen</button>
