@@ -865,3 +865,13 @@ a.primary.transport-contact-link { display:inline-block; padding:12px 18px; text
 .staff-penalty-custom{min-width:76px;max-width:95px}
 .staff-actions .staff-penalty-add{min-height:36px;background:#c9a227;color:#140821;border:1px solid #c9a227;font-weight:700;padding:7px 12px}
 .staff-actions .staff-penalty-add:disabled{opacity:.45;cursor:not-allowed}
+
+/* v10.3 – transcriptie na twee keer afspelen */
+.audio-transcript-wrap { min-width: 0; width:100%; display:flex; flex-direction:column; align-items:stretch; gap:9px; }
+.audio-transcript-wrap audio { width:100%; max-width:100%; }
+.audio-transcript-hint { margin:0; opacity:.75; font-size:.85rem; }
+.audio-transcript-actions { display:flex; flex-direction:column; gap:10px; }
+.transcript-toggle { align-self:flex-start; min-height:40px; }
+.audio-transcript-content { padding:16px 18px; border:1px solid rgba(201,162,39,.45); background:rgba(12,7,20,.65); border-radius:12px; line-height:1.6; }
+.audio-transcript-content strong { display:block; color:#c9a227; margin-bottom:6px; }
+.audio-transcript-content p { margin:0; white-space:pre-line; }

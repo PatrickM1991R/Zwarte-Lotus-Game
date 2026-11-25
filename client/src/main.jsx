@@ -85,6 +85,25 @@ function InfiltrantPage() {
 }
 
 
+// Transcriptie na twee daadwerkelijke afspeelacties (ook opnieuw starten/hervatten telt als play).
+function AudioMetTranscriptie({src,ariaLabel,tekst,onEnded,onTranscriptOpened,className='audio-player'}) {
+  const [playCount,setPlayCount] = useState(0);
+  const [showTranscript,setShowTranscript] = useState(false);
+  return <div className="audio-transcript-wrap">
+    <audio className={className} controls preload="metadata" src={src} aria-label={ariaLabel}
+      onPlay={()=>setPlayCount(v=>v+1)} onEnded={onEnded}/>
+    {playCount>=2 ? <div className="audio-transcript-actions">
+      <button type="button" className="secondary transcript-toggle" aria-expanded={showTranscript}
+        onClick={()=>{setShowTranscript(v=>!v);if(!showTranscript)onTranscriptOpened?.();}}>
+        {showTranscript?'Verberg transcriptie':'Lees transcriptie'}
+      </button>
+      {showTranscript&&<div className="audio-transcript-content" role="region" aria-label={`Transcriptie ${ariaLabel}`}>
+        <strong>Schriftelijke weergave</strong><p>{tekst}</p>
+      </div>}
+    </div> : <p className="audio-transcript-hint">Na twee keer op afspelen kun je het bericht ook lezen.</p>}
+  </div>;
+}
+
 function RotjeSecretPage() {
   const hash = window.location.hash || '';
   const rawQuery = hash.includes('?') ? hash.split('?').slice(1).join('?') : '';
@@ -104,9 +123,11 @@ function RotjeSecretPage() {
     <div className="infiltrant-status"><span></span> VERTROUWELIJKE VERBINDING</div>
     <div className="section-label">VERTROUWELIJK · RECHERCHETEAM</div>
     <h1>Een bericht van Rotje Knor</h1>
-    <p className="infiltrant-copy">Luister de volledige opname af. Bespreek de informatie daarna met je team.</p>
-    <audio className="audio-player infiltrant-audio" controls preload="metadata" src="/assets/story/rotje-knor.mp3" onEnded={()=>setCompleted(true)} />
-    {!completed?<div className="infiltrant-locked"><span>VOLLEDIG AFSPELEN OM HET BERICHT TE BEVESTIGEN</span></div>:
+    <p className="infiltrant-copy">Luister naar het bericht. Na twee keer afspelen kun je ook de schriftelijke weergave openen.</p>
+    <AudioMetTranscriptie className="audio-player infiltrant-audio" src="/assets/story/rotje-knor.mp3" ariaLabel="Bericht van Rotje Knor"
+      tekst="Rotje Knor verstrekt de autorisatiecode RK-7318. Met deze code kun je de afgeschermde transportadministratie openen en het containerregister raadplegen."
+      onEnded={()=>setCompleted(true)} onTranscriptOpened={()=>setCompleted(true)} />
+    {!completed?<div className="infiltrant-locked"><span>LUISTER HET BERICHT AF OF OPEN NA TWEE KEER AFSPELEN DE TEKSTWEERGAVE</span></div>:
       <div className="rotje-proof"><span>VERTROUWELIJKE TOEGANGSCODE</span><h2>Toegang tot de transportadministratie</h2><strong>RK-7318</strong><p>Gebruik deze autorisatiecode om het beveiligde transportsysteem te openen. Raadpleeg daar het containerregister.</p><a className="primary transport-contact-link" href="#/transport-systeem" target="_blank" rel="noopener noreferrer">Open transportsysteem</a></div>}
   </section></main>;
 }
@@ -192,7 +213,7 @@ function App() {
   useEffect(()=>{
     if(mode!=='game'||!team)return;
     const id=setInterval(()=>{
-      apiFetch(`${API}/api/teams/${team.id}/final-status`).then(r=>r.ok?r.json():null).then(j=>{if(j?.team && (j.team.currentPhase!==team.currentPhase||j.team.status!==team.status||j.team.pausedAt!==team.pausedAt))setTeam(j.team);}).catch(()=>{});
+      apiFetch(`${API}/api/teams/${team.id}/final-status`).then(r=>r.ok?r.json():null).then(j=>{if(j?.team && (j.team.currentPhase!==team.currentPhase||j.team.chosenRoute!==team.chosenRoute||j.team.status!==team.status||j.team.pausedAt!==team.pausedAt))setTeam(j.team);}).catch(()=>{});
     },4000);
     return()=>clearInterval(id);
   },[mode,team?.id,team?.currentPhase,team?.status,team?.pausedAt]);
@@ -638,7 +659,7 @@ function GamePhase({ team, loading, feedback, startGame, submitOpening, startCou
   if (phase === 'LOTUS_GEVONDEN') return <LotusFound loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_MELDEN') return <JohnnyInspectorReport loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
   if (phase === 'JOHNNY_ARRESTATIE') return <JohnnyArrestOperation team={team} loading={loading} feedback={feedback} submitAnswer={submitAnswer} />;
-  if (phase==='POLITIE_BRIEFING' && team.chosenRoute==='Politie') return <PoliceRoutePage loading={loading} feedback={feedback} infiltrateJohnny={infiltrateJohnny}/>;
+  if (phase==='POLITIE_BRIEFING' && team.chosenRoute==='Politie') return <PoliceRoutePage loading={loading} feedback={feedback} infiltrateJohnny={infiltrateJohnny} timedOut={Boolean(team.johnnyOfferTimedOut)}/>;
   if (phase === 'KOPER_KEUZE' && team.chosenRoute === 'Johnny') return <BuyerFinalChoice team={team} loading={loading} feedback={feedback} chooseFinal={chooseFinal} syncFinal={syncFinal} />;
   if (phase === 'EINDOPERATIE' && team.chosenRoute === 'Johnny') return <JohnnyFinalOperation team={team} loading={loading} feedback={feedback} sendBuyerChat={sendBuyerChat} />;
   if (phase === 'RESULTAAT' && team.chosenRoute === 'Johnny') return <JohnnyResult team={team} />;
@@ -693,7 +714,8 @@ function OpeningPuzzlePage({loading,feedback,submitOpening,startCountdown,reques
         <div className="opening-section-header question-heading"><span className="opening-step-index">02</span><div><span className="opening-overline">ONDERZOEK · BEVEILIGDE TOEGANG</span><h3>Reconstrueer de code van het onderzoek.</h3><p>Gebruik van beide bewijsstukken de laatste twee cijfers. Neem twee cijfers uit de camerabeelden en twee uit het alarmbandje. Combineer ze tot de viercijferige onderzoekscode. De volgorde waarin de bewijsstukken worden aangeboden, hoeft niet de volgorde van de code te zijn.</p></div></div>
         <div className="opening-evidence-grid">
           <div className="opening-evidence-reference"><span className="evidence-number">BEWIJSSTUK 01</span><span className="evidence-symbol" aria-hidden="true">▣</span><strong>Camerabeelden</strong><p>Raadpleeg de beelden die jullie via het onderzoek hebben ontvangen.</p><small>Te vinden in jullie onderzoeksdossier</small></div>
-          <div className="opening-alarm-evidence"><div className="opening-alarm-evidence-head"><span>BEWIJSSTUK 02 · AUDIO</span><strong>Alarmregistratie Maison Beaumont</strong><small>Beluister het beveiligingsbericht. Je kunt het zo vaak opnieuw afspelen als nodig.</small></div><audio controls preload="metadata" src="/assets/alarmfragment.mp3" aria-label="Alarmfragment Maison Beaumont" /></div>
+          <div className="opening-alarm-evidence"><div className="opening-alarm-evidence-head"><span>BEWIJSSTUK 02 · AUDIO</span><strong>Alarmregistratie Maison Beaumont</strong><small>Beluister het beveiligingsbericht. Je kunt het zo vaak opnieuw afspelen als nodig.</small></div><AudioMetTranscriptie src="/assets/alarmfragment.mp3" ariaLabel="Alarmfragment Maison Beaumont"
+            tekst="Hoofdalarm actief om 20:17. Vitrinecontact verbroken drie minuten vóór het hoofdalarm. Camera 3 offline één minuut na de contactbreuk." /></div>
         </div>
         <div className="opening-code-area"><div><span className="opening-overline">JULLIE CONCLUSIE</span><h4>Onderzoekscode</h4><p>Vul de vier cijfers in die jullie uit de bewijsstukken hebben afgeleid.</p></div><label className="opening-code-field"><span>Viercijferige code</span><input disabled={!briefingDone} value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,'').slice(0,4))} inputMode="numeric" pattern="[0-9]{4}" autoComplete="off" maxLength={4} required aria-label="Viercijferige onderzoekscode" /></label></div>
       </article>
@@ -1034,7 +1056,7 @@ function JohnnyChoice({team,loading,feedback,chooseRoute,startJohnnyOffer}) {
         <span>TIJD OVER</span><strong>{String(seconds).padStart(2,'0')}</strong>
       </div>}
       <div className="choice-grid"><button className="choice-card criminal" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Johnny')}><span>{returningFromPolice?'INFILTRATIE':'OPTIE 1'}</span><strong>{returningFromPolice?'Accepteer Johnny’s aanbod':'Werk samen met Jatwerk'}</strong><small>Laat de overdracht doorgaan en volg Johnny naar de kluis.</small></button>{!returningFromPolice&&<button className="choice-card police" disabled={loading||choiceSubmitted||expired} onClick={()=>choose('Politie')}><span>OPTIE 2</span><strong>Licht de politie in</strong><small>Vraag de inspecteur om hulp. Wat zal hij ervan vinden?</small></button>}</div>
-      {expired&&<div className="feedback">De 30 seconden zijn voorbij. Vraag de spelbegeleider om deze testfase opnieuw te starten.</div>}
+      {expired&&<div className="feedback" role="status">Geen keuze gemaakt binnen 30 seconden. De politie-optie wordt automatisch geactiveerd. Er worden tien strafminuten toegevoegd: vijf voor geen keuze en vijf voor de politie-optie. De inspecteur beslist hoe jullie verdergaan.</div>}
     </>}
     {feedback&&<div className="feedback" aria-live="polite">{feedback}</div>}
   </section>;
@@ -1437,7 +1459,7 @@ function JohnnyResult({team}) {
 
 // De politiekeuze is een korte omweg, geen aparte verhaallijn.
 // Het team krijgt vijf strafminuten en gaat daarna verder met Johnny.
-function PoliceRoutePage({loading,feedback,infiltrateJohnny}) {
+function PoliceRoutePage({loading,feedback,infiltrateJohnny,timedOut=false}) {
   return <section className="panel cinematic police-route-panel">
     <div className="police-route-header">
       <div className="section-label">OPERATIE SCHADUWJACHT · NOODBRIEFING</div>
@@ -1456,10 +1478,10 @@ function PoliceRoutePage({loading,feedback,infiltrateJohnny}) {
       </div>
     </div>
     <div className="police-detour-warning" role="note">
-      <strong>GEVOLG VAN DE POLITIEKEUZE · +5 MINUTEN STRAFTIJD</strong>
-      <p>De inspecteur stuurt jullie terug naar het infiltratiespoor. Na bevestiging worden vijf strafminuten aan de teamtijd toegevoegd.</p>
+      <strong>{timedOut?'GEEN KEUZE GEMAAKT · +10 MINUTEN STRAFTIJD':'GEVOLG VAN DE POLITIEKEUZE · +5 MINUTEN STRAFTIJD'}</strong>
+      {timedOut?<p>Jullie hebben niet op tijd gekozen. Er zijn al tien strafminuten toegevoegd: vijf voor de verlopen keuzetijd en vijf omdat automatisch de politie is ingelicht. Er komt bij de overstap geen extra straf meer bij.</p>:<p>De inspecteur stuurt jullie terug naar het infiltratiespoor. Na bevestiging worden vijf strafminuten aan de teamtijd toegevoegd.</p>}
     </div>
-    <button className="primary" disabled={loading} onClick={infiltrateJohnny}>{loading?'Contact herstellen...':'Toch samenwerken met Johnny · +5 minuten →'}</button>
+    <button className="primary" disabled={loading} onClick={infiltrateJohnny}>{loading?'Contact herstellen...':timedOut?'Toch samenwerken met Johnny →':'Toch samenwerken met Johnny · +5 minuten →'}</button>
     {feedback&&<div className="feedback" role="alert">{feedback}</div>}
   </section>;
 }

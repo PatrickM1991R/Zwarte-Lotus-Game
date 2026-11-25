@@ -225,8 +225,37 @@ function retireOldPolicePhase(team) {
     persist();
   }
 }
+// Tijdslimiet Johnny: na 30 seconden zonder keuze automatisch de politie in.
+// Meteen tien strafminuten: vijf voor géén keuze en vijf voor de automatische politie-optie.
+// Server-side en idempotent, zodat ook verversen / een gesloten tab geen blokkade geeft.
+function enforceJohnnyOfferDeadline(team) {
+  if(team.currentPhase!=='KEUZE' || !team.johnnyOfferStartedAt || team.policeDetourPenaltyApplied || team.johnnyOfferTimedOut) return false;
+  if(Date.now() < Number(team.johnnyOfferStartedAt)+30_000) return false;
+  team.johnnyOfferTimedOut=true;
+  team.policeDetourPenaltyApplied=true; // de politieboete is al inbegrepen; voorkom dubbel afschrijven
+  team.chosenRoute='Politie';
+  team.currentPhase='POLITIE_BRIEFING';
+  addPenaltyMinutes(team,10);
+  team.manualActions??=[];
+  team.manualActions.push({at:Date.now(),action:'johnny-choice-timeout',minutes:10,reason:'geen keuze + politie'});
+  persist();
+  return true;
+}
+const johnnyRoutePhases = new Set([
+  'JOHNNY_ROUTE', 'KLUIS', 'LOTUS_GEVONDEN', 'JOHNNY_MELDEN',
+  'JOHNNY_ARRESTATIE', 'EINDOPERATIE', 'KOPER_KEUZE', 'RESULTAAT'
+]);
+
+function restoreJohnnyRoute(team) {
+  if (team.chosenRoute || !johnnyRoutePhases.has(team.currentPhase)) return;
+  team.chosenRoute = 'Johnny';
+  persist();
+}
+
 const enrich = (team) => {
+  restoreJohnnyRoute(team);
   retireOldPolicePhase(team);
+  enforceJohnnyOfferDeadline(team);
   enforceFinalDeadline(team);
   return { ...teamView(team), editorNote:db.config.playerNotes?.[team.currentPhase]||'', locationName: db.events.find(e=>e.id===team.eventId)?.name || '', eventName: db.events.find(e=>e.id===team.eventId)?.name || '' };
 };
@@ -385,7 +414,7 @@ app.post('/api/team-login', (req,res)=>{
   if(!name)return res.status(422).json({error:'Vul een teamnaam in.'});
   let team=db.teams.find(t=>t.eventId===event.id && t.teamName.toLowerCase()===name.toLowerCase());
   if(!team){
-    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0,policeDetourPenaltyApplied:false};
+    team={id:Math.max(0,...db.teams.map(t=>t.id))+1,eventId:event.id,teamName:name,currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,charactersConfigured:true,participants:[],dossierPlan:null,penaltyMinutes:0,policeDetourPenaltyApplied:false,johnnyOfferTimedOut:false};
     db.teams.push(team);
   }
   res.json({team:enrich(team),token:sign({type:'team',id:team.id})});
@@ -533,6 +562,7 @@ app.post('/api/teams/:id/johnny-offer-start', (req,res)=>{
 app.post('/api/teams/:id/route', (req, res) => {
   const team = db.teams.find((t) => t.id === Number(req.params.id));
   if (!team) return res.status(404).json({ error: 'Team niet gevonden' });
+  if(enforceJohnnyOfferDeadline(team))return res.json({team:enrich(team),autoPolice:true});
   if (team.currentPhase !== 'KEUZE') return res.status(409).json({ error: 'Deze keuze is nu niet actief.' });
   if (!team.johnnyOfferStartedAt) return res.status(409).json({error:'Luister eerst het volledige bericht van Johnny af.'});
   const returningFromPolice=Boolean(team.policeDetourPenaltyApplied && team.chosenRoute==='Politie');
@@ -575,6 +605,7 @@ app.get('/api/teams/:id/final-status', (req,res)=>{
 app.post('/api/teams/:id/final-choice', (req,res)=>{
   const team=db.teams.find(t=>t.id===Number(req.params.id));
   if(!team)return res.status(404).json({error:'Team niet gevonden'});
+  restoreJohnnyRoute(team);
   enforceFinalDeadline(team);
   if(team.currentPhase!=='KOPER_KEUZE' || team.chosenRoute!=='Johnny')
     return res.status(409).json({error:'De keuzeperiode is niet actief.',team:enrich(team)});
@@ -593,6 +624,7 @@ app.post('/api/teams/:id/final-choice', (req,res)=>{
 app.post('/api/teams/:id/buyer-chat', (req,res) => {
   const team=db.teams.find(t=>t.id===Number(req.params.id));
   if(!team) return res.status(404).json({error:'Team niet gevonden'});
+  restoreJohnnyRoute(team);
   if(team.currentPhase!=='EINDOPERATIE' || team.chosenRoute!=='Johnny')
     return res.status(409).json({error:'Het beveiligde kanaal is nog niet beschikbaar.'});
   team.buyerChat ??= initialBuyerChat();
@@ -727,6 +759,7 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
     if(nextPhase==='POLITIE_FINALE')team.policeFinalStartedAt=Date.now();
     if(nextPhase==='JOHNNY_ARRESTATIE')team.johnnyArrestStartedAt=Date.now();
     team.currentPhase=nextPhase;
+    if(!team.chosenRoute && johnnyRoutePhases.has(nextPhase))team.chosenRoute='Johnny';
     if(nextPhase==='RESULTAAT'||nextPhase==='POLITIE_RESULTAAT')finishTeam(team);
   } else if(action==='previous' && team.status!=='klaar' && team.status!=='gestopt'){
     // Spelbegeleider: zet een team precies een stap terug binnen de gekozen verhaallijn.
@@ -757,7 +790,7 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
       // Geen reset van timer, hints of strafminuten.
     }
   } else if(action==='reset'){
-    Object.assign(team,{currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+    Object.assign(team,{currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,johnnyOfferTimedOut:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
   } else if(!['pause','resume','stop','next','previous','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
   team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
   res.json({team:teamView(team)});
