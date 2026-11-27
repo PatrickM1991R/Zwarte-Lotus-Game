@@ -875,3 +875,13 @@ a.primary.transport-contact-link { display:inline-block; padding:12px 18px; text
 .audio-transcript-content { padding:16px 18px; border:1px solid rgba(201,162,39,.45); background:rgba(12,7,20,.65); border-radius:12px; line-height:1.6; }
 .audio-transcript-content strong { display:block; color:#c9a227; margin-bottom:6px; }
 .audio-transcript-content p { margin:0; white-space:pre-line; }
+
+/* v10.3.2 – eindkeuze, arrestatie en zuivere wedstrijdklassering */
+.staff-outcome{display:inline-block;padding:6px 9px;border-radius:7px;font-size:12px;font-weight:800;line-height:1.45;white-space:normal;min-width:135px}
+.staff-outcome-success{color:#f3d994;background:rgba(201,162,39,.14);border:1px solid rgba(201,162,39,.5)}
+.staff-outcome-failed{color:#ffc8c8;background:rgba(153,47,47,.23);border:1px solid rgba(233,95,95,.65)}
+.staff-outcome-unknown,.staff-outcome-pending{color:#d8d0df;background:rgba(160,150,175,.12);border:1px solid rgba(160,150,175,.35)}
+.staff-results-heading{font-size:16px;margin:22px 0 11px;color:#edcf82}
+.staff-results-failed-heading{color:#ffc6c6;margin-top:30px}
+.staff-failed-row{background:rgba(145,36,36,.07)}
+.staff-no-rank{color:#b0a5b4;font-weight:800}

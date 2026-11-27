@@ -208,7 +208,7 @@ function enforceFinalDeadline(team) {
   if (team.currentPhase === 'KOPER_KEUZE' && !team.finalDecisionStartedAt) team.finalDecisionStartedAt=Date.now();
   if (team.currentPhase === 'KOPER_KEUZE' && !team.finalChoice &&
       Date.now() >= team.finalDecisionStartedAt + FINAL_DECISION_MS) {
-    team.finalChoice='VAL';
+    team.finalChoice='GEEN';
     team.finalChoiceTimedOut=true;
     team.currentPhase='RESULTAAT';
     finishTeam(team);
@@ -755,7 +755,7 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
     const nextPhase=routeSequence[idx+1]||phaseNext[team.currentPhase];
     if(!nextPhase)return res.status(409).json({error:'Geen volgende fase beschikbaar.'});
     if(nextPhase==='KOPER_KEUZE')team.finalDecisionStartedAt=Date.now();
-    if(nextPhase==='RESULTAAT'&&!team.finalChoice)team.finalChoice='VAL';
+    if(nextPhase==='RESULTAAT'&&!team.finalChoice){team.finalChoice='GEEN';team.finalChoiceTimedOut=true;}
     if(nextPhase==='POLITIE_FINALE')team.policeFinalStartedAt=Date.now();
     if(nextPhase==='JOHNNY_ARRESTATIE')team.johnnyArrestStartedAt=Date.now();
     team.currentPhase=nextPhase;
@@ -783,14 +783,16 @@ app.post('/api/events/:id/teams/:teamId/action',(req,res)=>{
     if(target==='EINDOPERATIE' && oldPhase==='KOPER_KEUZE'){
       team.buyerChat=initialBuyerChat();
       team.finalDecisionStartedAt=null;
+      team.finalChoice=null;
+      team.finalChoiceTimedOut=false;
     }
-    if(target==='KOPER_KEUZE')team.finalDecisionStartedAt=Date.now();
+    if(target==='KOPER_KEUZE'){team.finalDecisionStartedAt=Date.now();team.finalChoice=null;team.finalChoiceTimedOut=false;}
     if(target==='START'){
       // Een teruggezet team start de briefing opnieuw, niet de wedstrijdfinish.
       // Geen reset van timer, hints of strafminuten.
     }
   } else if(action==='reset'){
-    Object.assign(team,{currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,johnnyOfferTimedOut:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,buyerChat:null});
+    Object.assign(team,{currentPhase:'START',hintCount:0,hintRequests:[],chosenRoute:null,finalChoice:null,status:'wacht',startedAt:null,timerStartedAt:null,finishedAt:null,stoppedAt:null,pausedAt:null,totalPausedMs:0,penaltyMinutes:0,policeDetourPenaltyApplied:false,johnnyOfferTimedOut:false,charactersConfigured:true,participants:[],dossierPlan:null,completedSteps:{},policeProgress:{},finalDecisionStartedAt:null,finalChoiceTimedOut:false,arrestStartedAt:null,buyerChat:null});
   } else if(!['pause','resume','stop','next','previous','reset'].includes(action))return res.status(422).json({error:'Ongeldige actie.'});
   team.manualActions??=[];team.manualActions.push({at:Date.now(),by:staff(req).username,action});
   res.json({team:teamView(team)});
